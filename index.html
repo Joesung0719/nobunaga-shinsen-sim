@@ -87,8 +87,6 @@ header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
 #draw{background:#100c09}
 #draw .bg{position:absolute;inset:-2cqw;background:url(img/room.jpg) center/cover;filter:blur(.9cqw) brightness(.55) sepia(.35)}
 #draw .bg::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,200,120,.18),rgba(0,0,0,.55))}
-.ticker{position:absolute;top:2.2cqw;left:50%;transform:translateX(-50%);font-size:max(9px,1.25cqw);color:#cfe3ff;background:linear-gradient(90deg,transparent,rgba(20,30,40,.7) 20%,rgba(20,30,40,.7) 80%,transparent);padding:.3cqw 6cqw;white-space:nowrap;z-index:3}
-.ticker b{color:var(--gold);font-weight:500}
 .cards{position:absolute;left:0;right:0;top:9cqw;height:31cqw}
 .card{position:absolute;top:0;width:14.6cqw;height:23.7cqw;perspective:80cqw;transition:transform .55s cubic-bezier(.2,.8,.2,1),left .55s cubic-bezier(.2,.8,.2,1)}
 .card .in{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .45s ease-in}
@@ -109,10 +107,6 @@ header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
 @keyframes flash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
 .card.charging .back{animation:charge .7s ease-in forwards}
 @keyframes charge{to{box-shadow:0 0 3cqw 1cqw #ffd77a,inset 0 0 4cqw #fff3c4;background:rgba(255,230,160,.9)}}
-.dup{position:absolute;left:8%;right:8%;top:38%;background:rgba(20,16,14,.82);color:var(--paper);text-align:center;font-family:var(--display);font-size:max(9px,1.35cqw);padding:.5cqw 0;border-radius:.3cqw;opacity:0;transition:opacity .3s}
-.card.flipped .dup{opacity:1;transition-delay:.4s}
-.newmark{position:absolute;right:.4cqw;top:.4cqw;background:var(--vermilion);color:#fff;font-family:var(--display);font-weight:700;font-size:max(9px,1.3cqw);padding:.1cqw .6cqw;border-radius:.2cqw;opacity:0;transition:opacity .3s}
-.card.flipped .newmark{opacity:1;transition-delay:.4s}
 .gift{position:absolute;left:0;right:0;bottom:-2.6cqw;text-align:center;font-size:max(9px,1.2cqw);color:var(--gold);opacity:0;transition:opacity .3s}
 .card.flipped .gift{opacity:1}
 .hint{position:absolute;left:0;right:0;top:41cqw;text-align:center;font-family:var(--display);font-size:max(10px,1.45cqw);color:var(--paper);text-shadow:0 0 .4cqw #000}
@@ -133,10 +127,9 @@ header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
   linear-gradient(90deg,#f6eedc 0%,#f4e2bd 35%,#eebd7a 70%,#d9884a 100%)}
 #intro .whiteout{position:absolute;inset:0;background:#fff;animation:fadeout 1s ease-out forwards;z-index:5;pointer-events:none}
 @keyframes fadeout{to{opacity:0}}
-.crest{position:absolute;left:8cqw;top:5cqw;width:17cqw;height:17cqw;border-radius:50%;border:1.1cqw solid #9b7330;display:grid;place-items:center;
-  animation:crestIn .9s .2s cubic-bezier(.2,.9,.3,1.2) both}
-.crest::before{content:"";position:absolute;inset:1.6cqw;border:.6cqw solid #9b7330;transform:rotate(45deg)}
-.crest span{position:relative;font-family:var(--display);font-weight:900;font-size:6cqw;color:#8a6224;background:#f5ead2;padding:0 .6cqw;border:.3cqw solid #9b7330}
+.crest{position:absolute;left:8cqw;top:5cqw;width:17cqw;height:17cqw;border-radius:50%;
+  box-shadow:0 0 0 .5cqw rgba(155,115,48,.55),0 .6cqw 2cqw rgba(90,50,10,.35);animation:crestIn .9s .2s cubic-bezier(.2,.9,.3,1.2) both}
+.crest img{width:100%;height:100%;display:block;border-radius:50%;max-width:none}
 @keyframes crestIn{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
 .fac{position:absolute;left:8cqw;width:17cqw;top:22.6cqw;text-align:center;font-family:var(--display);font-weight:700;font-size:1.6cqw;color:#8a6224;letter-spacing:.2em}
 .iname{position:absolute;left:3cqw;width:27cqw;top:25.6cqw;text-align:center;font-family:var(--display);font-weight:900;font-size:3.6cqw;color:#7d5a22;letter-spacing:.12em;animation:rise .6s .9s both}
@@ -230,7 +223,6 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
     <!-- draw -->
     <section class="view" id="draw" hidden>
       <div class="bg"></div>
-      <div class="ticker" id="ticker"></div>
       <div class="cards" id="cards"></div>
       <div class="hint" id="hint"></div>
       <div class="draw-btns">
@@ -290,7 +282,6 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
 const $=s=>document.querySelector(s);
 const POOL=await (await fetch('data.json')).json();
 const UP=['石川數正','島津義久','龍造寺隆信','吉岡妙林'];
-const FAC_CHAR={'織田':'織','武田':'武','上杉':'上','德川':'德','豐臣':'豐','群雄':'群'};
 const img=g=>`img/c${String(g.id).padStart(3,'0')}.webp`;
 const byR={5:POOL.filter(g=>g.r===5),4:POOL.filter(g=>g.r===4),3:POOL.filter(g=>g.r===3)};
 const QUOTES=['吾乃{n}，願為主公效犬馬之勞。','天下大勢，盡在此一戰。吾乃{n}，前來助陣。','{n}在此，願隨主公馳騁沙場。'];
@@ -377,7 +368,7 @@ function intro(g){
     const q=QUOTES[g.id%QUOTES.length].replace('{n}',g.n);
     const el=$('#intro');
     el.innerHTML=`<div class="whiteout"></div>
-      <div class="crest"><span>${FAC_CHAR[g.f]}</span></div>
+      <div class="crest"><img src="img/k${String(g.id).padStart(3,'0')}.webp" alt="${g.f}家徽"></div>
       <div class="fac">${g.f==='群雄'?'群雄':g.f}勢力</div>
       <div class="iname">${g.n}</div>
       <div class="istars">${'★'.repeat(g.r)}</div>
@@ -404,8 +395,7 @@ async function draw(n){
   const els=res.map(({g,e},i)=>{
     const c=document.createElement('div');c.className=`card r${e.r}`;
     c.style.left='-20cqw';c.style.transform=`rotate(${-14+i*3}deg) translateY(${6-i}cqw)`;
-    c.innerHTML=`<div class="in"><div class="face back"></div><div class="face front"><img src="${img(g)}" alt="${g.n}">
-      ${e.isNew?'<div class="newmark">新</div>':'<div class="dup">轉化為心得</div>'}</div></div><div class="flash"></div>${e.gift?'<div class="gift">額外贈送</div>':''}`;
+    c.innerHTML=`<div class="in"><div class="face back"></div><div class="face front"><img src="${img(g)}" alt="${g.n}"></div></div><div class="flash"></div>${e.gift?'<div class="gift">額外贈送</div>':''}`;
     box.appendChild(c);return c;
   });
   $('#hint').innerHTML='';
@@ -427,8 +417,6 @@ async function draw(n){
     if(e.r>=4){c.classList.remove('flashing');void c.offsetWidth;c.classList.add('flashing')}
     await wait(skipping||S.cfg.skipAnim?0:(e.r>=4?520:360));
   }
-  const best=res.filter(x=>x.e.r===5).map(x=>x.g.n);
-  $('#ticker').innerHTML=best.length?`[你] 登用到名將 <b>[${best.join('、')}]</b>`:'';
   updateHint();
   busy=false;setBtns(false);refresh();
 }
@@ -456,7 +444,7 @@ function renderLog(){
   $('#log').innerHTML=rows.length?rows.map(e=>{const g=POOL[e.id];const d=new Date(e.t);
     return `<tr><td>${e.i}</td><td class="nm"><img src="${img(g)}" alt="" loading="lazy">${g.n}${e.bn==='pk'&&UP.includes(g.n)&&e.r===5?' <span class="pill">UP</span>':''}</td>
     <td class="star${e.r}">${'★'.repeat(e.r)}</td><td>${g.c}</td><td>${g.f}</td>
-    <td>${e.isNew?'<span class="pill new">新武將</span>':'<span class="pill">轉化為心得</span>'}${e.gift?' <span class="pill">額外贈送</span>':''}</td>
+    <td>${e.isNew?'<span class="pill new">新武將</span>':'<span class="pill">重複</span>'}${e.gift?' <span class="pill">額外贈送</span>':''}</td>
     <td>${e.r===5?e.pity+' 抽出金':e.pity}</td><td>${(BANNERS[e.bn]||BANNERS.pk).tab}</td><td>${d.toLocaleTimeString('zh-TW',{hour12:false})}</td></tr>`}).join('')
     :`<tr><td colspan="9" class="empty">還沒有紀錄。按上方的「1次登用」或「5次登用」開始抽卡。</td></tr>`;
 }
