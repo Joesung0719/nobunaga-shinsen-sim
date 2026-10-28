@@ -85,7 +85,12 @@ header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
 
 /* draw scene */
 #draw{background:#100c09}
-#draw .bg{position:absolute;inset:-2cqw;background:url(img/room.jpg) center/cover;filter:blur(.9cqw) brightness(.55) sepia(.35)}
+#draw .bg{position:absolute;inset:-2cqw;filter:blur(.7cqw);background:
+  radial-gradient(38% 48% at 50% 40%,rgba(255,226,170,.55),transparent 70%),
+  linear-gradient(to bottom,transparent 62%,rgba(0,0,0,.35) 62.5%,transparent 64%),
+  repeating-linear-gradient(90deg,rgba(40,26,14,.9) 0 .8cqw,transparent .8cqw 13cqw),
+  repeating-linear-gradient(0deg,rgba(255,240,210,.06) 0 .25cqw,transparent .25cqw 3.2cqw),
+  linear-gradient(to bottom,#2b1d12 0%,#6d5233 22%,#8a6a43 58%,#4a3420 64%,#6b4f30 100%)}
 #draw .bg::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,200,120,.18),rgba(0,0,0,.55))}
 .cards{position:absolute;left:0;right:0;top:9cqw;height:31cqw}
 .card{position:absolute;top:0;width:14.6cqw;height:23.7cqw;perspective:80cqw;transition:transform .55s cubic-bezier(.2,.8,.2,1),left .55s cubic-bezier(.2,.8,.2,1)}
@@ -115,10 +120,10 @@ header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
 .ghost{position:absolute;right:2cqw;top:1.6cqw;z-index:6;cursor:pointer;background:rgba(0,0,0,.45);color:var(--paper);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.4cqw 1.6cqw;font-size:max(10px,1.3cqw);font-family:var(--body)}
 .skip{right:auto;left:2cqw;z-index:12}
 
-/* fx overlay (video) */
-#fx{background:#000;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
+/* fx overlay (canvas) */
+#fx{z-index:10;opacity:0;pointer-events:none;transition:opacity .12s}
 #fx.on{opacity:1;pointer-events:auto}
-#fx video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#fx canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 /* intro (first-time 5★) */
 #intro{z-index:11;cursor:pointer;overflow:hidden;background:
@@ -233,7 +238,7 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
       <button class="ghost skip" id="skip" type="button">跳過動畫</button>
     </section>
 
-    <section class="view" id="fx"><video id="vid" muted playsinline preload="auto"></video></section>
+    <section class="view" id="fx"><canvas id="fxc"></canvas></section>
     <section class="view" id="intro" hidden></section>
   </div>
 
@@ -252,6 +257,7 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
         <label for="pity">5★ 保底次數<input id="pity" type="number" step="1" min="1" max="200"></label>
         <label for="up">UP 武將權重倍數<input id="up" type="number" step="0.5" min="1" max="50"></label>
         <label class="ck" for="g5"><input id="g5" type="checkbox"> 每 5 次必得 4★ 以上（額外贈送）</label>
+        <label class="ck" for="opening"><input id="opening" type="checkbox"> 播放登用開場動畫</label>
         <label class="ck" for="skipAnim"><input id="skipAnim" type="checkbox"> 快速模式（不播動畫）</label>
       </div>
       <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選。PK賽季卡池沒有公告數字，5★ 機率比照 S1，UP 武將權重 ×6 是依活動文字「最大6倍」<b>推估</b>，S1 沒有的新武將以 0.16% 為基準。</p>
@@ -288,7 +294,7 @@ const QUOTES=['吾乃{n}，願為主公效犬馬之勞。','天下大勢，盡�
 
 // ---------- state ----------
 const KEY='shinsen-gacha-v2';
-const DEF={cfg:{p5:5.6,p4:36,pity:30,up:6,g5:true,skipAnim:false},log:[],own:{},bn:'pk',pb:{pk:0,s1:0},fb:{pk:0,s1:0},coin:0};
+const DEF={cfg:{p5:5.6,p4:36,pity:30,up:6,g5:true,skipAnim:false,opening:true},log:[],own:{},bn:'pk',pb:{pk:0,s1:0},fb:{pk:0,s1:0},coin:0};
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S||!S.cfg||!S.pb)S=structuredClone(DEF);
@@ -326,7 +332,7 @@ renderBanner();
 
 // ---------- settings ----------
 ['p5','p4','pity','up'].forEach(k=>{const el=$('#'+k);el.value=S.cfg[k];el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){S.cfg[k]=v;save();refresh()}})});
-['g5','skipAnim'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
+['g5','skipAnim','opening'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
 
 // ---------- roll ----------
 function pick(r){
@@ -350,18 +356,118 @@ function rollOne(){
 // ---------- animation helpers ----------
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 let skipping=false;
-const vid=$('#vid'),fx=$('#fx');
-function playClip(src){
+const fx=$('#fx'),cv=$('#fxc'),ctx=cv.getContext('2d'),stage=$('#stage');
+const CRESTS=[0,2,3,6,7,9].map(i=>{const im=new Image();im.src=`img/k${String(i).padStart(3,'0')}.webp`;return im});
+const crestImg=g=>{const im=new Image();im.src=`img/k${String(g.id).padStart(3,'0')}.webp`;return im};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function fxSize(){const r=stage.getBoundingClientRect(),d=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);return [cv.width,cv.height]}
+function hideFx(){fx.classList.remove('on');ctx.clearRect(0,0,cv.width,cv.height)}
+// run a frame loop for `dur` ms; draw(t 0..1, W, H, ms)
+function runFx(dur,draw,keep){
   return new Promise(res=>{
     if(skipping||S.cfg.skipAnim)return res();
-    vid.src=src;vid.currentTime=0;fx.classList.add('on');
-    let done=false;const end=()=>{if(done)return;done=true;vid.onended=null;res()};
-    vid.onended=end;vid.onerror=end;
-    vid.play().catch(end);
-    setTimeout(end,6000);
+    const [W,H]=fxSize();fx.classList.add('on');const t0=performance.now();
+    const step=now=>{
+      const ms=now-t0,t=Math.min(1,ms/dur);
+      if(skipping){if(!keep)hideFx();return res()}
+      ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.shadowBlur=0;
+      draw(t,W,H,ms);
+      if(t<1)requestAnimationFrame(step);else{if(!keep)hideFx();res()}
+    };requestAnimationFrame(step);
   });
 }
-function hideFx(){fx.classList.remove('on');vid.pause()}
+function glowOrb(x,y,r,a){
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,`rgba(255,255,240,${a})`);g.addColorStop(.25,`rgba(255,226,140,${a*.9})`);
+  g.addColorStop(.6,`rgba(255,170,50,${a*.35})`);g.addColorStop(1,'rgba(255,140,20,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+}
+function bolt(x1,y1,x2,y2,w,depth){
+  const pts=[[x1,y1]],n=14,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
+  for(let i=1;i<n;i++){const k=i/n,o=rnd(-1,1)*len*.06;pts.push([x1+dx*k+nx*o,y1+dy*k+ny*o])}
+  pts.push([x2,y2]);
+  for(const [lw,col,blur] of [[w*3,'rgba(255,190,80,.35)',w*6],[w,'rgba(255,240,200,.95)',w*3]]){
+    ctx.lineWidth=lw;ctx.strokeStyle=col;ctx.shadowColor='#ffb640';ctx.shadowBlur=blur;
+    ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
+  }
+  ctx.shadowBlur=0;
+  if(depth>0&&Math.random()<.7){const p=pts[4+Math.floor(Math.random()*6)],a=Math.atan2(dy,dx)+rnd(-.9,.9),l=len*rnd(.2,.4);
+    bolt(p[0],p[1],p[0]+Math.cos(a)*l,p[1]+Math.sin(a)*l,w*.55,depth-1)}
+}
+// 1) opening: crests drift down on warm light, clouds roll in, white flash
+function fxOpening(){
+  const parts=Array.from({length:46},()=>({x:Math.random(),y:rnd(-.3,1),s:rnd(.035,.09),v:rnd(.12,.3),r:rnd(-.5,.5),c:CRESTS[Math.floor(Math.random()*CRESTS.length)],a:rnd(.35,.9)}));
+  const clouds=Array.from({length:18},()=>({x:rnd(-.2,1.2),y:rnd(.1,.95),r:rnd(.18,.4),v:rnd(-.25,.25)}));
+  return runFx(2300,(t,W,H)=>{
+    const bg=ctx.createRadialGradient(W*.5,H*.45,0,W*.5,H*.45,W*.7);
+    bg.addColorStop(0,'#ffe9cf');bg.addColorStop(.6,'#f2b98d');bg.addColorStop(1,'#c9805e');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    const fade=1-Math.max(0,(t-.55)/.3);
+    for(const p of parts){const y=(p.y+t*p.v)*H,s=p.s*W;
+      ctx.globalCompositeOperation='lighter';ctx.globalAlpha=fade;glowOrb(p.x*W,y,s*1.1,.22);
+      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=p.a*fade;
+      ctx.save();ctx.translate(p.x*W,y);ctx.rotate(p.r*t);ctx.shadowColor='rgba(255,250,235,.9)';ctx.shadowBlur=s*.5;
+      if(p.c.complete&&p.c.naturalWidth)ctx.drawImage(p.c,-s/2,-s/2,s,s);ctx.restore();}
+    ctx.globalCompositeOperation='source-over';
+    const ct=Math.max(0,(t-.4)/.45);
+    if(ct>0)for(const c of clouds){const x=(c.x+c.v*t)*W,y=c.y*H,r=c.r*W*(.6+ct*.8);
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(255,255,255,${.85*ct})`);g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.globalAlpha=1;ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}
+    const ft=Math.max(0,(t-.82)/.18);
+    if(ft>0){ctx.globalAlpha=Math.min(1,ft*1.4);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H)}
+  });
+}
+// 2) gold lightning: orb at the card, bolts lashing out, screen shake
+function fxLightning(cx,cy){
+  let last=0;
+  return runFx(1150,(t,W,H,ms)=>{
+    const x=cx*W,y=cy*H;
+    ctx.fillStyle=`rgba(12,8,4,${Math.min(.72,t*3)})`;ctx.clearRect(0,0,W,H);ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    const grow=Math.min(1,t*2.2);
+    glowOrb(x,y,W*(.08+.22*grow),1);glowOrb(x,y,W*.05,1);
+    if(t>.12&&t<.95){const k=3+Math.floor(Math.random()*3);
+      for(let i=0;i<k;i++){const a=rnd(0,Math.PI*2),l=W*rnd(.5,.9);bolt(x,y,x+Math.cos(a)*l,y+Math.sin(a)*l,W*.0035,2)}}
+    // lens streak
+    const sg=ctx.createLinearGradient(0,y,W,y);sg.addColorStop(0,'rgba(255,200,90,0)');sg.addColorStop(x/W,`rgba(255,240,200,${.5*grow})`);sg.addColorStop(1,'rgba(255,200,90,0)');
+    ctx.fillStyle=sg;ctx.fillRect(0,y-H*.006,W,H*.012);
+    const sh=(1-t)*W*.004;stage.style.transform=t<.9?`translate(${rnd(-sh,sh)/2}px,${rnd(-sh,sh)/2}px)`:'';
+    if(t>.86){ctx.globalCompositeOperation='source-over';ctx.globalAlpha=(t-.86)/.14*.9;ctx.fillStyle='#fff6dc';ctx.fillRect(0,0,W,H)}
+  }).then(()=>{stage.style.transform=''});
+}
+// 3) first-time summon: rays + ring burst, the general's own crest rises from the light, white out
+function fxSummon(g){
+  const crest=crestImg(g);
+  const sparks=Array.from({length:70},()=>({a:rnd(0,7),v:rnd(.15,.55),s:rnd(1,3),d:rnd(0,.5)}));
+  return runFx(2600,(t,W,H)=>{
+    const x=W/2,y=H*.48,R=Math.hypot(W,H);
+    const bg=ctx.createRadialGradient(x,y,0,x,y,R*.6);bg.addColorStop(0,'#6b4413');bg.addColorStop(.5,'#2e1c08');bg.addColorStop(1,'#120b05');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    // rotating rays
+    ctx.save();ctx.translate(x,y);ctx.rotate(t*.6);
+    for(let i=0;i<24;i++){ctx.rotate(Math.PI*2/24);const w=(i%2?.012:.028)*(1+t*.6);
+      const gr=ctx.createLinearGradient(0,0,R*.6,0);gr.addColorStop(0,`rgba(255,220,140,${.32*Math.min(1,t*3)})`);gr.addColorStop(1,'rgba(255,160,40,0)');
+      ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(R*.6,-R*w);ctx.lineTo(R*.6,R*w);ctx.closePath();ctx.fill();}
+    ctx.restore();
+    // expanding rings
+    for(const k of [0,.18,.36]){const p=((t*1.4+k)%1);ctx.strokeStyle=`rgba(255,215,130,${(1-p)*.6})`;ctx.lineWidth=W*.004*(1-p);
+      ctx.beginPath();ctx.arc(x,y,W*.05+p*W*.45,0,7);ctx.stroke();}
+    // sparks
+    for(const s of sparks){const p=Math.max(0,t-s.d)/(1-s.d);if(p<=0)continue;const r=p*s.v*W;
+      ctx.fillStyle=`rgba(255,230,160,${1-p})`;ctx.fillRect(x+Math.cos(s.a)*r,y+Math.sin(s.a)*r,s.s*W/600,s.s*W/600);}
+    glowOrb(x,y,W*(.12+.1*Math.sin(t*9)*.2+t*.1),1);
+    // crest reveal
+    const ct=Math.max(0,(t-.38)/.4);
+    if(ct>0&&crest.complete&&crest.naturalWidth){ctx.globalCompositeOperation='source-over';
+      const e=1-Math.pow(1-Math.min(1,ct),3),s=W*(.3-.12*e);ctx.globalAlpha=Math.min(1,ct*1.6);
+      ctx.save();ctx.shadowColor='#ffd27a';ctx.shadowBlur=W*.04;ctx.drawImage(crest,x-s/2,y-s/2,s,s);ctx.restore();
+      ctx.globalCompositeOperation='lighter';ctx.globalAlpha=1-Math.min(1,ct);glowOrb(x,y,s*.7,1);}
+    const ft=Math.max(0,(t-.84)/.16);
+    if(ft>0){ctx.globalCompositeOperation='source-over';ctx.globalAlpha=ft;ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H)}
+  },true);
+}
 function intro(g){
   return new Promise(res=>{
     if(skipping||S.cfg.skipAnim)return res();
@@ -401,6 +507,7 @@ async function draw(n){
   $('#hint').innerHTML='';
   // fly in stacked, then fan out
   await wait(40);
+  if(S.cfg.opening)await fxOpening();hideFx();
   els.forEach((c,i)=>{c.style.left=(n===1?42.7:8+i*3)+'cqw'});
   await wait(skipping||S.cfg.skipAnim?0:500);
   els.forEach((c,i)=>{c.style.left=(start+i*(slotW+gap))+'cqw';c.style.transform=`rotate(${n===1?0:(i-(n-1)/2)*2.5}deg) translateY(${n===1?0:Math.abs(i-(n-1)/2)*0.8}cqw)`});
@@ -409,8 +516,9 @@ async function draw(n){
     const {g,e}=res[i],c=els[i];
     if(e.r===5&&!skipping&&!S.cfg.skipAnim){
       c.classList.add('charging');await wait(650);
-      await playClip('vid/lightning.mp4');
-      if(e.isNew){await playClip('vid/summon.mp4');await intro(g)}
+      const sr=stage.getBoundingClientRect(),cr=c.getBoundingClientRect();
+      await fxLightning((cr.left+cr.width/2-sr.left)/sr.width,(cr.top+cr.height/2-sr.top)/sr.height);
+      if(e.isNew){await fxSummon(g);await intro(g)}
       hideFx();c.classList.remove('charging');
     }
     c.classList.add('flipped');
@@ -466,8 +574,6 @@ function refresh(){
   renderLog();
 }
 refresh();
-// warm the video cache
-['vid/lightning.mp4','vid/summon.mp4'].forEach(s=>{const v=document.createElement('video');v.preload='auto';v.muted=true;v.src=s});
 })();
 </script>
 </body>
