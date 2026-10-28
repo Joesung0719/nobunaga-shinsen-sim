@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>真戰登用模擬器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one 16:9 game stage on top, the record ledger below it. Dark lacquer + gold leaf, single look. */
+:root{
+  --ink:#121010;        /* page ground: lacquer black */
+  --lacquer:#1d1917;    /* panels */
+  --line:#3a322b;       /* hairlines */
+  --paper:#efe3c8;      /* washi text */
+  --muted:#a39882;      /* secondary text */
+  --gold:#e3b75a;       /* gold leaf accent */
+  --gold-deep:#a8792b;
+  --violet:#b77cff;     /* 4★ glow */
+  --steel:#7fa3d6;      /* 3★ */
+  --vermilion:#c8442c;  /* new / alert */
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+.res{display:flex;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.res span{background:var(--lacquer);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.8rem;color:var(--muted)}
+.res b{color:var(--paper);font-weight:700;margin-left:4px}
+
+/* ---------- stage ---------- */
+.stage{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden;border-radius:6px;border:1px solid var(--line);
+  container-type:inline-size;background:#000;user-select:none;-webkit-user-select:none}
+.view{position:absolute;inset:0}
+.btn{font-family:var(--display);font-weight:700;cursor:pointer;border:0;color:#3a2606;
+  background:linear-gradient(#ffe99a,#e8bf4e 55%,#c9962d);box-shadow:inset 0 0 0 .2cqw #fff3c4,0 .3cqw 0 #6d4b12,0 .6cqw 1.6cqw rgba(0,0,0,.5);
+  border-radius:.6cqw;padding:.8cqw 2.2cqw;font-size:max(12px,1.9cqw);line-height:1.2;display:flex;flex-direction:column;align-items:center;gap:.2cqw}
+.btn small{font-family:var(--body);font-size:max(10px,1.25cqw);font-weight:500;opacity:.8}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(.2cqw)}
+.btn:focus-visible,.chip:focus-visible,.ghost:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.btn[disabled]{filter:grayscale(.7) brightness(.7);cursor:default}
+
+/* banner */
+#banner{background:radial-gradient(120% 90% at 20% 30%,#f7e7b9 0%,#e9cf86 35%,#b88a3c 70%,#5b3c14 100%)}
+#banner::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 0 0,rgba(255,255,255,.05) 0 2cqw,transparent 2cqw 4cqw);pointer-events:none}
+.bn-heroes{position:absolute;left:2cqw;top:5cqw;width:56cqw;height:29cqw;display:flex;align-items:flex-end}
+.hero{position:relative;width:15cqw;height:27cqw;margin-right:-1.5cqw;overflow:hidden;
+  -webkit-mask:linear-gradient(to bottom,#000 72%,transparent 96%);mask:linear-gradient(to bottom,#000 72%,transparent 96%)}
+.hero:nth-child(2n){height:29cqw}
+.hero img{position:absolute;width:150%;left:-26%;top:-2.6cqw;max-width:none}
+.hero-tags{position:absolute;left:3cqw;top:32cqw;display:flex;gap:1.2cqw;z-index:2}
+.tag{font-family:var(--display);font-size:max(10px,1.5cqw);font-weight:700;color:#2a1a06;text-align:left;width:13cqw;line-height:1.2}
+.tag em{display:block;font-style:normal;color:#fff;background:var(--vermilion);padding:.1cqw .6cqw;width:max-content;font-size:max(9px,1.2cqw);margin-bottom:.3cqw}
+.bn-copy{position:absolute;left:3cqw;bottom:7.5cqw;font-family:var(--display);font-weight:700;color:#2a1a06;font-size:max(11px,2cqw);z-index:2}
+.bn-copy b{color:#fff;background:var(--vermilion);border-radius:50%;padding:.2cqw 1cqw;font-size:max(14px,3.2cqw);margin:0 .4cqw;font-weight:900}
+.bn-panel{position:absolute;right:3cqw;top:5cqw;width:37cqw;display:flex;flex-direction:column;align-items:center;gap:1.4cqw;z-index:2}
+.bn-title{font-family:var(--display);font-weight:900;font-size:max(20px,5.4cqw);line-height:1;letter-spacing:.05em;
+  background:linear-gradient(#fff6c8,#f0c24e 50%,#b5701b);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 .25cqw 0 #5a2a0a) drop-shadow(0 0 .8cqw rgba(0,0,0,.4));text-align:center}
+.bn-title span{font-size:.55em;color:transparent;margin-left:.4em}
+.bn-sub{font-family:var(--display);font-weight:700;font-size:max(11px,1.9cqw);color:#3a2606}
+.bn-sub b{color:var(--vermilion);font-size:1.25em}
+.bn-box{width:100%;background:rgba(255,250,235,.82);border:.2cqw solid #b98b3c;border-radius:.4cqw;overflow:hidden}
+.bn-box .hd{background:linear-gradient(90deg,#7c3b14,#a75a22);color:#ffe9b0;font-family:var(--display);font-weight:700;font-size:max(10px,1.5cqw);padding:.6cqw 1.4cqw;display:flex;justify-content:space-between}
+.bn-box .bd{display:flex;justify-content:space-around;padding:1.6cqw 1cqw}
+.bn-tabs{position:absolute;left:3cqw;bottom:1.4cqw;display:flex;gap:1cqw;z-index:3}
+.tab{cursor:pointer;font-family:var(--display);font-weight:700;font-size:max(10px,1.6cqw);color:#f3dfb0;background:linear-gradient(#5a2f14,#3a1d0b);border:.2cqw solid #8a5a26;border-radius:.4cqw;padding:.5cqw 2cqw}
+.tab[aria-selected="true"]{color:#3a2606;background:linear-gradient(#ffe99a,#e3b75a);border-color:#fff3c4;box-shadow:0 0 1cqw rgba(255,220,120,.6)}
+.tab:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.rates{margin-top:14px;font-size:.82rem}
+.rates summary{cursor:pointer;color:var(--gold)}
+.rates .tier{margin:10px 0 4px;color:var(--muted)}
+.rates ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;font-variant-numeric:tabular-nums}
+.rates li{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:2px 0}
+.rates li.up{color:var(--gold)}
+.bn-note{font-size:max(9px,1.2cqw);color:#4b3413}
+
+/* draw scene */
+#draw{background:#100c09}
+#draw .bg{position:absolute;inset:-2cqw;background:url(img/room.jpg) center/cover;filter:blur(.9cqw) brightness(.55) sepia(.35)}
+#draw .bg::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,200,120,.18),rgba(0,0,0,.55))}
+.ticker{position:absolute;top:2.2cqw;left:50%;transform:translateX(-50%);font-size:max(9px,1.25cqw);color:#cfe3ff;background:linear-gradient(90deg,transparent,rgba(20,30,40,.7) 20%,rgba(20,30,40,.7) 80%,transparent);padding:.3cqw 6cqw;white-space:nowrap;z-index:3}
+.ticker b{color:var(--gold);font-weight:500}
+.cards{position:absolute;left:0;right:0;top:9cqw;height:31cqw}
+.card{position:absolute;top:0;width:14.6cqw;height:23.7cqw;perspective:80cqw;transition:transform .55s cubic-bezier(.2,.8,.2,1),left .55s cubic-bezier(.2,.8,.2,1)}
+.card .in{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .45s ease-in}
+.card.flipped .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:.8cqw;overflow:hidden}
+.back{background:linear-gradient(160deg,rgba(255,236,190,.55),rgba(170,130,70,.35) 60%,rgba(255,236,190,.4));
+  border:.25cqw solid rgba(255,230,170,.75);box-shadow:inset 0 0 2cqw rgba(255,240,200,.35),0 1cqw 2cqw rgba(0,0,0,.5);backdrop-filter:blur(2px)}
+.back::before{content:"登";position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:9cqw;color:rgba(70,45,15,.35)}
+.back::after{content:"";position:absolute;inset:.8cqw;border:.12cqw solid rgba(255,240,200,.5);border-radius:.5cqw}
+.front{transform:rotateY(180deg);background:#000}
+.front img{width:100%;height:100%;display:block;object-fit:cover}
+.card.r4.flipped .front{box-shadow:0 0 1.6cqw .4cqw rgba(183,124,255,.85),0 0 4cqw rgba(160,90,255,.6)}
+.card.r5.flipped .front{box-shadow:0 0 1.6cqw .5cqw rgba(255,200,90,.95),0 0 5cqw rgba(255,170,50,.7)}
+.card .flash{position:absolute;inset:-.4cqw;border-radius:1cqw;background:#fff;opacity:0;pointer-events:none;z-index:5}
+.card.r4 .flash{background:radial-gradient(#fff 40%,#e4c8ff)}
+.card.r5 .flash{background:radial-gradient(#fff 35%,#ffd77a)}
+.card.flashing .flash{animation:flash .5s ease-out}
+@keyframes flash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+.card.charging .back{animation:charge .7s ease-in forwards}
+@keyframes charge{to{box-shadow:0 0 3cqw 1cqw #ffd77a,inset 0 0 4cqw #fff3c4;background:rgba(255,230,160,.9)}}
+.dup{position:absolute;left:8%;right:8%;top:38%;background:rgba(20,16,14,.82);color:var(--paper);text-align:center;font-family:var(--display);font-size:max(9px,1.35cqw);padding:.5cqw 0;border-radius:.3cqw;opacity:0;transition:opacity .3s}
+.card.flipped .dup{opacity:1;transition-delay:.4s}
+.newmark{position:absolute;right:.4cqw;top:.4cqw;background:var(--vermilion);color:#fff;font-family:var(--display);font-weight:700;font-size:max(9px,1.3cqw);padding:.1cqw .6cqw;border-radius:.2cqw;opacity:0;transition:opacity .3s}
+.card.flipped .newmark{opacity:1;transition-delay:.4s}
+.gift{position:absolute;left:0;right:0;bottom:-2.6cqw;text-align:center;font-size:max(9px,1.2cqw);color:var(--gold);opacity:0;transition:opacity .3s}
+.card.flipped .gift{opacity:1}
+.hint{position:absolute;left:0;right:0;top:41cqw;text-align:center;font-family:var(--display);font-size:max(10px,1.45cqw);color:var(--paper);text-shadow:0 0 .4cqw #000}
+.hint b{color:var(--violet)} .hint i{font-style:normal;color:var(--gold)}
+.draw-btns{position:absolute;left:0;right:0;bottom:3cqw;display:flex;justify-content:space-around;padding:0 18cqw}
+.ghost{position:absolute;right:2cqw;top:1.6cqw;z-index:6;cursor:pointer;background:rgba(0,0,0,.45);color:var(--paper);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.4cqw 1.6cqw;font-size:max(10px,1.3cqw);font-family:var(--body)}
+.skip{right:auto;left:2cqw;z-index:12}
+
+/* fx overlay (video) */
+#fx{background:#000;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
+#fx.on{opacity:1;pointer-events:auto}
+#fx video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* intro (first-time 5★) */
+#intro{z-index:11;cursor:pointer;overflow:hidden;background:
+  radial-gradient(60% 80% at 75% 40%,rgba(230,110,40,.55),transparent 70%),
+  radial-gradient(50% 60% at 95% 10%,rgba(200,80,40,.5),transparent 70%),
+  linear-gradient(90deg,#f6eedc 0%,#f4e2bd 35%,#eebd7a 70%,#d9884a 100%)}
+#intro .whiteout{position:absolute;inset:0;background:#fff;animation:fadeout 1s ease-out forwards;z-index:5;pointer-events:none}
+@keyframes fadeout{to{opacity:0}}
+.crest{position:absolute;left:8cqw;top:5cqw;width:17cqw;height:17cqw;border-radius:50%;border:1.1cqw solid #9b7330;display:grid;place-items:center;
+  animation:crestIn .9s .2s cubic-bezier(.2,.9,.3,1.2) both}
+.crest::before{content:"";position:absolute;inset:1.6cqw;border:.6cqw solid #9b7330;transform:rotate(45deg)}
+.crest span{position:relative;font-family:var(--display);font-weight:900;font-size:6cqw;color:#8a6224;background:#f5ead2;padding:0 .6cqw;border:.3cqw solid #9b7330}
+@keyframes crestIn{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
+.fac{position:absolute;left:8cqw;width:17cqw;top:22.6cqw;text-align:center;font-family:var(--display);font-weight:700;font-size:1.6cqw;color:#8a6224;letter-spacing:.2em}
+.iname{position:absolute;left:3cqw;width:27cqw;top:25.6cqw;text-align:center;font-family:var(--display);font-weight:900;font-size:3.6cqw;color:#7d5a22;letter-spacing:.12em;animation:rise .6s .9s both}
+.istars{position:absolute;left:3cqw;width:27cqw;top:31.5cqw;text-align:center;color:#c48a1c;font-size:2.2cqw;letter-spacing:.2em;animation:rise .6s 1.1s both}
+.imeta{position:absolute;left:5cqw;width:23cqw;top:36cqw;font-size:max(9px,1.35cqw);color:#5a4220;line-height:1.7;animation:rise .6s 1.3s both}
+.imeta b{display:inline-block;background:#8a6224;color:#f5ead2;padding:0 .6cqw;border-radius:.2cqw;font-weight:500;margin-right:.6cqw}
+@keyframes rise{from{opacity:0;transform:translateY(1.5cqw)}to{opacity:1;transform:none}}
+.portrait{position:absolute;left:33cqw;top:2cqw;width:40cqw;height:53cqw;overflow:hidden;
+  -webkit-mask:radial-gradient(85% 75% at 50% 42%,#000 55%,transparent 78%);mask:radial-gradient(85% 75% at 50% 42%,#000 55%,transparent 78%);
+  animation:portraitIn 1.4s .3s ease-out both}
+.portrait img{position:absolute;width:150%;left:-30%;top:-9%;max-width:none;filter:saturate(1.05) contrast(1.05)}
+@keyframes portraitIn{0%{opacity:0;filter:brightness(3) sepia(1);transform:scale(1.06)}60%{opacity:1;filter:brightness(1.4) sepia(.5)}100%{opacity:1;filter:none;transform:none}}
+.quote{position:absolute;right:5cqw;top:5cqw;height:44cqw;writing-mode:vertical-rl;font-family:var(--display);font-weight:700;font-size:2.4cqw;line-height:1.9;color:#3a230c;letter-spacing:.25em;animation:rise 1s 1.5s both}
+.tap{position:absolute;left:0;right:0;bottom:2cqw;text-align:center;font-size:max(10px,1.3cqw);color:#5a4220;animation:blink 1.6s 2s infinite both}
+@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* ---------- ledger ---------- */
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:16px}
+.panel h2{font-family:var(--display);font-size:1.15rem;margin:0 0 12px;color:var(--gold);letter-spacing:.08em;text-wrap:balance}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;font-variant-numeric:tabular-nums}
+.stat{border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+.stat .k{font-size:.75rem;color:var(--muted);letter-spacing:.06em}
+.stat .v{font-family:var(--display);font-size:1.5rem;font-weight:700;margin-top:2px}
+.stat .v small{font-size:.8rem;color:var(--muted);font-family:var(--body);font-weight:400;margin-left:4px}
+.v.s5{color:var(--gold)} .v.s4{color:var(--violet)} .v.s3{color:var(--steel)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 10px}
+.chip{cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:inherit;font-size:.8rem}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.chip.danger{margin-left:auto;color:var(--vermilion);border-color:rgba(200,68,44,.5)}
+.tablebox{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:4px}
+table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums;min-width:560px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:#25201c;color:var(--muted);font-weight:500;font-size:.75rem;letter-spacing:.06em;z-index:1}
+td.nm{display:flex;align-items:center;gap:8px}
+td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-radius:2px}
+.star5{color:var(--gold)} .star4{color:var(--violet)} .star3{color:var(--steel)}
+.pill{font-size:.72rem;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.pill.new{color:#fff;background:var(--vermilion);border-color:var(--vermilion)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.owned{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.owned figure{margin:0;position:relative}
+.owned img{width:100%;aspect-ratio:292/474;object-fit:cover;border-radius:3px;display:block}
+.owned figcaption{position:absolute;right:2px;bottom:2px;background:rgba(0,0,0,.75);color:var(--gold);font-size:.7rem;padding:0 5px;border-radius:2px;font-variant-numeric:tabular-nums}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media (max-width:760px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+.form input[type=number]{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:inherit;font-size:.95rem}
+.form .ck{flex-direction:row;align-items:center;gap:8px;color:var(--paper)}
+.note{font-size:.8rem;color:var(--muted);line-height:1.7;margin:12px 0 0;max-width:68ch}
+.note b{color:var(--vermilion);font-weight:500}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>真戰登用模擬器</h1>
+      <p>PK賽季名將／S1初始大卡池 · 單抽／五抽 · 30 抽保底 · 官方機率公告</p>
+    </div>
+    <div class="res" aria-live="polite">
+      <span>已登用<b id="rTotal">0</b></span>
+      <span>保底<b id="rPity">0/30</b></span>
+      <span>已消耗小判<b id="rCoin">0</b></span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <!-- banner -->
+    <section class="view" id="banner">
+      <div class="bn-heroes" id="heroes"></div>
+      <div class="hero-tags" id="heroTags"></div>
+      <div class="bn-copy" id="bnCopy"></div>
+      <div class="bn-tabs" role="tablist" aria-label="卡池" id="tabs"></div>
+      <div class="bn-panel">
+        <div class="bn-title" id="bnTitle"></div>
+        <div class="bn-sub" id="bnSub"></div>
+        <div class="bn-box">
+          <div class="hd"><span id="pityText">30次內登用</span><span>必定獲得5星武將！</span></div>
+          <div class="bd">
+            <button class="btn" id="b1" type="button">1次登用<small>198 小判</small></button>
+            <button class="btn" id="b5" type="button">5次登用<small>990 小判</small></button>
+          </div>
+        </div>
+        <div class="bn-note" id="bnNote"></div>
+      </div>
+    </section>
+
+    <!-- draw -->
+    <section class="view" id="draw" hidden>
+      <div class="bg"></div>
+      <div class="ticker" id="ticker"></div>
+      <div class="cards" id="cards"></div>
+      <div class="hint" id="hint"></div>
+      <div class="draw-btns">
+        <button class="btn" id="d1" type="button">1次登用<small>198 小判</small></button>
+        <button class="btn" id="d5" type="button">5次登用<small>990 小判</small></button>
+      </div>
+      <button class="ghost" id="back" type="button">返回</button>
+      <button class="ghost skip" id="skip" type="button">跳過動畫</button>
+    </section>
+
+    <section class="view" id="fx"><video id="vid" muted playsinline preload="auto"></video></section>
+    <section class="view" id="intro" hidden></section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>登用統計</h2>
+      <div class="stats" id="stats"></div>
+      <h2 style="margin-top:18px">已獲得名將（5★）</h2>
+      <div class="owned" id="owned"></div>
+    </section>
+    <section class="panel">
+      <h2>機率設定</h2>
+      <div class="form">
+        <label for="p5">5★ 機率（%）<input id="p5" type="number" step="0.1" min="0" max="100"></label>
+        <label for="p4">4★ 機率（%）<input id="p4" type="number" step="0.1" min="0" max="100"></label>
+        <label for="pity">5★ 保底次數<input id="pity" type="number" step="1" min="1" max="200"></label>
+        <label for="up">UP 武將權重倍數<input id="up" type="number" step="0.5" min="1" max="50"></label>
+        <label class="ck" for="g5"><input id="g5" type="checkbox"> 每 5 次必得 4★ 以上（額外贈送）</label>
+        <label class="ck" for="skipAnim"><input id="skipAnim" type="checkbox"> 快速模式（不播動畫）</label>
+      </div>
+      <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選。PK賽季卡池沒有公告數字，5★ 機率比照 S1，UP 武將權重 ×6 是依活動文字「最大6倍」<b>推估</b>，S1 沒有的新武將以 0.16% 為基準。</p>
+      <details class="rates" id="rates"><summary>目前卡池的個別武將機率</summary><div id="rateList"></div></details>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>登用紀錄</h2>
+    <div class="row" role="group" aria-label="篩選星級">
+      <button class="chip" type="button" data-f="all" aria-pressed="true">全部</button>
+      <button class="chip" type="button" data-f="5" aria-pressed="false">5★</button>
+      <button class="chip" type="button" data-f="4" aria-pressed="false">4★</button>
+      <button class="chip" type="button" data-f="3" aria-pressed="false">3★</button>
+      <button class="chip danger" type="button" id="reset">清除紀錄</button>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>#</th><th>武將</th><th>星級</th><th>Cost</th><th>勢力</th><th>結果</th><th>保底計數</th><th>卡池</th><th>時間</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(async function(){
+const $=s=>document.querySelector(s);
+const POOL=await (await fetch('data.json')).json();
+const UP=['石川數正','島津義久','龍造寺隆信','吉岡妙林'];
+const FAC_CHAR={'織田':'織','武田':'武','上杉':'上','德川':'德','豐臣':'豐','群雄':'群'};
+const img=g=>`img/c${String(g.id).padStart(3,'0')}.webp`;
+const byR={5:POOL.filter(g=>g.r===5),4:POOL.filter(g=>g.r===4),3:POOL.filter(g=>g.r===3)};
+const QUOTES=['吾乃{n}，願為主公效犬馬之勞。','天下大勢，盡在此一戰。吾乃{n}，前來助陣。','{n}在此，願隨主公馳騁沙場。'];
+
+// ---------- state ----------
+const KEY='shinsen-gacha-v2';
+const DEF={cfg:{p5:5.6,p4:36,pity:30,up:6,g5:true,skipAnim:false},log:[],own:{},bn:'pk',pb:{pk:0,s1:0},fb:{pk:0,s1:0},coin:0};
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
+if(!S||!S.cfg||!S.pb)S=structuredClone(DEF);
+S.cfg={...DEF.cfg,...S.cfg};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+// ---------- banners ----------
+const BASE={5:0.16,4:0.9,3:3.44};
+const BANNERS={
+  pk:{tab:'PK賽季武將',title:'PK賽季<span>名將</span>',sub:'名將 <b>限時概率提升</b>',copy:'限時期間5星武將登用最大<b>6倍</b>獲得機率！',
+      heroes:UP,tag:'新登場',note:'5★ 比照 S1 公告機率，UP 權重為推估值',
+      pool:POOL,weight:g=>(g.s1??BASE[g.r])*(g.r===5&&UP.includes(g.n)?S.cfg.up:1),isUp:g=>g.r===5&&UP.includes(g.n)},
+  s1:{tab:'S1初始大卡池',title:'名將<span>登用</span>',sub:'S1賽季 <b>初始大卡池</b>',copy:'5星武將登用機率 <b>5.60%</b>',
+      heroes:['織田信長','武田信玄','上杉謙信','德川家康'],tag:'名將',note:'機率依官方〈機率公告〉2025-08-29',
+      pool:POOL.filter(g=>g.s1),weight:g=>g.s1,isUp:()=>false}
+};
+const B=()=>BANNERS[S.bn]||BANNERS.pk;
+$('#tabs').innerHTML=Object.entries(BANNERS).map(([k,b])=>`<button class="tab" role="tab" type="button" data-bn="${k}">${b.tab}</button>`).join('');
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{S.bn=t.dataset.bn;save();renderBanner();refresh()});
+function renderBanner(){
+  const b=B();
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.bn===S.bn));
+  $('#heroes').innerHTML=b.heroes.map(n=>{const g=POOL.find(x=>x.n===n);return `<div class="hero"><img src="${img(g)}" alt=""></div>`}).join('');
+  $('#heroTags').innerHTML=b.heroes.map(n=>`<div class="tag"><em>${b.tag}</em>${n}</div>`).join('');
+  $('#bnTitle').innerHTML=b.title;$('#bnSub').innerHTML=b.sub;$('#bnCopy').innerHTML=b.copy;$('#bnNote').textContent=b.note;
+}
+function rateList(){
+  const b=B(),tier={5:S.cfg.p5,4:S.cfg.p4,3:Math.max(0,100-S.cfg.p5-S.cfg.p4)};
+  $('#rateList').innerHTML=[5,4,3].map(r=>{
+    const gs=b.pool.filter(g=>g.r===r),t=gs.reduce((a,g)=>a+b.weight(g),0);
+    const li=gs.map(g=>[g,tier[r]*b.weight(g)/t]).sort((x,y)=>y[1]-x[1]).map(([g,v])=>`<li class="${b.isUp(g)?'up':''}"><span>${g.n}</span><span>${v.toFixed(2)}%</span></li>`).join('');
+    return `<div class="tier">${r}★ 共 ${gs.length} 名，合計 ${tier[r].toFixed(2)}%</div><ul>${li}</ul>`}).join('');
+}
+renderBanner();
+
+// ---------- settings ----------
+['p5','p4','pity','up'].forEach(k=>{const el=$('#'+k);el.value=S.cfg[k];el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){S.cfg[k]=v;save();refresh()}})});
+['g5','skipAnim'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
+
+// ---------- roll ----------
+function pick(r){
+  const b=B(),gs=b.pool.filter(g=>g.r===r),w=gs.map(b.weight);let x=Math.random()*w.reduce((a,c)=>a+c);
+  for(let i=0;i<w.length;i++){x-=w[i];if(x<0)return gs[i]}return gs[gs.length-1];
+}
+function rollOne(){
+  const k=S.bn;S.pb[k]=(S.pb[k]||0)+1;S.fb[k]=(S.fb[k]||0)+1;
+  let r,gift=false;
+  const u=Math.random()*100;
+  if(S.pb[k]>=S.cfg.pity||u<S.cfg.p5)r=5;else if(u<S.cfg.p5+S.cfg.p4)r=4;else r=3;
+  if(S.fb[k]>=5){if(S.cfg.g5){if(r<4)r=4;gift=true}S.fb[k]=0}
+  const g=pick(r);
+  const pityAt=S.pb[k];
+  if(r===5)S.pb[k]=0;
+  const isNew=!S.own[g.id];S.own[g.id]=(S.own[g.id]||0)+1;
+  const e={i:S.log.length+1,id:g.id,r,isNew,gift,bn:k,pity:pityAt,t:Date.now()};
+  S.log.push(e);return {g,e};
+}
+
+// ---------- animation helpers ----------
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let skipping=false;
+const vid=$('#vid'),fx=$('#fx');
+function playClip(src){
+  return new Promise(res=>{
+    if(skipping||S.cfg.skipAnim)return res();
+    vid.src=src;vid.currentTime=0;fx.classList.add('on');
+    let done=false;const end=()=>{if(done)return;done=true;vid.onended=null;res()};
+    vid.onended=end;vid.onerror=end;
+    vid.play().catch(end);
+    setTimeout(end,6000);
+  });
+}
+function hideFx(){fx.classList.remove('on');vid.pause()}
+function intro(g){
+  return new Promise(res=>{
+    if(skipping||S.cfg.skipAnim)return res();
+    const q=QUOTES[g.id%QUOTES.length].replace('{n}',g.n);
+    const el=$('#intro');
+    el.innerHTML=`<div class="whiteout"></div>
+      <div class="crest"><span>${FAC_CHAR[g.f]}</span></div>
+      <div class="fac">${g.f==='群雄'?'群雄':g.f}勢力</div>
+      <div class="iname">${g.n}</div>
+      <div class="istars">${'★'.repeat(g.r)}</div>
+      <div class="imeta"><b>Cost ${g.c}</b>${UP.includes(g.n)?'<b>限時UP</b>':''}<br>首次登用，新武將加入麾下。</div>
+      <div class="portrait"><img src="${img(g)}" alt="${g.n}"></div>
+      <div class="quote">${q}</div>
+      <div class="tap">點擊任意處繼續</div>`;
+    el.hidden=false;hideFx();
+    const close=()=>{el.hidden=true;el.removeEventListener('click',close);res()};
+    setTimeout(()=>el.addEventListener('click',close),700);
+  });
+}
+
+// ---------- draw flow ----------
+let busy=false;
+async function draw(n){
+  if(busy)return;busy=true;skipping=false;
+  setBtns(true);
+  $('#banner').hidden=true;$('#draw').hidden=false;
+  const res=[];for(let i=0;i<n;i++)res.push(rollOne());
+  S.coin=(S.coin||0)+198*n;save();
+  const box=$('#cards');box.innerHTML='';
+  const slotW=14.6,gap=2.4,total=n*slotW+(n-1)*gap,start=(100-total)/2;
+  const els=res.map(({g,e},i)=>{
+    const c=document.createElement('div');c.className=`card r${e.r}`;
+    c.style.left='-20cqw';c.style.transform=`rotate(${-14+i*3}deg) translateY(${6-i}cqw)`;
+    c.innerHTML=`<div class="in"><div class="face back"></div><div class="face front"><img src="${img(g)}" alt="${g.n}">
+      ${e.isNew?'<div class="newmark">新</div>':'<div class="dup">轉化為心得</div>'}</div></div><div class="flash"></div>${e.gift?'<div class="gift">額外贈送</div>':''}`;
+    box.appendChild(c);return c;
+  });
+  $('#hint').innerHTML='';
+  // fly in stacked, then fan out
+  await wait(40);
+  els.forEach((c,i)=>{c.style.left=(n===1?42.7:8+i*3)+'cqw'});
+  await wait(skipping||S.cfg.skipAnim?0:500);
+  els.forEach((c,i)=>{c.style.left=(start+i*(slotW+gap))+'cqw';c.style.transform=`rotate(${n===1?0:(i-(n-1)/2)*2.5}deg) translateY(${n===1?0:Math.abs(i-(n-1)/2)*0.8}cqw)`});
+  await wait(skipping||S.cfg.skipAnim?0:600);
+  for(let i=0;i<n;i++){
+    const {g,e}=res[i],c=els[i];
+    if(e.r===5&&!skipping&&!S.cfg.skipAnim){
+      c.classList.add('charging');await wait(650);
+      await playClip('vid/lightning.mp4');
+      if(e.isNew){await playClip('vid/summon.mp4');await intro(g)}
+      hideFx();c.classList.remove('charging');
+    }
+    c.classList.add('flipped');
+    if(e.r>=4){c.classList.remove('flashing');void c.offsetWidth;c.classList.add('flashing')}
+    await wait(skipping||S.cfg.skipAnim?0:(e.r>=4?520:360));
+  }
+  const best=res.filter(x=>x.e.r===5).map(x=>x.g.n);
+  $('#ticker').innerHTML=best.length?`[你] 登用到名將 <b>[${best.join('、')}]</b>`:'';
+  updateHint();
+  busy=false;setBtns(false);refresh();
+}
+function updateHint(){
+  const left=S.cfg.pity-S.pb[S.bn];
+  const g=S.cfg.g5?`再登用${5-(S.fb[S.bn]||0)}次，必定會獲贈<b>良將</b>或<i>名將</i>　`:'';
+  $('#hint').innerHTML=`${g}再登用 ${left} 次必定獲得 <i>5星武將</i>`;
+}
+function setBtns(d){['#b1','#b5','#d1','#d5','#back'].forEach(s=>$(s).disabled=d);$('#skip').hidden=!d}
+$('#b1').onclick=()=>draw(1);$('#b5').onclick=()=>draw(5);
+$('#d1').onclick=()=>draw(1);$('#d5').onclick=()=>draw(5);
+$('#back').onclick=()=>{$('#draw').hidden=true;$('#banner').hidden=false};
+$('#skip').onclick=()=>{skipping=true;hideFx();const it=$('#intro');if(!it.hidden)it.click()};
+
+// ---------- ledger ----------
+let filter='all';
+document.querySelectorAll('.chip[data-f]').forEach(b=>b.onclick=()=>{filter=b.dataset.f;document.querySelectorAll('.chip[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderLog()});
+let armed=false;
+$('#reset').onclick=()=>{
+  if(!armed){armed=true;$('#reset').textContent='再按一次確認清除';setTimeout(()=>{armed=false;$('#reset').textContent='清除紀錄'},3000);return}
+  const cfg=S.cfg;S=structuredClone(DEF);S.cfg=cfg;save();armed=false;$('#reset').textContent='清除紀錄';refresh();
+};
+function renderLog(){
+  const rows=S.log.filter(e=>filter==='all'||String(e.r)===filter).slice(-500).reverse();
+  $('#log').innerHTML=rows.length?rows.map(e=>{const g=POOL[e.id];const d=new Date(e.t);
+    return `<tr><td>${e.i}</td><td class="nm"><img src="${img(g)}" alt="" loading="lazy">${g.n}${e.bn==='pk'&&UP.includes(g.n)&&e.r===5?' <span class="pill">UP</span>':''}</td>
+    <td class="star${e.r}">${'★'.repeat(e.r)}</td><td>${g.c}</td><td>${g.f}</td>
+    <td>${e.isNew?'<span class="pill new">新武將</span>':'<span class="pill">轉化為心得</span>'}${e.gift?' <span class="pill">額外贈送</span>':''}</td>
+    <td>${e.r===5?e.pity+' 抽出金':e.pity}</td><td>${(BANNERS[e.bn]||BANNERS.pk).tab}</td><td>${d.toLocaleTimeString('zh-TW',{hour12:false})}</td></tr>`}).join('')
+    :`<tr><td colspan="9" class="empty">還沒有紀錄。按上方的「1次登用」或「5次登用」開始抽卡。</td></tr>`;
+}
+function refresh(){
+  const L=S.log,tot=L.length,c=r=>L.filter(e=>e.r===r).length;
+  const n5=c(5),n4=c(4),n3=c(3),pct=x=>tot?(x/tot*100).toFixed(2)+'%':'—';
+  const fives=L.filter(e=>e.r===5);
+  const avg=fives.length?(fives.reduce((a,e)=>a+e.pity,0)/fives.length).toFixed(1):'—';
+  const uniq5=new Set(fives.map(e=>e.id)).size;
+  $('#stats').innerHTML=[
+    ['總登用次數',tot,''],['5★ 名將',n5,pct(n5),'s5'],['4★ 良將',n4,pct(n4),'s4'],['3★',n3,pct(n3),'s3'],
+    ['平均幾抽出金',avg,''],['不同名將',uniq5,'/ '+byR[5].length]
+  ].map(([k,v,s,cl])=>`<div class="stat"><div class="k">${k}</div><div class="v ${cl||''}">${v}<small>${s}</small></div></div>`).join('');
+  const own5=byR[5].filter(g=>S.own[g.id]);
+  $('#owned').innerHTML=own5.length?own5.map(g=>`<figure><img src="${img(g)}" alt="${g.n}" title="${g.n}" loading="lazy"><figcaption>×${S.own[g.id]}</figcaption></figure>`).join('')
+    :'<p class="empty" style="grid-column:1/-1;padding:12px">抽到的 5★ 名將會出現在這裡。</p>';
+  $('#rTotal').textContent=tot;$('#rPity').textContent=`${S.pb[S.bn]}/${S.cfg.pity}`;rateList();$('#rCoin').textContent=(S.coin||0).toLocaleString();
+  $("#pityText").textContent=`${S.cfg.pity}次內登用`;
+  renderLog();
+}
+refresh();
+// warm the video cache
+['vid/lightning.mp4','vid/summon.mp4'].forEach(s=>{const v=document.createElement('video');v.preload='auto';v.muted=true;v.src=s});
+})();
+</script>
+</body>
+</html>
