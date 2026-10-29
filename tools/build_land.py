@@ -296,5 +296,9 @@ out['teach'] = {n: g['teach'] for n, g in det['generals'].items() if g.get('teac
 out['skillText'] = det['skills']
 for n, sk in out['teach'].items():
     out['skills'].setdefault(sk, det['skills'].get(sk, {}).get('g', 'S'))
+# ---- season (Joe, 2026-10-29): S1 rate list, other pool cards = PK, S2 from 封存 5, other 武名商店 cards = S3 ----
+for n, x in stats.items():
+    c = cards.get(n)
+    x['season'] = ('S1' if c.get('s1') else 'PK') if c else ('S2' if n in det['generals'] else 'S3')
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print('stats', len(stats), 'art', len(art), 'skillText', len(det['skills']))
