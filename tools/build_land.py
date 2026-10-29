@@ -277,5 +277,16 @@ for line in open(f'{repo}/tools/stats.txt', encoding='utf-8'):
     out['innate'][n] = inn
     out['skills'].setdefault(inn, 'S')
 out['stats'] = stats
+
+# ---- extra portraits for generals not in data.json (tools/art.txt → img/<file>.webp) ----
+art = {}
+for line in open(f'{repo}/tools/art.txt', encoding='utf-8'):
+    if not line.strip() or line.startswith('#'): continue
+    n, f = line.strip().split('|')
+    art[n] = f
+for t in out['teams'].values():
+    for g in t:
+        if g.get('img') is None and g['n'] in art: g['img'] = art[g['n']]
+out['art'] = art
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
-print('stats', len(stats))
+print('stats', len(stats), 'art', len(art))

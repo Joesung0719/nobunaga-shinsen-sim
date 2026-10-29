@@ -157,7 +157,7 @@ ul.note{padding-left:1.2em}
       <div class="sum" id="teamSum"></div>
       <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
     </div>
-    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備）。目前已收集 100 名 5★ 武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
+    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備）。目前已收集 101 名 5★ 武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
   </section>
 
   <section class="panel">
@@ -215,6 +215,7 @@ ul.note{padding-left:1.2em}
 
 <script type="module">
 const D=await (await fetch('land.json')).json();
+const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
 const RES={W:'勝利',D:'平局',L:'敗北'};
 const GRADE={5:'S',4:'A',3:'B'};
@@ -294,7 +295,7 @@ function renderDefender(){
   t.forEach((g,i)=>{
     const left=shown?shown.dl[i]:per;
     const pic=el('div',{class:'pic'});
-    if(g.img!=null)pic.append(el('img',{src:`img/c${String(g.img).padStart(3,'0')}.webp`,alt:g.n,loading:'lazy'}));
+    if(g.img!=null)pic.append(el('img',{src:artSrc(g.img),alt:g.n,loading:'lazy'}));
     else pic.append(el('div',{class:'ph'},g.n[0]));
     pic.append(el('div',{class:'role'+(i===2?' boss':'')},i===2?'大將':'副將'),el('div',{class:'cost'},String(g.c)));
     if(shown&&left===0)pic.append(el('div',{class:'rout'},'潰敗'));
@@ -413,7 +414,7 @@ const CARDS=await (await fetch('data.json')).json();
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
-for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:null});
+for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:D.art?.[n]??null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
 const SKILLS=Object.entries(D.skills);
@@ -451,7 +452,7 @@ function renderBuilder(){
   S.my.gens.forEach((m,i)=>{
     const g=ROSTER.get(m.n)||{n:m.n,r:4,c:'?',img:null};
     const face=el('div',{class:'face r'+g.r});
-    if(g.img!=null)face.append(el('img',{src:`img/c${String(g.img).padStart(3,'0')}.webp`,alt:g.n}));else face.append(g.n[0]);
+    if(g.img!=null)face.append(el('img',{src:artSrc(g.img),alt:g.n}));else face.append(g.n[0]);
     const gs=genSelect(m.n,taken);gs.onchange=()=>{m.n=gs.value;m.s=m.s.map(x=>x===innateOf(m.n)?'':x);save();renderBuilder()};
     const inn=innateOf(m.n);
     const innEl=inn?el('div',{class:'sk',title:'固有戰法',html:`<b class="g${D.skills[inn]||'A'}">${D.skills[inn]||'?'}</b>${inn}（固有）`}):el('div',{class:'sk unk'},'固有戰法：尚未收集');
