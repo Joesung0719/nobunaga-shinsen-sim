@@ -204,15 +204,15 @@ pk1 = [r for r in R if r['srv'] == 1]
 assert len(pk1) == len(AR), (len(pk1), len(AR))
 for r, a in zip(pk1, AR): r['ar'] = a
 
-LEVELS = {
- 3: dict(glv=8,  per=None,  note='3★/4★ 守將，每人 2 個 B/A 戰法'),
- 4: dict(glv=15, per=1800,  note='4★ 守將，每人 2 個 A 戰法'),
- 5: dict(glv=27, per=3000,  note='4★ 守將，副將 2 個、大將 3 個 A 戰法'),
- 6: dict(glv=30, per=5000,  note='4★ 守將 3 個 A 戰法，大將偶爾是 5★'),
- 7: dict(glv=35, per=7000,  note='副將 4★，大將多為 5★（S 戰法）'),
- 8: dict(glv=40, per=9000,  note='多數 2 名 5★ + 1 名 4★'),
- 9: dict(glv=45, per=12000, note='全員 5★，3 個 S 戰法'),
- 10: dict(glv=50, per=None, note='全員 5★ 滿編隊伍（實戰剩兵達 13994，推估每人 ≥ 14000）'),
+LEVELS = {   # per = troops per garrison general; waves = garrison teams to beat (Joe, 2026-10-29: Lv3 2400×1 … Lv10 45000×3)
+ 3: dict(glv=8,  per=800,   waves=1, note='3★/4★ 守將，每人 2 個 B/A 戰法'),
+ 4: dict(glv=15, per=1800,  waves=1, note='4★ 守將，每人 2 個 A 戰法'),
+ 5: dict(glv=27, per=3000,  waves=1, note='4★ 守將，副將 2 個、大將 3 個 A 戰法'),
+ 6: dict(glv=30, per=5000,  waves=2, note='4★ 守將 3 個 A 戰法，大將偶爾是 5★；共 2 隊守軍'),
+ 7: dict(glv=35, per=7000,  waves=2, note='副將 4★，大將多為 5★（S 戰法）；共 2 隊守軍'),
+ 8: dict(glv=40, per=9000,  waves=2, note='多數 2 名 5★ + 1 名 4★；共 2 隊守軍'),
+ 9: dict(glv=45, per=12000, waves=2, note='全員 5★，3 個 S 戰法；共 2 隊守軍'),
+ 10: dict(glv=50, per=15000, waves=3, note='全員 5★ 滿編隊伍；共 3 隊守軍'),
 }
 
 def info(name, cost):

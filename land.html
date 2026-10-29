@@ -197,6 +197,7 @@ ul.note{padding-left:1.2em}
         <div class="verdict idle" id="verdict">待出征</div>
         <button class="btn" id="go" type="button">出征</button>
         <div class="loss" id="loss" aria-live="polite"></div>
+        <div class="loss" id="pend" style="color:var(--gold,#d4a94f)"></div>
       </div>
 
       <div class="side">
@@ -254,6 +255,7 @@ function deathShare(lv){
   const src=xs.length?xs:all;return src.reduce((a,b)=>a+b,0)/src.length;
 }
 function perTroops(lv){const p=D.levels[lv].per;return p}
+const wavesOf=lv=>D.levels[lv].waves||1;
 
 // ---- state ----
 const KEY='shinsen-land-v1';
@@ -269,7 +271,7 @@ function renderLevels(){
   const box=$('lvChips');box.replaceChildren();
   for(const lv of LV){
     const b=el('button',{class:'chip',type:'button','aria-pressed':String(lv===S.lv)},`Lv${lv}`);
-    b.onclick=()=>{S.lv=lv;S.team='';shown=null;save();renderAll()};
+    b.onclick=()=>{S.lv=lv;S.team='';S.pend=null;shown=null;save();renderAll()};
     box.append(b);
   }
   const L=D.levels[S.lv],reps=byLv(S.lv),per=perTroops(S.lv);
@@ -279,7 +281,7 @@ function renderLevels(){
   $('spec').replaceChildren(
     st('守將等級',`Lv${L.glv}`),
     st('每名守將兵力',per?fmt(per):'?',per?'':'未知'),
-    st('守軍總兵力',per?fmt(per*3):'?'),
+    st('守軍總兵力',per?fmt(per*3):'?',wavesOf(S.lv)>1?` × ${wavesOf(S.lv)} 隊`:''),
     st('觀測守軍',teamsAt(S.lv).length,'組'),
     st('實戰勝／平／敗',`${w}/${d}/${l}`,`共 ${reps.length} 場`),
     st('平均我方戰損',(lr[0].srv===1?'≈':'')+pct(avg),'含傷兵'));
@@ -337,9 +339,8 @@ $('refill').onclick=()=>{S.cur=S.max;S.wounded=0;save();renderArmy()};
 // ---- one attack ----
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const jitter=()=>0.75+Math.random()*0.5;
-function attack(){
-  const lv=S.lv,reps=byLv(lv);
-  const k=S.team||pick(teamsAt(lv));
+function fight(lv,k,dl0){   // one battle against garrison team k; dl0 = troops left from a draw (else full)
+  const reps=byLv(lv);
   const same=reps.filter(r=>r.t===k);
   const r=same.length&&(Math.random()<0.7||same.length===reps.length)?pick(same):pick(reps);
   // losses come from a PK2 report when this level has one (same team and result preferred)
@@ -350,6 +351,9 @@ function attack(){
   let loss=Math.round(lr.rate*lr.base*jitter()*scale);
   let res=r.res;
   if(strength<0.9&&Math.random()<(0.9-strength)*1.5)res=res==='W'?'D':'L';
+  // follow-up after a draw: the garrison keeps its losses (estimate: losses and odds scale with what it has left)
+  const per0=perTroops(lv),frac=dl0&&per0?Math.max(0.05,dl0.reduce((a,b)=>a+b,0)/(per0*3)):1;
+  if(dl0){loss=Math.round(loss*frac);if(res!=='W'&&Math.random()<1-frac)res='W'}
   if(loss>=S.cur){loss=S.cur;res='L'}
   const ds=lr.deathShare??deathShare(lv);
   const dead=Math.round(loss*ds),wounded=loss-dead;
@@ -361,16 +365,48 @@ function attack(){
     return Math.round(Math.min(per||x*1.5,x*jitter()));
   });
   if(res==='L'&&per)dl.forEach((x,i)=>{dl[i]=Math.max(x,Math.round(per*0.3))});
-  S.cur-=loss;S.wounded+=wounded;S.dead+=dead;if(res==='W')S.wins++;
-  shown={t:k,ty:typeOf(k,lv),dl,res};
-  S.log.unshift({lv,t:k,res,dead,wounded,left:S.cur,src:r.srv,my:S.my.gens[0].n,arm:S.my.arm});S.log=S.log.slice(0,200);
+  if(dl0)dl.forEach((x,i)=>{dl[i]=res==='W'&&i===2?0:Math.min(x,dl0[i])});
+  S.cur-=loss;S.wounded+=wounded;S.dead+=dead;
+  return{k,r,res,dead,wounded,dl};
+}
+// one march: fight the land's garrison teams in order until one isn't beaten
+function attack(){
+  const lv=S.lv,n=wavesOf(lv),pool=teamsAt(lv);
+  const P=pendLive();   // a draw less than 5 minutes ago: continue from that team with its remaining troops
+  let ks=[],start=0;
+  if(P){ks=P.ks;start=P.i}
+  else for(let i=0;i<n;i++){
+    if(i===0&&S.team){ks.push(S.team);continue}
+    const left=pool.filter(k=>!ks.includes(k));ks.push(pick(left.length?left:pool));
+  }
+  const out=[];
+  for(let i=start;i<n;i++){const f=fight(lv,ks[i],i===start&&P?P.dl:null);out.push(f);if(f.res!=='W'||S.cur<=0)break}
+  const last=out[out.length-1],done=start+out.length;
+  const res=done===n&&last.res==='W'?'W':last.res;
+  S.pend=res==='D'?{lv,ks,i:done-1,dl:last.dl,until:Date.now()+PEND_MS}:null;
+  if(res==='W')S.wins++;
+  const dead=out.reduce((a,f)=>a+f.dead,0),wounded=out.reduce((a,f)=>a+f.wounded,0);
+  shown={t:last.k,ty:typeOf(last.k,lv),dl:last.dl,res:last.res};
+  S.log.unshift({lv,t:last.k,res,dead,wounded,left:S.cur,src:last.r.srv,my:S.my.gens[0].n,arm:S.my.arm,w:done,n,cont:!!P});S.log=S.log.slice(0,200);
   save();
-  const v=$('verdict');v.className='verdict '+res;v.textContent=RES[res];
-  const dTot=per?per*3:null,dLeft=dl.reduce((a,b)=>a+b,0);
-  $('loss').innerHTML=`我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>守軍 剩 <b>${fmt(dLeft)}</b>${dTot?` / ${fmt(dTot)}`:''}<br><span style="font-size:.72rem">抽樣自 PK${r.srv}：${r.a}隊 vs ${D.teams[r.t][2].n}隊</span>`;
-  renderArmy();renderDefender();renderTab();
+  const v=$('verdict');v.className='verdict '+res;v.textContent=n>1&&res!=='W'?`${RES[res]}（第 ${done}/${n} 隊）`:RES[res];
+  const per=perTroops(lv),dTot=per?per*3:null,dLeft=last.dl.reduce((a,b)=>a+b,0);
+  const waves=n>1?out.map((f,i)=>`第 ${start+i+1} 隊 ${D.teams[f.k][2].n}隊：${RES[f.res]}，死 ${fmt(f.dead)} 傷 ${fmt(f.wounded)}`).join('<br>')+'<br>':'';
+  $('loss').innerHTML=`${waves}我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>守軍 剩 <b>${fmt(dLeft)}</b>${dTot?` / ${fmt(dTot)}`:''}<br><span style="font-size:.72rem">抽樣自 PK${last.r.srv}：${last.r.a}隊 vs ${D.teams[last.r.t][2].n}隊</span>`;
+  renderArmy();renderDefender();renderTab();renderPend();
 }
 $('go').onclick=attack;
+// 平局: the garrison keeps its losses for 5 minutes, then resets to full
+const PEND_MS=5*60*1000;
+function pendLive(){const P=S.pend;return P&&P.lv===S.lv&&Date.now()<P.until?P:null}
+function renderPend(){
+  const P=pendLive(),box=$('pend');
+  if(!P){box.textContent=S.pend&&S.pend.lv===S.lv?'守將已重置（超過 5 分鐘）':'';if(S.pend&&Date.now()>=S.pend.until){S.pend=null;save()}return}
+  const sec=Math.ceil((P.until-Date.now())/1000);
+  box.replaceChildren(`平局：${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')} 內再出征，接續第 ${P.i+1} 隊（守軍剩 ${fmt(P.dl.reduce((a,b)=>a+b,0))}）`,
+    Object.assign(el('button',{class:'chip',type:'button',style:'margin-left:8px'},'放棄（守將重置）'),{onclick:()=>{S.pend=null;save();renderPend()}}));
+}
+setInterval(()=>{if(S.pend)renderPend()},1000);
 
 // ---- tabs ----
 const TABS=[['stats','各等級統計'],['teams','守軍圖鑑'],['reports','實戰戰報'],['log','我的連戰紀錄']];
@@ -396,10 +432,10 @@ function renderTab(){
       const lr=lossReps(lv),est=lr[0].srv===1?'≈':'';
       const avg=lr.reduce((a,r)=>a+r.rate,0)/lr.length,mx=Math.max(...lr.map(r=>r.rate));
       const avgLoss=p2.length?p2.reduce((a,r)=>a+r.loss,0)/p2.length:null;
-      return[`Lv${lv}`,`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
+      return[`Lv${lv}`,`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3)+(wavesOf(lv)>1?` ×${wavesOf(lv)}`:''):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
     });
     body.replaceChildren(table(['土地','守將等級','每人兵力','總兵力','守軍組數','戰報數','勝/平/敗','平均戰損率','最高戰損率','PK2 平均戰損（兵）'],rows,[2,3,4,5,7,8,9]),
-      el('p',{class:'note',style:'margin-top:10px'},'戰損率 =（陣亡 + 傷兵）÷ 出征兵力，只用 PK2 戰報計算（PK1 的部隊常是連戰後的殘兵，算不準）。Lv3 與 Lv10 沒有 PK2 戰報，標 ≈ 的數字是用每人 9500 滿兵反推。Lv8 起開始出現平局（大將撐過全部回合），Lv9 PK1 有一場被守軍全滅。'));
+      el('p',{class:'note',style:'margin-top:10px'},'戰損率 =（陣亡 + 傷兵）÷ 出征兵力，只用 PK2 戰報計算（PK1 的部隊常是連戰後的殘兵，算不準）。Lv3 與 Lv10 沒有 PK2 戰報，標 ≈ 的數字是用每人 9500 滿兵反推。Lv6–9 有 2 隊守軍、Lv10 有 3 隊，一次出征會依序打完，中途沒贏就停下；勝率與戰損是每一隊各自抽樣。Lv8 起開始出現平局（大將撐過全部回合），Lv9 PK1 有一場被守軍全滅。'));
   }else if(S.tab==='teams'){
     const rows=teamsAt(S.lv).map(k=>{
       const t=D.teams[k],reps=byLv(S.lv).filter(r=>r.t===k);
@@ -416,9 +452,9 @@ function renderTab(){
     body.replaceChildren(table(['賽季','類型','我方','守軍大將','兵種','結果','我方死','我方傷','我方剩兵','守軍剩兵（副/副/大）'],rows,[6,7]),
       el('p',{class:'note',style:'margin-top:10px'},'PK1 截圖沒有上方的兵力總表，「我方剩兵」列的是三名武將各自剩下的兵。'));
   }else{
-    const rows=S.log.map(x=>[`Lv${x.lv}`,x.my?`${x.my}隊（${x.arm}）`:'—',gName(D.teams[x.t][2]),resSpan(x.res),fmt(x.dead),fmt(x.wounded),fmt(x.left),`PK${x.src}`]);
+    const rows=S.log.map(x=>[`Lv${x.lv}`,x.my?`${x.my}隊（${x.arm}）`:'—',gName(D.teams[x.t][2]),resSpan(x.res)+(x.n>1?` ${x.w}/${x.n}隊`:'')+(x.cont?'（接續）':''),fmt(x.dead),fmt(x.wounded),fmt(x.left),`PK${x.src}`]);
     const clr=el('button',{class:'chip',type:'button',style:'margin-top:10px'},'清除紀錄');
-    clr.onclick=()=>{S.log=[];S.wins=0;S.dead=0;S.wounded=0;S.cur=S.max;shown=null;save();renderAll()};
+    clr.onclick=()=>{S.log=[];S.pend=null;S.wins=0;S.dead=0;S.wounded=0;S.cur=S.max;shown=null;save();renderAll()};
     body.replaceChildren(table(['土地','我方','守軍大將','結果','陣亡','傷兵','剩餘兵力','抽樣'],rows,[4,5,6]),clr);
   }
 }
@@ -544,7 +580,7 @@ $('sameKa').onchange=e=>{S.my.fac.same=e.target.checked;save();renderBuilder()};
 $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S.wounded=0;save();renderArmy();
   $('go').scrollIntoView({behavior:'smooth',block:'center'})};
 
-function renderAll(){renderBuilder();renderLevels();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab()}
+function renderAll(){renderBuilder();renderLevels();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
 $('nTeams').textContent=Object.keys(D.teams).length;$('nReps').textContent=D.reports.length;
 renderAll();
 </script>
