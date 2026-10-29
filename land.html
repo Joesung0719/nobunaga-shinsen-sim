@@ -117,6 +117,12 @@ td.n,th.n{text-align:right}
 .stats-row span{border:1px solid var(--line);border-radius:4px;text-align:center;font-family:var(--display);font-weight:700;font-size:.95rem;padding:2px 0}
 .stats-row i{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:.65rem;color:var(--muted)}
 .stats-row.unk{display:block;font-size:.75rem;color:var(--muted)}
+.traits{display:flex;flex-wrap:wrap;gap:4px}
+.traits span{font-size:.72rem;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--paper)}
+.traits span.lock{color:var(--muted);opacity:.55;text-decoration:line-through}
+.traits span small{color:var(--muted);margin-left:3px}
+.slot details{font-size:.75rem;color:var(--muted);line-height:1.5}
+.slot details summary{cursor:pointer;color:var(--paper)}
 .slot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted)}
 .teamfoot{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
 .teamfoot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted);min-width:120px}
@@ -164,7 +170,7 @@ ul.note{padding-left:1.2em}
       <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
     </div>
     <p class="sum" id="bonusSum" style="margin-top:8px;font-size:.85rem;color:var(--muted)"></p>
-    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備），已套用設施的全屬性加成：三人同勢力加協力（Lv1–10：0.5%～7%），三人同家門加家門（每級 1%，最高 3%），兵種營每級 2%（Lv5 為 10%）。加成相加後乘上屬性；家門資料尚未收集，請自行勾選。目前已收集 101 名 5★ 武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
+    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備），已套用設施的全屬性加成：三人同勢力加協力（Lv1–10：0.5%～7%），三人同家門加家門（每級 1%，最高 3%），兵種等級每級 2%，等級 = 兵種營 Lv + 隊中武將已解鎖的「X術」特性（例如馬術III 騎兵 +3）。特性依紅度解鎖（第 2～4 個特性分別要 1、3、5 紅），已解鎖的武威／智慧／領兵／靈巧會加在該武將的屬性上。加成相加後乘上屬性；家門資料尚未收集，請自行勾選。目前已收集 101 名 5★ 武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
   </section>
 
   <section class="panel">
@@ -425,7 +431,10 @@ for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.
 for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:D.art?.[n]??null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
-const SKILLS=Object.entries(D.skills);
+// inherited-skill pool: innate skills can never be inherited
+const INNATE=new Set(Object.values(D.innate));
+const SKILLS=Object.entries(D.skills).filter(([n])=>!INNATE.has(n));
+for(const m of S.my.gens)m.s=m.s.map(x=>INNATE.has(x)?'':x);   // drop innate picks saved by older versions
 const GRADE_ORDER=['S','A','B'];
 function genSelect(cur,taken){
   const sel=el('select');
@@ -438,11 +447,15 @@ function genSelect(cur,taken){
   }
   sel.value=cur;return sel;
 }
+function skillTip(n){
+  const t=D.skillText?.[n];if(!t)return'';
+  return `${n}｜${t.kind} ${t.tags}｜${t.target}｜發動 ${t.rate}\n${t.text}${t.boss?`\n大將技：${t.boss}`:''}`;
+}
 function skillSelect(cur,exclude){
   const sel=el('select');sel.append(el('option',{value:''},'（未選）'));
   for(const gr of GRADE_ORDER){
     const og=el('optgroup',{label:`${gr} 級`});
-    for(const[n,g]of SKILLS)if(g===gr){const o=el('option',{value:n},n);if(exclude.has(n)&&n!==cur)o.disabled=true;og.append(o)}
+    for(const[n,g]of SKILLS)if(g===gr){const o=el('option',{value:n,title:skillTip(n)},n+(D.skillText?.[n]?' ✎':''));if(exclude.has(n)&&n!==cur)o.disabled=true;og.append(o)}
     sel.append(og);
   }
   sel.value=cur;return sel;
@@ -452,18 +465,37 @@ const GLV=50;   // attacker level used for the stat preview
 const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
 const ARM_CAMP={槍:'足輕營',騎:'騎兵營',弓:'弓兵營',鐵炮:'鐵炮營',器械:'器械營'};
 const FACTIONS=['織田','豐臣','德川','武田','上杉','群雄'];
+const RED_AT=[0,1,3,5];   // 紅度 (階) needed for trait slots 1–4
+const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
+const STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
+const NUM={I:1,II:2,III:3};
+function traitFx(t){   // effects we can read from the trait name alone
+  let m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
+  if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],NUM[m[2]]]))};
+  m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);
+  if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][NUM[m[2]]-1]};   // II 2.5% and III 3% from screenshots; I assumed 2%
+  return{};
+}
+const traitsOf=n=>D.stats?.[n]?.traits||[];
+const activeTraits=m=>traitsOf(m.n).filter((_,i)=>(m.red||0)>=RED_AT[i]);
+function armLevel(){
+  const f=S.my.fac;let t=0;
+  for(const m of S.my.gens)for(const tr of activeTraits(m))t+=traitFx(tr).arm?.[S.my.arm]||0;
+  return{lv:f.arm+t,camp:f.arm,tr:t};
+}
+function ownPct(m){const o={};for(const tr of activeTraits(m)){const x=traitFx(tr);if(x.stat)o[x.stat]=(o[x.stat]||0)+x.pct}return o}
 function teamBonus(){
   const f=S.my.fac,parts=[];
   const facs=S.my.gens.map(m=>D.stats?.[m.n]?.f);
   if(f.co&&facs[0]&&FACTIONS.includes(facs[0])&&facs.every(x=>x===facs[0]))parts.push([`協力-${facs[0]}`,CO_PCT[f.co]]);
   if(f.same&&f.ka)parts.push(['協力-家門',f.ka]);
-  if(f.arm)parts.push([ARM_CAMP[S.my.arm]||S.my.arm+'營',f.arm*2]);
+  const al=armLevel();if(al.lv)parts.push([`${S.my.arm}兵 Lv${al.lv}（${ARM_CAMP[S.my.arm]} ${al.camp}＋特性 ${al.tr}）`,al.lv*2]);
   return{pct:parts.reduce((a,p)=>a+p[1],0),parts};
 }
-function statBox(n,pct=0){
+function statBox(n,pct=0,own={}){
   const x=D.stats?.[n];
   if(!x)return el('div',{class:'stats-row unk'},'屬性：尚未收集');
-  const cells=['武勇','智略','統率','速度'].map(k=>{const[b,g]=x.st[k],base=b+g*(GLV-1);return el('span',{title:`Lv1 ${b}，每級 +${g}；Lv50 ${Math.round(base)}，加成 +${pct}%`},el('i',{},k),String(Math.round(base*(1+pct/100))))});
+  const cells=['武勇','智略','統率','速度'].map(k=>{const[b,g]=x.st[k],base=b+g*(GLV-1),p=pct+(own[k]||0);return el('span',{title:`Lv1 ${b}，每級 +${g}；Lv50 ${Math.round(base)}，加成 +${p}%`},el('i',{},k),String(Math.round(base*(1+p/100))))});
   return el('div',{class:'stats-row'},...cells);
 }
 function renderBuilder(){
@@ -476,10 +508,17 @@ function renderBuilder(){
     if(g.img!=null)face.append(el('img',{src:artSrc(g.img),alt:g.n}));else face.append(g.n[0]);
     const gs=genSelect(m.n,taken);gs.onchange=()=>{m.n=gs.value;m.s=m.s.map(x=>x===innateOf(m.n)?'':x);save();renderBuilder()};
     const inn=innateOf(m.n);
-    const innEl=inn?el('div',{class:'sk',title:'固有戰法',html:`<b class="g${D.skills[inn]||'A'}">${D.skills[inn]||'?'}</b>${inn}（固有）`}):el('div',{class:'sk unk'},'固有戰法：尚未收集');
+    const innEl=inn?el('div',{class:'sk',title:skillTip(inn)||'固有戰法',html:`<b class="g${D.skills[inn]||'A'}">${D.skills[inn]||'?'}</b>${inn}（固有）`}):el('div',{class:'sk unk'},'固有戰法：尚未收集');
+    const it=D.skillText?.[inn];
+    const innDet=it?el('details',{},el('summary',{},'固有戰法說明'),`${it.kind}・${it.tags}・${it.target}・發動 ${it.rate}：${it.text}`,it.boss?el('div',{},`大將技：${it.boss}`):null):null;
+    const red=el('select',{title:'紅度（階）'});for(let r=0;r<=5;r++)red.append(el('option',{value:String(r)},`${r} 紅`));
+    red.value=String(m.red||0);red.onchange=()=>{m.red=+red.value;save();renderBuilder()};
+    const tt=D.traitText?.[m.n]||{};
+    const trs=traitsOf(m.n);
+    const trEl=trs.length?el('div',{class:'traits'},...trs.map((t,j)=>el('span',{class:(m.red||0)>=RED_AT[j]?'':'lock',title:(tt[t]||'效果尚未收集')+(j?`（${RED_AT[j]} 紅解鎖）`:'（固有特性）')},t,j?el('small',{},`${RED_AT[j]}紅`):null))):null;
     const slots=m.s.map((cur,j)=>{
       const ex=new Set([inn,...m.s.filter((_,k)=>k!==j)]);
-      const sel=skillSelect(cur,ex);sel.onchange=()=>{m.s[j]=sel.value;save();renderBuilder()};
+      const sel=skillSelect(cur,ex);sel.title=skillTip(cur);sel.onchange=()=>{m.s[j]=sel.value;save();renderBuilder()};
       return el('label',{},`傳承戰法 ${j+1}`,sel);
     });
     const tr=el('input',{type:'number',min:'100',max:'20000',step:'100',value:String(m.t)});
@@ -487,7 +526,7 @@ function renderBuilder(){
     box.append(el('div',{class:'slot'},
       el('div',{class:'hd'},face,el('div',{style:'flex:1;min-width:0;display:flex;flex-direction:column;gap:4px'},
         el('span',{class:'role'+(i===0?' boss':'')},i===0?'大將':'副將'),el('label',{},'武將',gs))),
-      innEl,...slots,statBox(m.n,bonus.pct),el('label',{},'兵力',tr)));
+      el('label',{},'紅度',red),innEl,innDet,...slots,trEl,statBox(m.n,bonus.pct,ownPct(m)),el('label',{},'兵力',tr)));
   });
   $('arm').value=S.my.arm;
   const f=S.my.fac;$('facCo').value=f.co;$('facArm').value=f.arm;$('facKa').value=f.ka;$('sameKa').checked=f.same;
