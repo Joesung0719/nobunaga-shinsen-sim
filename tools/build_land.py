@@ -265,3 +265,17 @@ out['innate'] = innate
 out['skills'] = {s: c.most_common(1)[0][0] for s, c in sorted(grades.items())}
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print('innate', len(innate), 'skills', len(out['skills']))
+
+# ---- general stats (tools/stats.txt, from Joe's 武將屬性 screenshots: Lv1 value + growth per level) ----
+STAT_KEYS = ['武勇', '智略', '統率', '速度', '政務', '魅力']
+stats = {}
+for line in open(f'{repo}/tools/stats.txt', encoding='utf-8'):
+    if not line.strip() or line.startswith('#'): continue
+    n, cost, fac, *vals, inn, kind, tags, traits = line.strip().split('|')
+    st = {k: [float(a), float(b)] for k, (a, b) in zip(STAT_KEYS, (v.split() for v in vals))}
+    stats[n] = dict(c=int(cost), f=fac, st=st, inn=inn, kind=kind, tags=tags.split(','), traits=traits.split(','))
+    out['innate'][n] = inn
+    out['skills'].setdefault(inn, 'S')
+out['stats'] = stats
+json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+print('stats', len(stats))
