@@ -122,6 +122,8 @@ td.n,th.n{text-align:right}
 .teamfoot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted);min-width:120px}
 .teamfoot .sum{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .teamfoot .sum b{color:var(--paper)}
+.teamfoot .sum .over{color:var(--vermilion)}
+.teamfoot .sbtn[disabled]{opacity:.45;cursor:default}
 .teamfoot .sbtn{width:auto;padding:7px 16px}
 .note{font-size:.82rem;color:var(--muted);line-height:1.75;margin:0;max-width:72ch}
 .note b{color:var(--paper);font-weight:500}
@@ -155,7 +157,7 @@ ul.note{padding-left:1.2em}
       <div class="sum" id="teamSum"></div>
       <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
     </div>
-    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備）。目前已收集 Cost 7 等 26 名武將；戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
+    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備）。目前已收集 Cost 7 與 Cost 6 共 46 名武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
   </section>
 
   <section class="panel">
@@ -409,7 +411,8 @@ function renderTab(){
 // ---- team builder ----
 const CARDS=await (await fetch('data.json')).json();
 const ROSTER=new Map();
-for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:c.c,img:c.id});
+const COST_CAP=20;   // team cost limit in game
+for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
 for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
@@ -466,7 +469,9 @@ function renderBuilder(){
   });
   $('arm').value=S.my.arm;
   const cost=S.my.gens.reduce((a,m)=>a+(+ROSTER.get(m.n)?.c||0),0),troops=S.my.gens.reduce((a,m)=>a+m.t,0);
-  $('teamSum').innerHTML=`Cost 合計 <b>${cost}</b>　兵力合計 <b>${fmt(troops)}</b>`;
+  const over=cost>COST_CAP;
+  $('teamSum').innerHTML=`Cost 合計 <b class="${over?'over':''}">${cost} / ${COST_CAP}</b>　兵力合計 <b>${fmt(troops)}</b>${over?'<br><span class="over">超過 Cost 上限，無法出征</span>':''}`;
+  $('applyTeam').disabled=over;
 }
 $('arm').onchange=e=>{S.my.arm=e.target.value;save()};
 $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S.wounded=0;save();renderArmy();
