@@ -288,5 +288,13 @@ for t in out['teams'].values():
     for g in t:
         if g.get('img') is None and g['n'] in art: g['img'] = art[g['n']]
 out['art'] = art
+
+# ---- trait / skill text and 傳授 skills (tools/detail.json, from Joe's S2 screenshots) ----
+det = json.load(open(f'{repo}/tools/detail.json', encoding='utf-8'))
+out['traitText'] = {n: g['traits'] for n, g in det['generals'].items()}
+out['teach'] = {n: g['teach'] for n, g in det['generals'].items() if g.get('teach')}
+out['skillText'] = det['skills']
+for n, sk in out['teach'].items():
+    out['skills'].setdefault(sk, det['skills'].get(sk, {}).get('g', 'S'))
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
-print('stats', len(stats), 'art', len(art))
+print('stats', len(stats), 'art', len(art), 'skillText', len(det['skills']))
