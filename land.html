@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>真戰打地模擬器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Same lacquer + gold look as the 登用 page. Layout: level picker, battle board, then ledgers. */
+:root{
+  --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
+  --gold:#e3b75a;--violet:#b77cff;--steel:#7fa3d6;--vermilion:#c8442c;--jade:#5fb58a;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+nav.site{display:flex;gap:6px}
+nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem}
+nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:16px}
+.panel h2{font-family:var(--display);font-size:1.15rem;margin:0 0 12px;color:var(--gold);letter-spacing:.08em}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:inherit;font-size:.85rem}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.chip:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:14px;font-variant-numeric:tabular-nums}
+.stat{border:1px solid var(--line);border-radius:4px;padding:8px 12px}
+.stat .k{font-size:.72rem;color:var(--muted);letter-spacing:.06em}
+.stat .v{font-family:var(--display);font-size:1.3rem;font-weight:700;margin-top:2px}
+.stat .v small{font-size:.75rem;color:var(--muted);font-family:var(--body);font-weight:400;margin-left:3px}
+.lvnote{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+
+/* battle board */
+.board{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.6fr);gap:14px;align-items:stretch}
+@media (max-width:760px){.board{grid-template-columns:minmax(0,1fr)}}
+.side{border:1px solid var(--line);border-radius:6px;padding:12px;background:#171412}
+.side h3{margin:0 0 10px;font-family:var(--display);font-size:.95rem;letter-spacing:.1em;display:flex;justify-content:space-between;gap:8px}
+.side h3 span{color:var(--muted);font-family:var(--body);font-size:.75rem;letter-spacing:0;font-weight:400}
+.troops{font-family:var(--display);font-size:1.8rem;font-weight:700;font-variant-numeric:tabular-nums}
+.troops small{font-size:.85rem;color:var(--muted);font-weight:400}
+.bar{height:6px;border-radius:3px;background:#3a2a26;overflow:hidden;margin:6px 0 10px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#4fb7c8,#7fd6e0);transition:width .5s}
+.bar.red i{background:linear-gradient(90deg,#c8442c,#e0805f)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.85rem;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted);margin-top:10px}
+input[type=number],select{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:inherit;font-size:.9rem;width:100%}
+.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-width:150px}
+.verdict{font-family:var(--display);font-weight:900;font-size:2.2rem;letter-spacing:.2em;min-height:1.3em;text-align:center}
+.verdict.W{color:var(--gold);text-shadow:0 0 18px rgba(227,183,90,.55)}
+.verdict.D{color:var(--steel)}
+.verdict.L{color:var(--vermilion)}
+.verdict.idle{color:var(--muted);font-size:1.4rem}
+.btn{font-family:var(--display);font-weight:700;cursor:pointer;border:0;color:#3a2606;
+  background:linear-gradient(#ffe99a,#e8bf4e 55%,#c9962d);box-shadow:inset 0 0 0 2px #fff3c4,0 3px 0 #6d4b12;
+  border-radius:6px;padding:10px 26px;font-size:1.05rem}
+.btn:active{transform:translateY(2px)}
+.btn[disabled]{filter:grayscale(.7) brightness(.7);cursor:default}
+.sbtn{cursor:pointer;background:transparent;color:var(--paper);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font:inherit;font-size:.8rem;width:100%}
+.sbtn:hover{border-color:var(--gold)}
+.loss{font-size:.82rem;color:var(--muted);text-align:center;line-height:1.6;font-variant-numeric:tabular-nums}
+.loss b{color:var(--paper)}
+
+.gens{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gen{border-radius:6px;overflow:hidden;border:2px solid var(--line);background:#0e0c0b;display:flex;flex-direction:column}
+.gen.r5{border-color:#c9962d} .gen.r4{border-color:#8e5bd6} .gen.r3{border-color:#4f78b0}
+.gen .pic{position:relative;aspect-ratio:292/300;overflow:hidden;background:linear-gradient(160deg,#2a2420,#120f0d)}
+.gen.r5 .pic{background:linear-gradient(160deg,#6b5020,#1c150a)} .gen.r4 .pic{background:linear-gradient(160deg,#3d2860,#120d1b)} .gen.r3 .pic{background:linear-gradient(160deg,#233a5c,#0c121c)}
+.gen .pic img{width:100%;display:block;object-fit:cover;object-position:top}
+.gen .pic .ph{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:2.6rem;color:rgba(255,240,210,.18)}
+.gen .role{position:absolute;left:0;right:0;top:0;text-align:center;font-family:var(--display);font-size:.75rem;font-weight:700;background:rgba(0,0,0,.55);padding:2px 0}
+.gen .role.boss{background:linear-gradient(#ffe99a,#d8a840);color:#3a2606}
+.gen .cost{position:absolute;left:6px;top:22px;background:rgba(0,0,0,.7);border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:.75rem;font-weight:700}
+.gen .rout{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-family:var(--display);font-weight:900;color:#fff;background:rgba(160,30,20,.8);font-size:.85rem;padding:1px 0}
+.gen .nm{font-family:var(--display);font-weight:700;text-align:center;padding:5px 4px 0;font-size:.95rem}
+.gen .meta{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);padding:2px 8px;font-variant-numeric:tabular-nums}
+.gen .tb{padding:0 8px}
+.gen .tb .bar{margin:2px 0 6px}
+.gen ul{list-style:none;margin:0;padding:0 6px 8px;display:flex;flex-direction:column;gap:3px}
+.gen li{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#1c1916}
+.gen li b{font-family:var(--display);margin-right:5px}
+.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)}
+@media (max-width:520px){.gen .nm{font-size:.8rem}.gen li{font-size:.68rem;padding:1px 5px}}
+
+.tablebox{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:4px}
+table{width:100%;border-collapse:collapse;font-size:.83rem;font-variant-numeric:tabular-nums;min-width:600px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:#25201c;color:var(--muted);font-weight:500;font-size:.75rem;letter-spacing:.06em;z-index:1}
+td.n,th.n{text-align:right}
+.rW{color:var(--gold)} .rD{color:var(--steel)} .rL{color:var(--vermilion)}
+.r5t{color:var(--gold)} .r4t{color:var(--violet)} .r3t{color:var(--steel)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.note{font-size:.82rem;color:var(--muted);line-height:1.75;margin:0;max-width:72ch}
+.note b{color:var(--paper);font-weight:500}
+.note em{font-style:normal;color:var(--vermilion)}
+ul.note{padding-left:1.2em}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>真戰打地模擬器</h1>
+      <p>Lv3–Lv10 土地守軍 · 依先鋒服實戰戰報抽樣估算戰損 · 連戰兵力延續</p>
+    </div>
+    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="land.html" aria-current="page">打地模擬</a></nav>
+  </header>
+
+  <section class="panel">
+    <h2>選擇土地等級</h2>
+    <div class="row" role="group" aria-label="土地等級" id="lvChips"></div>
+    <div class="spec" id="spec"></div>
+    <p class="lvnote" id="lvNote"></p>
+  </section>
+
+  <section class="panel">
+    <div class="board">
+      <div class="side">
+        <h3>我方部隊 <span>連戰兵力延續</span></h3>
+        <div class="troops" id="myTroops">0</div>
+        <div class="bar"><i id="myBar"></i></div>
+        <dl class="kv">
+          <dt>累計傷兵（可治療）</dt><dd id="myWounded">0</dd>
+          <dt>累計陣亡</dt><dd id="myDead">0</dd>
+          <dt>已佔領</dt><dd id="myWins">0</dd>
+        </dl>
+        <div class="form">
+          <label for="maxTroops">滿編兵力（3 名武將合計）<input id="maxTroops" type="number" min="1000" max="60000" step="100"></label>
+        </div>
+        <div class="row" style="margin-top:10px;flex-wrap:nowrap">
+          <button class="sbtn" id="heal" type="button">治療傷兵</button>
+          <button class="sbtn" id="refill" type="button">徵兵補滿</button>
+        </div>
+      </div>
+
+      <div class="mid">
+        <div class="verdict idle" id="verdict">待出征</div>
+        <button class="btn" id="go" type="button">出征</button>
+        <div class="loss" id="loss" aria-live="polite"></div>
+      </div>
+
+      <div class="side">
+        <h3><span id="defTitle" style="color:var(--paper);font-family:var(--display);font-size:.95rem;letter-spacing:.1em">守軍</span><span id="defType"></span></h3>
+        <div class="form" style="margin-bottom:10px">
+          <label for="teamSel">守軍隊伍<select id="teamSel"></select></label>
+        </div>
+        <div class="gens" id="gens"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="tabs" role="group" aria-label="資料" id="tabs"></div>
+    <div id="tabBody"></div>
+  </section>
+
+  <section class="panel">
+    <h2>模擬方式與資料來源</h2>
+    <ul class="note">
+      <li>守軍資料來自先鋒服兩個賽季（PK1、PK2）的 95 張戰報截圖，整理出 <b id="nTeams">0</b> 組守軍、<b id="nReps">0</b> 筆戰報。同一組守軍在不同等級、不同賽季會重複出現，兵種在同一賽季固定。</li>
+      <li>守將兵力取自 PK2 戰報上方的「兵 x/總數」，同等級的資源地與銀礦相同。Lv3 與 Lv10 沒有 PK2 戰報，兵力是<em>未知</em>或<em>推估</em>。</li>
+      <li>「出征」不是逐回合戰鬥：它從同等級的實戰戰報中抽一筆（同一組守軍的戰報優先），沿用那場的勝負與守軍剩兵；戰損比例只取 PK2 戰報（有的話），再加上 ±25% 的浮動。兵力低於那場戰報時，戰損會放大，也可能降為平局或敗北。</li>
+      <li>只有 PK1 戰報的等級（Lv3、Lv10），我方戰損用「每人 9500 滿兵」反推，比較粗略。</li>
+      <li>真正逐回合的戰鬥模擬需要武將屬性、戰法效果數值與戰報詳情，這些目前還沒有。</li>
+    </ul>
+  </section>
+</div>
+
+<script type="module">
+const D=await (await fetch('land.json')).json();
+const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
+const RES={W:'勝利',D:'平局',L:'敗北'};
+const GRADE={5:'S',4:'A',3:'B'};
+const REF=28500;            // PK1 attackers looked full at 9500 per general
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const pct=x=>(x*100).toFixed(x<0.1?2:1)+'%';
+const $=id=>document.getElementById(id);
+const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
+
+// ---- derived per-report numbers ----
+for(const r of D.reports){
+  if(r.srv===2){r.loss=r.ad+r.aw;r.base=r.ab;r.deathShare=r.loss?r.ad/r.loss:null}
+  else{const left=r.ar.reduce((a,b)=>a+b,0);r.loss=Math.max(0,REF-left);r.base=REF;r.deathShare=null}
+  r.rate=r.loss/r.base;
+}
+const byLv=lv=>D.reports.filter(r=>r.lv===lv);
+// PK1 armies were often already worn down from earlier fights, so their loss rate is only used where no PK2 report exists.
+const lossReps=lv=>{const p2=byLv(lv).filter(r=>r.srv===2);return p2.length?p2:byLv(lv)};
+const teamsAt=lv=>[...new Set(byLv(lv).map(r=>r.t))];
+function deathShare(lv){
+  const xs=D.reports.filter(r=>r.lv===lv&&r.deathShare!=null).map(r=>r.deathShare);
+  const all=D.reports.filter(r=>r.deathShare!=null).map(r=>r.deathShare);
+  const src=xs.length?xs:all;return src.reduce((a,b)=>a+b,0)/src.length;
+}
+function perTroops(lv){const p=D.levels[lv].per;return p}
+
+// ---- state ----
+const KEY='shinsen-land-v1';
+const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:''},load());
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}}
+let shown=null;   // {t, ty, dl[], res}
+
+// ---- level picker ----
+function renderLevels(){
+  const box=$('lvChips');box.replaceChildren();
+  for(const lv of LV){
+    const b=el('button',{class:'chip',type:'button','aria-pressed':String(lv===S.lv)},`Lv${lv}`);
+    b.onclick=()=>{S.lv=lv;S.team='';shown=null;save();renderAll()};
+    box.append(b);
+  }
+  const L=D.levels[S.lv],reps=byLv(S.lv),per=perTroops(S.lv);
+  const w=reps.filter(r=>r.res==='W').length,d=reps.filter(r=>r.res==='D').length,l=reps.filter(r=>r.res==='L').length;
+  const lr=lossReps(S.lv),avg=lr.reduce((a,r)=>a+r.rate,0)/lr.length;
+  const st=(k,v,s='')=>el('div',{class:'stat'},el('div',{class:'k'},k),el('div',{class:'v',html:`${v}<small>${s}</small>`}));
+  $('spec').replaceChildren(
+    st('守將等級',`Lv${L.glv}`),
+    st('每名守將兵力',per?fmt(per):'?',per?'':'未知'),
+    st('守軍總兵力',per?fmt(per*3):'?'),
+    st('觀測守軍',teamsAt(S.lv).length,'組'),
+    st('實戰勝／平／敗',`${w}/${d}/${l}`,`共 ${reps.length} 場`),
+    st('平均我方戰損',(lr[0].srv===1?'≈':'')+pct(avg),'含傷兵'));
+  $('lvNote').textContent=L.note;
+}
+
+// ---- team selector & cards ----
+function teamLabel(k){const t=D.teams[k];return `${t[2].n}隊（${t[0].n}、${t[1].n}）`}
+function renderTeamSel(){
+  const sel=$('teamSel');sel.replaceChildren(el('option',{value:''},'隨機遭遇'));
+  for(const k of teamsAt(S.lv))sel.append(el('option',{value:k},teamLabel(k)));
+  sel.value=S.team;
+  sel.onchange=()=>{S.team=sel.value;shown=null;save();renderDefender()};
+}
+function typeOf(k,lv){const r=D.reports.find(r=>r.t===k&&r.lv===lv&&r.ty);return r?r.ty:'?'}
+function renderDefender(){
+  const lv=S.lv,per=perTroops(lv);
+  const k=shown?.t||S.team||null;
+  $('defTitle').textContent=`${lv}級土地守軍`;
+  const box=$('gens');box.replaceChildren();
+  if(!k){
+    $('defType').textContent='';
+    box.append(el('div',{class:'empty',style:'grid-column:1/-1'},'按「出征」隨機遭遇一組守軍，或在上方指定。'));return;
+  }
+  const t=D.teams[k];
+  $('defType').textContent=`兵種 ${shown?.ty||typeOf(k,lv)}`;
+  t.forEach((g,i)=>{
+    const left=shown?shown.dl[i]:per;
+    const pic=el('div',{class:'pic'});
+    if(g.img!=null)pic.append(el('img',{src:`img/c${String(g.img).padStart(3,'0')}.webp`,alt:g.n,loading:'lazy'}));
+    else pic.append(el('div',{class:'ph'},g.n[0]));
+    pic.append(el('div',{class:'role'+(i===2?' boss':'')},i===2?'大將':'副將'),el('div',{class:'cost'},String(g.c)));
+    if(shown&&left===0)pic.append(el('div',{class:'rout'},'潰敗'));
+    const tb=el('div',{class:'tb'});
+    if(per!=null){const w=Math.max(0,Math.min(1,left/per));tb.append(el('div',{class:'bar red'},el('i',{style:`width:${w*100}%`})))}
+    const ul=el('ul');
+    for(const s of g.s){const gr=GRADE[g.r];ul.append(el('li',{title:s,html:`<b class="g${gr}">${gr}</b>${s}`}))}
+    box.append(el('div',{class:'gen r'+g.r},pic,el('div',{class:'nm'},g.n),
+      el('div',{class:'meta'},el('span',{},`Lv${D.levels[lv].glv}`),el('span',{},left==null?'兵 ?':`兵 ${fmt(left)}`)),tb,ul));
+  });
+}
+
+// ---- my army ----
+function renderArmy(){
+  $('myTroops').innerHTML=`${fmt(S.cur)}<small> / ${fmt(S.max)}</small>`;
+  $('myBar').style.width=`${Math.max(0,Math.min(1,S.cur/S.max))*100}%`;
+  $('myWounded').textContent=fmt(S.wounded);$('myDead').textContent=fmt(S.dead);$('myWins').textContent=String(S.wins);
+  $('maxTroops').value=S.max;
+  $('go').disabled=S.cur<=0;
+}
+$('maxTroops').onchange=e=>{const v=Math.max(1000,Math.min(60000,+e.target.value||29700));S.cur=Math.min(S.cur,v);if(S.max<v&&S.cur===S.max)S.cur=v;S.max=v;save();renderArmy()};
+$('heal').onclick=()=>{S.cur=Math.min(S.max,S.cur+S.wounded);S.wounded=0;save();renderArmy()};
+$('refill').onclick=()=>{S.cur=S.max;S.wounded=0;save();renderArmy()};
+
+// ---- one attack ----
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const jitter=()=>0.75+Math.random()*0.5;
+function attack(){
+  const lv=S.lv,reps=byLv(lv);
+  const k=S.team||pick(teamsAt(lv));
+  const same=reps.filter(r=>r.t===k);
+  const r=same.length&&(Math.random()<0.7||same.length===reps.length)?pick(same):pick(reps);
+  // losses come from a PK2 report when this level has one (same team and result preferred)
+  let lr=r;
+  if(r.srv===1){const p2=reps.filter(x=>x.srv===2);if(p2.length){const a=p2.filter(x=>x.t===k&&x.res===r.res),b=p2.filter(x=>x.res===r.res);lr=pick(a.length?a:b.length?b:p2)}}
+  const strength=S.cur/lr.base;                      // <1 → weaker than the army in the report
+  const scale=Math.pow(Math.min(3,Math.max(1,1/strength)),0.7);
+  let loss=Math.round(lr.rate*lr.base*jitter()*scale);
+  let res=r.res;
+  if(strength<0.9&&Math.random()<(0.9-strength)*1.5)res=res==='W'?'D':'L';
+  if(loss>=S.cur){loss=S.cur;res='L'}
+  const ds=lr.deathShare??deathShare(lv);
+  const dead=Math.round(loss*ds),wounded=loss-dead;
+  const per=perTroops(lv);
+  const dl=r.dl.map((x,i)=>{
+    if(res==='W'&&i===2)return 0;
+    if(res!=='W'&&i===2&&x===0)return Math.round((per||5000)*0.1*Math.random()+1);
+    if(x===0)return 0;
+    return Math.round(Math.min(per||x*1.5,x*jitter()));
+  });
+  if(res==='L'&&per)dl.forEach((x,i)=>{dl[i]=Math.max(x,Math.round(per*0.3))});
+  S.cur-=loss;S.wounded+=wounded;S.dead+=dead;if(res==='W')S.wins++;
+  shown={t:k,ty:typeOf(k,lv),dl,res};
+  S.log.unshift({lv,t:k,res,dead,wounded,left:S.cur,src:r.srv});S.log=S.log.slice(0,200);
+  save();
+  const v=$('verdict');v.className='verdict '+res;v.textContent=RES[res];
+  const dTot=per?per*3:null,dLeft=dl.reduce((a,b)=>a+b,0);
+  $('loss').innerHTML=`我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>守軍 剩 <b>${fmt(dLeft)}</b>${dTot?` / ${fmt(dTot)}`:''}<br><span style="font-size:.72rem">抽樣自 PK${r.srv}：${r.a}隊 vs ${D.teams[r.t][2].n}隊</span>`;
+  renderArmy();renderDefender();renderTab();
+}
+$('go').onclick=attack;
+
+// ---- tabs ----
+const TABS=[['stats','各等級統計'],['teams','守軍圖鑑'],['reports','實戰戰報'],['log','我的連戰紀錄']];
+function renderTabs(){
+  const box=$('tabs');box.replaceChildren();
+  for(const[k,label]of TABS){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.tab===k)},label);b.onclick=()=>{S.tab=k;save();renderTabs();renderTab()};box.append(b)}
+}
+function table(head,rows,numCols=[]){
+  if(!rows.length)return el('div',{class:'empty'},'尚無資料');
+  const th=el('tr');head.forEach((h,i)=>th.append(el('th',{class:numCols.includes(i)?'n':''},h)));
+  const tb=el('tbody');
+  for(const r of rows){const tr=el('tr');r.forEach((c,i)=>{const td=el('td',{class:numCols.includes(i)?'n':''});if(c instanceof Node)td.append(c);else td.innerHTML=c;tr.append(td)});tb.append(tr)}
+  return el('div',{class:'tablebox'},el('table',{},el('thead',{},th),tb));
+}
+const resSpan=r=>`<span class="r${r}">${RES[r]}</span>`;
+const gName=g=>`<span class="r${g.r}t">${g.n}</span>`;
+function renderTab(){
+  const body=$('tabBody');
+  if(S.tab==='stats'){
+    const rows=LV.map(lv=>{
+      const reps=byLv(lv),p2=reps.filter(r=>r.srv===2),per=perTroops(lv);
+      const c=x=>reps.filter(r=>r.res===x).length;
+      const lr=lossReps(lv),est=lr[0].srv===1?'≈':'';
+      const avg=lr.reduce((a,r)=>a+r.rate,0)/lr.length,mx=Math.max(...lr.map(r=>r.rate));
+      const avgLoss=p2.length?p2.reduce((a,r)=>a+r.loss,0)/p2.length:null;
+      return[`Lv${lv}`,`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
+    });
+    body.replaceChildren(table(['土地','守將等級','每人兵力','總兵力','守軍組數','戰報數','勝/平/敗','平均戰損率','最高戰損率','PK2 平均戰損（兵）'],rows,[2,3,4,5,7,8,9]),
+      el('p',{class:'note',style:'margin-top:10px'},'戰損率 =（陣亡 + 傷兵）÷ 出征兵力，只用 PK2 戰報計算（PK1 的部隊常是連戰後的殘兵，算不準）。Lv3 與 Lv10 沒有 PK2 戰報，標 ≈ 的數字是用每人 9500 滿兵反推。Lv8 起開始出現平局（大將撐過全部回合），Lv9 PK1 有一場被守軍全滅。'));
+  }else if(S.tab==='teams'){
+    const rows=teamsAt(S.lv).map(k=>{
+      const t=D.teams[k],reps=byLv(S.lv).filter(r=>r.t===k);
+      const c=x=>reps.filter(r=>r.res===x).length;
+      const types=[...new Set(reps.map(r=>r.ty).filter(Boolean))].join('、');
+      return[gName(t[2]),`${gName(t[0])}、${gName(t[1])}`,types,t.map(g=>g.s.join('／')).join('<br>'),`${c('W')}/${c('D')}/${c('L')}`];
+    });
+    body.replaceChildren(table([`Lv${S.lv} 大將`,'副將','兵種','戰法（副將、副將、大將）','勝/平/敗'],rows));
+  }else if(S.tab==='reports'){
+    const rows=byLv(S.lv).map(r=>{
+      const t=D.teams[r.t];
+      return[`PK${r.srv}`,r.land,`${r.a}隊`,gName(t[2]),r.ty||'',resSpan(r.res),r.srv===2?fmt(r.ad):'—',r.srv===2?fmt(r.aw):'—',r.srv===2?`${fmt(r.aa)} / ${fmt(r.ab)}`:r.ar.map(fmt).join(' / '),r.dl.map(fmt).join(' / ')];
+    });
+    body.replaceChildren(table(['賽季','類型','我方','守軍大將','兵種','結果','我方死','我方傷','我方剩兵','守軍剩兵（副/副/大）'],rows,[6,7]),
+      el('p',{class:'note',style:'margin-top:10px'},'PK1 截圖沒有上方的兵力總表，「我方剩兵」列的是三名武將各自剩下的兵。'));
+  }else{
+    const rows=S.log.map(x=>[`Lv${x.lv}`,gName(D.teams[x.t][2]),resSpan(x.res),fmt(x.dead),fmt(x.wounded),fmt(x.left),`PK${x.src}`]);
+    const clr=el('button',{class:'chip',type:'button',style:'margin-top:10px'},'清除紀錄');
+    clr.onclick=()=>{S.log=[];S.wins=0;S.dead=0;S.wounded=0;S.cur=S.max;shown=null;save();renderAll()};
+    body.replaceChildren(table(['土地','守軍大將','結果','陣亡','傷兵','剩餘兵力','抽樣'],rows,[3,4,5]),clr);
+  }
+}
+
+function renderAll(){renderLevels();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab()}
+$('nTeams').textContent=Object.keys(D.teams).length;$('nReps').textContent=D.reports.length;
+renderAll();
+</script>
+</body>
+</html>
