@@ -425,7 +425,10 @@ for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.
 for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:D.art?.[n]??null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
-const SKILLS=Object.entries(D.skills);
+// inherited-skill pool: innate skills can never be inherited
+const INNATE=new Set(Object.values(D.innate));
+const SKILLS=Object.entries(D.skills).filter(([n])=>!INNATE.has(n));
+for(const m of S.my.gens)m.s=m.s.map(x=>INNATE.has(x)?'':x);   // drop innate picks saved by older versions
 const GRADE_ORDER=['S','A','B'];
 function genSelect(cur,taken){
   const sel=el('select');
