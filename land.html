@@ -113,6 +113,10 @@ td.n,th.n{text-align:right}
 .slot .sk{font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:#1c1916;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot .sk b{font-family:var(--display);margin-right:5px}
 .slot .sk.unk{color:var(--muted)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-variant-numeric:tabular-nums}
+.stats-row span{border:1px solid var(--line);border-radius:4px;text-align:center;font-family:var(--display);font-weight:700;font-size:.95rem;padding:2px 0}
+.stats-row i{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:.65rem;color:var(--muted)}
+.stats-row.unk{display:block;font-size:.75rem;color:var(--muted)}
 .slot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted)}
 .teamfoot{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
 .teamfoot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted);min-width:120px}
@@ -151,7 +155,7 @@ ul.note{padding-left:1.2em}
       <div class="sum" id="teamSum"></div>
       <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
     </div>
-    <p class="note" style="margin-top:10px">武將屬性與戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
+    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，未含加點與裝備）。目前已收集 Cost 7 等 26 名武將；戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
   </section>
 
   <section class="panel">
@@ -406,6 +410,7 @@ function renderTab(){
 const CARDS=await (await fetch('data.json')).json();
 const ROSTER=new Map();
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:c.c,img:c.id});
+for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
 const SKILLS=Object.entries(D.skills);
@@ -430,6 +435,13 @@ function skillSelect(cur,exclude){
   }
   sel.value=cur;return sel;
 }
+const GLV=50;   // attacker level used for the stat preview
+function statBox(n){
+  const x=D.stats?.[n];
+  if(!x)return el('div',{class:'stats-row unk'},'屬性：尚未收集');
+  const cells=['武勇','智略','統率','速度'].map(k=>{const[b,g]=x.st[k];return el('span',{title:`Lv1 ${b}，每級 +${g}`},el('i',{},k),String(Math.round(b+g*(GLV-1))))});
+  return el('div',{class:'stats-row'},...cells);
+}
 function renderBuilder(){
   const box=$('slots');box.replaceChildren();
   const taken=new Set(S.my.gens.map(g=>g.n));
@@ -450,7 +462,7 @@ function renderBuilder(){
     box.append(el('div',{class:'slot'},
       el('div',{class:'hd'},face,el('div',{style:'flex:1;min-width:0;display:flex;flex-direction:column;gap:4px'},
         el('span',{class:'role'+(i===0?' boss':'')},i===0?'大將':'副將'),el('label',{},'武將',gs))),
-      innEl,...slots,el('label',{},'兵力',tr)));
+      innEl,...slots,statBox(m.n),el('label',{},'兵力',tr)));
   });
   $('arm').value=S.my.arm;
   const cost=S.my.gens.reduce((a,m)=>a+(+ROSTER.get(m.n)?.c||0),0),troops=S.my.gens.reduce((a,m)=>a+m.t,0);
