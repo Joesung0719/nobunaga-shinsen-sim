@@ -231,3 +231,37 @@ out = dict(levels={str(k): v for k, v in LEVELS.items()}, teams=teams, reports=R
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 missing = sorted({g['n'] for t in teams.values() for g in t if 'img' not in g})
 print(len(teams), 'teams', len(R), 'reports; no card image:', len(missing), missing)
+
+# ---- team builder: skills seen in Joe's own armies (attacker side). First skill is the general's 固有戰法. ----
+OWN = {
+ '武田信玄':['風林火山','百戰磨煉','攻其不備'], '真田昌幸':['表裡比興','大智不智','瞬息萬變','一行三昧','所領役帳'],
+ '飯富虎昌':['甲山猛虎','一行三昧','所向披靡'], '黑田官兵衛':['如水','七十二歎計','紅蓮之炎'],
+ '豐臣秀吉':['千成瓢簞','三河弓兵隊','回天轉運','深謀遠慮','草木皆兵'], '寧寧':['比翼連理','罵詈雜言','沉魚落雁'],
+ '上杉謙信':['軍神','氣勢沖天','越後先手組'], '柿崎景家':['越後二天','縱橫馳突','威風凜凜','勇猛無前'],
+ '宇佐美定滿':['越後流軍學','直言極諫','追亡逐北'], '立花誾千代':['疾風迅雷','斬雷神','一力當先','御旗盾無','五里霧中'],
+ '立花道雪':['電光雷轟','霹靂一擊','先制先登','陣型崩毀','所向披靡'], '北條氏康':['相模之獅','所領役帳','一領具足','三河武士'],
+ '伊達政宗':['伊達風采','攻其不備','龍騎兵'], '三好實休':['風流武者','瞬息萬變','振旅凱歌'],
+ '德川家康':['三河魂','智者樂水','御旗盾無','戮力同心'], '本多忠勝':['古今獨步','理非曲直','乘勝追擊'],
+ '本多正信':['非常之器','回天轉運','直言極諫','南蠻東渡','大智不智'], '松永久秀':['梟雄之計','疑心暗鬼','奇策縱橫'],
+ '本願寺顯如':['一切皆空','水攻乾計','南蠻東渡'], '毛利隆元':['一心一德','氣炎萬丈','大器之蘊'],
+ '今川義元':['海道第一','文武雙全','亂世戰華'], '長宗我部元親':['鬼若子','氣勢沖天','金城湯池'],
+ '壽桂尼':['尼御台','奇謀獨斷','振旅凱歌'], '前田利家':['槍之又左','槍彈正','鬼玄番'],
+ '柴田勝家':['猛攻柴田','以戰養戰','毘沙門天'], '歸蝶':['歸蝶之舞','同盟姻親','有備無患'],
+ '北條綱成':['地黃八幡','運勝之鼻','千軍辟易'], '阿松':['松柏之操','合盟之陣','惠風和雨'],
+}
+# skills shown with an A badge on 5★ attackers (everything else a 5★ carries showed S)
+OWN_A = {'南蠻東渡','大器之蘊','槍彈正','鬼玄番','先制先登','有備無患','一領具足'}
+from collections import Counter
+innate, grades = {}, {}
+def note(skill, g): grades.setdefault(skill, Counter())[g] += 1
+for t in teams.values():
+    for g in t:
+        innate.setdefault(g['n'], g['s'][0])
+        for s in g['s']: note(s, GRADE := {5:'S',4:'A',3:'B'}[g['r']])
+for n, ss in OWN.items():
+    innate[n] = ss[0]
+    for s in ss: note(s, 'A' if s in OWN_A else 'S')
+out['innate'] = innate
+out['skills'] = {s: c.most_common(1)[0][0] for s, c in sorted(grades.items())}
+json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+print('innate', len(innate), 'skills', len(out['skills']))
