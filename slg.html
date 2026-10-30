@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'4';
+:root{--slg-ver:'5';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -184,9 +184,68 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .skd h3{margin:0 0 8px;font-family:var(--display);color:var(--gold)}
 .skd h3 small{color:var(--muted);font-family:var(--body);font-size:.75rem;font-weight:400}
 .skd p{font-size:.88rem;line-height:1.6}
+
+/* 標題畫面 */
+.title{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;padding:16px;text-align:center;overflow:hidden}
+.title.out{animation:tout 1.1s ease forwards}
+@keyframes tout{0%{filter:brightness(1)}15%{filter:brightness(3)}100%{opacity:0;filter:brightness(1)}}
+.tmute{position:absolute;top:max(14px,env(safe-area-inset-top,0px));right:16px}
+.logo{display:flex;flex-direction:column;align-items:center;gap:2px;animation:tin 1.2s ease-out both}
+@keyframes tin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.logo .l1{font-family:var(--display);font-weight:900;font-size:clamp(2.6rem,12vw,5.2rem);letter-spacing:.06em;line-height:1.05;
+  background:linear-gradient(#e9f6ff 0%,#8ccbf0 45%,#f4d27a 55%,#c58a2a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:2px #1b2a44;filter:drop-shadow(3px 3px 0 #000) drop-shadow(0 0 10px #3d6db855)}
+.l2wrap{position:relative;width:min(520px,92vw);display:grid;place-items:center}
+.l2wrap .sword{width:100%;height:auto;display:block;filter:drop-shadow(0 0 6px #9cc6ea88)}
+.l2wrap .sword path:first-child{animation:shine 3s ease-in-out infinite}
+@keyframes shine{50%{filter:brightness(1.35)}}
+.logo .l2{position:absolute;left:12%;top:50%;transform:translateY(-55%);font-family:var(--display);font-weight:900;font-size:clamp(1.6rem,7vw,2.8rem);letter-spacing:.2em;
+  color:#c8202c;-webkit-text-stroke:1px #fff;paint-order:stroke fill;text-shadow:2px 2px 0 #000}
+.logo .l3{font-family:var(--display);color:var(--gold);letter-spacing:.3em;font-size:.95rem;margin-top:4px}
+.tfigs{display:flex;gap:min(16vw,120px);align-items:flex-end}
+.tfigs svg{width:min(22vw,110px);height:auto}
+.push{font-family:"Courier New",monospace;font-weight:700;font-size:clamp(1rem,4.4vw,1.35rem);letter-spacing:.18em;margin:6px 0 0;color:#fff;animation:blink 1.1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+.tsub{margin:0;color:var(--muted);font-size:.85rem}
+.tcr{position:absolute;bottom:max(14px,env(safe-area-inset-bottom,0px));color:#6d655a;font-size:.72rem}
+/* 地格質感與棋子底座 */
+.tile{box-shadow:inset 0 0 0 .5px #0004,inset 0 0 10px #0005,inset 0 1px 0 #ffffff14}
+.unit .base{position:absolute;left:16%;right:16%;bottom:7%;height:16%;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,var(--side),#0009 75%);box-shadow:0 0 0 1.5px var(--rim,#e3b75a);opacity:.9;z-index:-1}
+.unit{--rim:#e3b75a}.unit[style*="d24a3a"]{--rim:#1a1a1a}
+.unit .arm{position:absolute;right:3%;bottom:12%;font-size:.6rem;line-height:1;background:#111c;color:#fff;border:1px solid var(--side);border-radius:3px;padding:1px 2px;font-family:var(--display)}
+/* 吞食天地式分段兵力條：左方橘黃、右方紫藍 */
+.bline i.hp{height:9px;background:#111;box-shadow:0 0 0 1.5px #e8e2d0;border-radius:0}
+.bline i.hp>i{background:repeating-linear-gradient(90deg,#f39c12 0 6px,#000 6px 8px)}
+.bcol.r .bline i.hp>i{background:repeating-linear-gradient(90deg,#8e7cc3 0 6px,#000 6px 8px);margin-left:auto}
+.bline .tv{font-size:.95rem;color:#f5d76e}
+.fl{font-size:1.2rem}
+.stage{position:relative}
+.stage.flashw::after{content:"";position:absolute;inset:0;background:#fff;pointer-events:none;animation:fw .35s ease-out forwards}
+@keyframes fw{from{opacity:.7}to{opacity:0}}
 </style>
 </head>
 <body>
+<div id="title" class="title" role="button" tabindex="0" aria-label="按下開始">
+  <button id="titleMute" class="chip tmute" type="button"></button>
+  <div class="logo">
+    <div class="l1">天下布武</div>
+    <div class="l2wrap"><svg class="sword" viewBox="0 0 400 40" aria-hidden="true"><defs>
+<linearGradient id="bl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#dfe9f3"/><stop offset=".55" stop-color="#8fa6bd"/><stop offset="1" stop-color="#c9d6e2"/></linearGradient>
+<linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset=".5" stop-color="#e3b75a"/><stop offset="1" stop-color="#8a6420"/></linearGradient></defs>
+<path d="M4 22 Q120 12 290 15 L290 25 Q120 24 4 22Z" fill="url(#bl)" stroke="#5d7286" stroke-width="1"/>
+<path d="M30 21 Q140 15 286 18" stroke="#ffffff" stroke-width="1.2" fill="none" opacity=".8"/>
+<rect x="288" y="11" width="8" height="18" rx="2" fill="url(#gd)" stroke="#5a3d10"/>
+<ellipse cx="300" cy="20" rx="6" ry="15" fill="url(#gd)" stroke="#5a3d10" stroke-width="1.2"/>
+<rect x="306" y="14" width="80" height="12" rx="4" fill="#2a1a12" stroke="#5a3d10"/>
+<path d="M310 14 l8 12 M322 14 l8 12 M334 14 l8 12 M346 14 l8 12 M358 14 l8 12 M370 14 l8 12" stroke="url(#gd)" stroke-width="3"/>
+<rect x="384" y="13" width="10" height="14" rx="3" fill="url(#gd)" stroke="#5a3d10"/></svg><div class="l2">真戰傳</div></div>
+    <div class="l3">Q 版 戰 棋</div>
+  </div>
+  <div class="tfigs" aria-hidden="true"></div>
+  <p class="push">PUSH START BUTTON</p>
+  <p class="tsub">點一下畫面或按 Enter 開始</p>
+  <small class="tcr">非官方粉絲作品・人物、音樂與音效皆為原創合成</small>
+</div>
 <div class="wrap">
   <header class="top">
     <div><h1>Q版戰棋</h1><p>打地、打人的小型戰棋：每格一支部隊，接觸就打 8 回合自動戰鬥</p></div>
