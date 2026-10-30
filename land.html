@@ -20,6 +20,9 @@
 body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
 .wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.slgbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  background:#000e;border-top:1px solid var(--gold);padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));font-size:.85rem}
+.slgbar .sbtn{width:auto;background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:700;padding:8px 14px}
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
 header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
 header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
@@ -364,9 +367,18 @@ function perTroops(lv){const p=D.levels[lv].per;return p}
 const wavesOf=lv=>D.levels[lv].waves||1;
 
 // ---- state ----
-const KEY='shinsen-land-v1';
+// editing one team of the Q版戰棋 page: land.html?slg=mine-0 (a separate save, so the 打地 team is left alone)
+const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-([0-2])$/);
+const SLG_KEY='shinsen-slg-v1';
+const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
 const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
   my:{gens:[{n:'立花誾千代',s:['',''],t:9900},{n:'立花道雪',s:['',''],t:9900},{n:'北條氏康',s:['',''],t:9900}],arm:'弓'}},load());
+let slgSet=null;
+if(SLG){
+  try{slgSet=JSON.parse(localStorage.getItem(SLG_KEY))||{}}catch{slgSet={}}
+  const sp=slgSet[SLG[1]]?.[+SLG[2]];
+  if(sp)S.my=sp.my?JSON.parse(JSON.stringify(sp.my)):{gens:sp.gens.map(g=>({n:g.n,s:[g.s?.[0]||'',g.s?.[1]||''],t:g.t})),arm:sp.arm};
+}
 S.my.fac=Object.assign({co:10,arm:5,ka:3,same:false},S.my.fac);
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}}
 function save(){
@@ -846,6 +858,22 @@ $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S
 function renderAll(){renderBuilder();renderLevels();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
 $('nTeams').textContent=Object.keys(D.teams).length;$('nReps').textContent=D.reports.length;
 renderAll();
+if(SLG){   // bar to send the team back to the Q版戰棋 slot
+  const who=`${SLG[1]==='mine'?'我方':'對方'}第 ${+SLG[2]+1} 隊`;
+  const ok=el('button',{class:'sbtn',type:'button'},`完成，帶回戰棋${who}`),no=el('button',{class:'chip',type:'button'},'取消');
+  ok.onclick=()=>{
+    save();
+    const old=slgSet[SLG[1]]?.[+SLG[2]]||{};
+    (slgSet[SLG[1]]??=[])[+SLG[2]]={src:'builder',arm:S.my.arm,bingaku:old.bingaku||null,my:S.my,
+      gens:S.my.gens.map((m,i)=>({n:m.n,s:m.s.filter(Boolean),t:m.t,st:S.my.calc?.[i]||null}))};
+    try{localStorage.setItem(SLG_KEY,JSON.stringify(slgSet))}catch{}
+    location.href='slg.html';
+  };
+  no.onclick=()=>{location.href='slg.html'};
+  document.body.append(el('div',{class:'slgbar'},el('span',{},`正在編輯 Q版戰棋 ${who}：選好武將、戰法、紅度、配點、兵種後按完成`),el('div',{class:'row'},no,ok)));
+  document.body.style.paddingBottom='120px';
+  $('slots').closest('.panel').scrollIntoView({block:'start'});
+}
 </script>
 </body>
 </html>

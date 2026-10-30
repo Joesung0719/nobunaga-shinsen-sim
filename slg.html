@@ -110,27 +110,44 @@ dialog::backdrop{background:#000b}
 .bt{display:flex;flex-direction:column;gap:8px}
 .bhd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .bhd small{color:var(--muted);font-size:.75rem}
-.brow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.bcard{position:relative;border:1px solid var(--line);border-bottom:3px solid var(--side);border-radius:6px;padding:4px;background:#171412;text-align:center}
-.bcard .fig svg{width:min(88px,100%);height:auto}
-.bcard.out .fig{filter:grayscale(1);opacity:.4;transform:rotate(-12deg) translateY(8%)}
-.bcard .bn{font-size:.72rem;display:flex;gap:3px;justify-content:center;align-items:center;white-space:nowrap;overflow:hidden}
-.bcard .tv{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.lunge-up{animation:lu .32s ease}.lunge-dn{animation:ld .32s ease}
-@keyframes lu{50%{transform:translateY(-14px) scale(1.06)}}
-@keyframes ld{50%{transform:translateY(14px) scale(1.06)}}
+/* 吞食天地式戰鬥版面：左右兩列＋說話框 */
+.stage{background:#05070d;border:3px double #e8e2d0;border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.shd{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.85rem}
+.field{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px;align-items:center;min-height:210px}
+.bcol{display:flex;flex-direction:column;gap:6px}
+.bline{position:relative;display:grid;grid-template-columns:52px 1fr;gap:4px;align-items:center}
+.bcol.r .bline{grid-template-columns:1fr 52px}
+.bcol.r .bline .fig{order:2}.bcol.r .bi{text-align:right}
+.bline .fig svg{width:52px;height:auto;display:block}
+.bline .bn{font-size:.74rem;display:flex;gap:3px;align-items:center;white-space:nowrap;overflow:hidden}
+.bcol.r .bn{justify-content:flex-end}
+.bline .tv{font-size:.82rem;color:#f2e7c9;font-variant-numeric:tabular-nums;font-weight:700}
+.bline .hp{border-radius:0;box-shadow:inset 0 0 0 1px var(--side)}
+.bline.out .fig{filter:grayscale(1);opacity:.35;transform:rotate(-80deg) translateX(20%)}
+.bline.out .bn,.bline.out .tv{opacity:.45}
+svg.chibi.flip{transform:scaleX(-1)}
+.msg{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:center;border:3px double #e8e2d0;border-radius:4px;padding:6px;min-height:76px;background:#000}
+.face{width:64px;height:64px;border:2px solid var(--side,#e8e2d0);background:#1b2433;overflow:hidden;display:grid;place-items:center}
+.face svg{width:70px;height:auto;margin-top:6px}
+.msgtx{font-size:.85rem;line-height:1.55;color:#fff;min-height:3em}
+.lunge-r .fig{animation:lr .32s ease}.lunge-l .fig{animation:ll .32s ease}
+@keyframes lr{50%{transform:translateX(18px) scale(1.08)}}
+@keyframes ll{50%{transform:translateX(-18px) scale(1.08)}}
+#snd{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#snd .vol{display:flex;gap:4px;align-items:center;font-size:.78rem;color:var(--muted)}
+#snd input{width:90px;accent-color:var(--gold)}
 .shake{animation:sh .3s ease}
 @keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .fl{position:absolute;left:50%;top:28%;transform:translateX(-50%);font-weight:900;font-size:1rem;pointer-events:none;animation:fl .9s ease-out forwards;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap}
 .fl.hit{color:#ff8a6a}.fl.mo{color:#c79bff}.fl.heal{color:#7ee0a0}.fl.st{color:#ffd76a;font-size:.8rem}
 @keyframes fl{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-36px)}}
-.mid{min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.mid{min-height:40px;width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .rd{font-family:var(--display);color:var(--muted);font-size:.85rem;letter-spacing:.1em}
-.banner{font-family:var(--display);font-weight:700;font-size:.95rem;border-radius:4px;padding:2px 10px;min-height:1.5em;color:#fff}
+.banner{font-family:var(--display);font-weight:700;font-size:.8rem;text-align:center;border-radius:4px;padding:2px 10px;min-height:1.5em;color:#fff}
 .banner:empty{visibility:hidden}
 .banner.pop{animation:pop .3s ease}
 @keyframes pop{from{transform:scale(1.4);opacity:.3}}
-.bres{font-family:var(--display);font-weight:900;font-size:1.5rem;letter-spacing:.15em}
+.bres{font-family:var(--display);font-weight:900;font-size:1.05rem;text-align:center;letter-spacing:.15em}
 .bres.W{color:var(--gold);text-shadow:0 0 16px rgba(227,183,90,.6)}.bres.D{color:var(--steel)}.bres.L{color:var(--vermilion)}
 .blog{font-size:.75rem;max-height:30vh;overflow:auto;margin:6px 0 0;padding-left:1.4em;color:#d8ccb0}
 .bstat{overflow-x:auto}
@@ -167,6 +184,7 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
     <div><h1>Q版戰棋</h1><p>打地、打人的小型戰棋：每格一支部隊，接觸就打 8 回合自動戰鬥</p></div>
     <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="land.html">打地模擬</a><a href="slg.html" aria-current="page">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
   </header>
+  <div id="snd" aria-label="聲音設定"></div>
 
   <section id="setup" class="panel">
     <h2>出陣設定</h2>
@@ -179,7 +197,7 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
     <div class="teams" id="mine"></div></div>
     <div id="enemyWrap"><h2 style="margin-top:14px">對方部隊（紅）</h2><div class="teams" id="enemy"></div></div>
     <div class="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
-    <p class="muted" id="mineNote">「帶入打地頁的組隊」會帶入打地模擬頁目前的隊伍（含紅度、配點與設施加成後的屬性），可以在打地頁換一隊、回來帶入另一格。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
+    <p class="muted" id="mineNote">「編輯這隊」會打開打地頁的組隊畫面，可自選武將、傳承戰法、紅度、配點、兵種與設施，按「完成」帶回這一格（對方部隊也能編輯），屬性計算與打地頁相同。「帶入打地頁的組隊」則直接帶入打地頁目前的隊伍。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
     <div class="row" style="justify-content:center;margin-top:12px"><button id="start" class="btn big" type="button">出陣</button></div>
   </section>
 
