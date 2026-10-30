@@ -1,13 +1,14 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
 import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
 import {chibi,SIDE_COL} from './chibi.js';
+import {isoTerrain,isoGeom} from './iso.js';
 import {BINGAKU} from './bingaku.js';
 import {SCENARIOS} from './scenarios.js';
 import {play,sfx,unlock,setAudio,audioSettings} from './audio.js';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入一次。改動 slg.html 的 CSS 結構時，兩邊一起加 1。
-const VER='5';
+const VER='6';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -26,6 +27,10 @@ for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f});
 for(const[n,x]of Object.entries(D.stats))ROSTER.set(n,Object.assign({n,r:5},ROSTER.get(n),{c:x.c,f:x.f}));
 for(const t of Object.values(D.teams))for(const g of t)if(!ROSTER.has(g.n))ROSTER.set(g.n,{n:g.n,r:g.r,c:g.c,f:''});
 const facOf=n=>ROSTER.get(n)?.f||'';
+// 武將頭像：沿用武將資料庫的卡圖（img/），沒有卡圖的武將用 Q 版人物
+const ART=new Map(Object.entries(D.art||{}));for(const c of CARDS)ART.set(c.n,c.id);
+const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
+const portrait=(n,fallback)=>ART.has(n)?`<img class="pt" src="${artSrc(ART.get(n))}" alt="${n}">`:fallback;
 const costOf=n=>+ROSTER.get(n)?.c||0;
 const POOL5=Object.entries(D.stats).filter(([,x])=>x.season).map(([n])=>n);
 const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
@@ -221,7 +226,7 @@ async function talk(lines){
   const dlg=$('talk');
   for(const ln of lines){
     const f=facOf(ln.who),side=G.units.find(u=>u.team.gens.some(g=>g.n===ln.who))?.side??0;
-    dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:chibi({n:ln.who,f},{side,boss:true})}),
+    dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:portrait(ln.who,chibi({n:ln.who,f},{side,boss:true}))}),
       el('div',{class:'tx'},el('b',{style:`color:${SIDE_COL[side]}`},ln.who),el('p',{},ln.text),el('small',{class:'muted'},'點一下繼續'))));
     if(!dlg.open)dlg.showModal();
     sfx('select');
@@ -275,25 +280,35 @@ function addLog(s){G.log.unshift({d:G.day,s});renderLog()}
 function renderLog(){$('mapLog').replaceChildren(...G.log.slice(0,40).map(x=>el('li',{},el('small',{},`第${x.d}天 `),x.s)))}
 
 function renderBoard(){
-  const box=$('board');box.replaceChildren();
+  const box=$('board');
   const sel=G.sel,R=sel&&!sel.moved?reach(sel):null,A=sel?targets(sel):[];
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const t=G.T[y][x],k=x+','+y;
-    const cls=['tile','t-'+t];
-    if(R&&R.has(k)&&!(sel.x===x&&sel.y===y))cls.push('mv');
-    if(A.some(o=>o.x===x&&o.y===y))cls.push('atk');
-    if(sel&&sel.x===x&&sel.y===y)cls.push('sel');
-    const b=el('button',{type:'button',class:cls.join(' '),'aria-label':`${x+1},${y+1} ${t}`,style:`grid-column:${x+1};grid-row:${y+1}`});
-    b.onclick=()=>tap(x,y);box.append(b);
-  }
+  const mark=new Map();
+  if(R)for(const k of R.keys())mark.set(k,'mv');
+  for(const o of A)mark.set(o.x+','+o.y,'atk');
+  if(sel)mark.set(sel.x+','+sel.y,'sel');
+  const g=isoGeom(W,H);
+  box.style.setProperty('--ar',`${g.vw}/${g.vh}`);
+  // keep the unit elements between renders so a move slides instead of jumping
+  const old=new Map([...box.querySelectorAll('.unit')].map(e=>[e.dataset.id,e]));
+  const svg=`<svg class="iso" viewBox="0 0 ${g.vw} ${g.vh}" xmlns="http://www.w3.org/2000/svg">${isoTerrain(G.T,mark)}</svg>`;
+  const map=box.querySelector('svg.iso');if(map)map.outerHTML=svg;else box.insertAdjacentHTML('afterbegin',svg);
+  box.querySelector('svg.iso').onclick=e=>{const t=e.target.closest('.tl');if(t)tap(+t.dataset.x,+t.dataset.y)};
+  const pct=(v,of)=>`${v/of*100}%`;
   for(const u of G.units){
-    if(!alive(u))continue;
+    const prev=old.get(String(u.id));old.delete(String(u.id));
+    if(!alive(u)){prev?.remove();continue}
     const b=u.team.gens[0],tot=total(u.team),mx=totalMax(u.team);
     const dn=u.drawUntil&&u.drawUntil>=G.day;
-    box.append(el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':'')+(u.target?' tgt':'')+(u.lord?' lord':''),style:`--x:${u.x};--y:${u.y};--side:${SIDE_COL[u.side]}`,'data-id':u.id,
+    const[cx,cy]=g.at(u.x,u.y,G.T);
+    const pos=`--x:${u.x};--y:${u.y};--w:${pct(64,g.vw)};--h:${pct(82,g.vh)};--l:${pct(cx-32,g.vw)};--t:${pct(cy+10-82,g.vh)};z-index:${10+u.x+u.y};`;
+    const n=el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':'')+(u.target?' tgt':'')+(u.lord?' lord':''),style:`${pos}--side:${SIDE_COL[u.side]}`,'data-id':u.id,
       html:chibi({n:b.n,f:b.f},{arm:u.team.arm,side:u.side,boss:true})+
-        `<i class="base"></i><b class="arm">${u.team.arm[0]}</b><i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')}));
+        `<i class="base"></i><b class="arm">${u.team.arm[0]}</b><i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')});
+    n.onclick=()=>tap(u.x,u.y);
+    if(prev){prev.className=n.className;prev.setAttribute('style',n.getAttribute('style'));prev.innerHTML=n.innerHTML}else box.append(n);
+    (prev||n).onclick=n.onclick;
   }
+  for(const e of old.values())e.remove();
   const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
   const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
   box.classList.toggle('rain',raining());
@@ -306,7 +321,7 @@ function renderInfo(){
   if(!u||!alive(u)){box.replaceChildren(el('p',{class:'muted'},G.over?'':'點自己的部隊：藍格可移動，紅格是攻擊範圍（弓兵、鐵炮 2 格，其餘 1 格；騎兵移動 3 格、器械 1 格，其他 2 格）。點對方部隊看詳細。'));return}
   const t=u.team;
   const rows=t.gens.map((g,i)=>el('div',{class:'grow'+(g.troops<=0?' out':'')},
-    el('div',{class:'mini',html:chibi({n:g.n,f:g.f},{arm:t.arm,side:u.side,boss:i===0})}),
+    el('div',{class:'mini',html:portrait(g.n,chibi({n:g.n,f:g.f},{arm:t.arm,side:u.side,boss:i===0}))}),
     el('div',{},el('div',{class:'gn'},el('b',{},g.n),i===0?el('span',{class:'tag'},'大將'):null,el('small',{},`${fmt(Math.max(0,g.troops))} / ${fmt(g.max)}`)),
       el('i',{class:'hp big'},el('i',{style:`width:${Math.max(0,g.troops)/g.max*100}%`})),
       el('div',{class:'st'},ST4.map(k=>`${k[0]} ${Math.round(g.st[k])}`).join('　')),
@@ -481,7 +496,7 @@ async function playBattle(a,d,before,r){
   play('battle');sfx('start');
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const gen=(s,i)=>(s===a.side?a:d).team.gens[i];
-  const speak=(side,i,txt)=>{const g=gen(side,i),u=side===a.side?a:d;face.innerHTML=chibi({n:g.n,f:g.f},{arm:u.team.arm,side,boss:i===0});face.style.setProperty('--side',SIDE_COL[side]);msg.textContent=txt};
+  const speak=(side,i,txt)=>{const g=gen(side,i),u=side===a.side?a:d;face.innerHTML=portrait(g.n,chibi({n:g.n,f:g.f},{arm:u.team.arm,side,boss:i===0}));face.style.setProperty('--side',SIDE_COL[side]);msg.textContent=txt};
   speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);
   const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
   const float=(side,i,txt,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},txt);c.append(f);setTimeout(()=>f.remove(),900)};
