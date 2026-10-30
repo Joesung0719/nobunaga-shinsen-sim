@@ -42,8 +42,11 @@ select{background:var(--ink);color:var(--paper);border:1px solid var(--line);bor
 
 /* setup */
 .teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:10px}
-.tcard{border:1px solid var(--line);border-left:4px solid var(--side);border-radius:6px;padding:10px;background:#171412;display:flex;flex-direction:column;gap:8px}
-.th{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+/* each team card's blocks (title, figures, 兵種, skills, buttons) share rows with the cards beside it */
+.tcard{border:1px solid var(--line);border-left:4px solid var(--side);border-radius:6px;padding:10px;background:#171412;display:grid;grid-row:span 5;grid-template-rows:subgrid;gap:8px;align-content:start}
+@supports not (grid-template-rows:subgrid){.tcard{display:flex;flex-direction:column}}
+.tcard>.row:last-child{align-self:end}
+.th{display:flex;flex-direction:column;gap:2px}
 .th small{color:var(--muted);font-size:.75rem}
 .figs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .figs .fig{display:flex;flex-direction:column;align-items:center;font-size:.75rem}
