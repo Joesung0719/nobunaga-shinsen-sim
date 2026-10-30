@@ -66,6 +66,7 @@ input[type=search]{flex:1;min-width:0}
 .who button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:#1f1a17;color:var(--paper);font:inherit;font-size:.75rem;padding:2px 10px 2px 2px;cursor:pointer}
 .who img,.who .ph{width:24px;height:24px;border-radius:50%;object-fit:cover;object-position:top;background:#2a2420;display:grid;place-items:center;font-size:.7rem}
 .who small{color:var(--muted)}
+.sk .ev{display:inline-block;margin-top:8px;border:1px solid #6a5a2c;border-radius:999px;padding:1px 10px;font-size:.75rem;color:var(--gold)}
 /* general sheet */
 dialog.sheet{background:var(--lacquer);color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0;width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 48px)}
 dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
@@ -153,7 +154,7 @@ const SKILLS=[...new Set([...Object.keys(D.skillText||{}),...HOLD.keys()])];
 
 // ---- state (remembered per viewer) ----
 const KEY='shinsen-db-v1';
-const S=Object.assign({tab:'g',season:'',fac:'',r:'5',kind:'',sort:'cost'},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}})());
+const S=Object.assign({tab:'g',season:'',fac:'',r:'5',kind:'',src:'',sort:'cost'},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}})());
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
 function chips(box,label,opts,key){
   box.replaceChildren(el('span',{class:'lbl'},label));
@@ -201,13 +202,14 @@ function skillCard(s,{withHolders=true}={}){
   return el('div',{class:'sk',id:`s-${s}`},kindBadge(s),el('div',{},
     el('h3',{},el('span',{class:`g g${gr}`},gr),s),el('div',{class:'meta'},meta),
     t?el('p',{},t.text):el('p',{class:'unk'},'效果說明尚未收集'),
-    t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,who));
+    t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
 }
 function renderSkills(){
   chips($('f1'),'分類',[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],'kind');
-  $('f2').replaceChildren();
+  chips($('f2'),'來源',[['','全部'],['固有','固有'],['傳授','傳授'],['事件','事件']],'src');
   const q=$('q').value.trim();
-  const list=SKILLS.filter(s=>{const k=kindOf(s);return(!S.kind||(S.kind==='?'?!k:k===S.kind))&&(!q||s.includes(q)||HOLD.get(s)?.some(([n])=>n.includes(q)))});
+  const srcOk=s=>!S.src||(S.src==='事件'?!!D.skillText?.[s]?.ev:HOLD.get(s)?.some(([,how])=>how===S.src));
+  const list=SKILLS.filter(s=>{const k=kindOf(s);return(!S.kind||(S.kind==='?'?!k:k===S.kind))&&srcOk(s)&&(!q||s.includes(q)||HOLD.get(s)?.some(([n])=>n.includes(q)))});
   const GO=['S','A','B'];
   list.sort((a,b)=>S.sort==='name'?a.localeCompare(b,'zh-Hant'):GO.indexOf(D.skills?.[a]||'S')-GO.indexOf(D.skills?.[b]||'S')||(D.skillText?.[b]?1:0)-(D.skillText?.[a]?1:0)||a.localeCompare(b,'zh-Hant'));
   $('count').textContent=`${list.length} 個戰法（${list.filter(s=>D.skillText?.[s]).length} 個有說明）`;

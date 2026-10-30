@@ -731,7 +731,7 @@ function showSkill(n,role){
   openPicker(n,({q,body})=>{
     q.hidden=true;
     body.append(skillRow(n,true),el('div',{class:'tip',style:'margin-top:8px'},
-      el('span',{class:'kicker'},role),t?t.text:'效果說明尚未收集',t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null));
+      el('span',{class:'kicker'},role),t?t.text:'效果說明尚未收集',t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'boss'},`事件「${t.ev}」取得`):null));
   });
 }
 
