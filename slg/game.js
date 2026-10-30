@@ -5,6 +5,13 @@ import {BINGAKU} from './bingaku.js';
 import {SCENARIOS} from './scenarios.js';
 import {play,sfx,say,unlock,setAudio,audioSettings} from './audio.js';
 
+// 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
+// 兩邊各記一個版本號，不一致就強制重新載入一次。改動 slg.html 的 CSS 結構時，兩邊一起加 1。
+const VER='4';
+if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
+  let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
+  if(n<2){location.reload();await new Promise(()=>{})}
+}else try{sessionStorage.removeItem('slg-reload')}catch{}
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
 const $=id=>document.getElementById(id);
