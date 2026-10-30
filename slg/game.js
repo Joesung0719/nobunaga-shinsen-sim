@@ -3,11 +3,11 @@ import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
 import {chibi,SIDE_COL} from './chibi.js';
 import {BINGAKU} from './bingaku.js';
 import {SCENARIOS} from './scenarios.js';
-import {play,sfx,say,unlock,setAudio,audioSettings} from './audio.js';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入一次。改動 slg.html 的 CSS 結構時，兩邊一起加 1。
-const VER='4';
+const VER='5';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -59,12 +59,33 @@ setAudio(SET.audio||{});
 document.addEventListener('pointerdown',unlock);
 function renderSound(){
   const A=audioSettings(),box=$('snd');
-  const tg=(k,l)=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(A[k])},l);b.onclick=()=>{setAudio({[k]:!A[k]});SET.audio={...audioSettings()};save();renderSound();if(k==='voice'&&A.voice)say('出陣！')};return b};
+  const tg=(k,l)=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(A[k])},l);b.onclick=()=>{setAudio({[k]:!A[k]});SET.audio={...audioSettings()};save();renderSound()};return b};
   const v=el('input',{type:'range',min:'0',max:'1',step:'0.05',value:String(A.vol),'aria-label':'音量'});
   v.oninput=()=>{setAudio({vol:+v.value});SET.audio={...audioSettings()};save()};
-  box.replaceChildren(tg('music','音樂'),tg('sfx','音效'),tg('voice','武將語音'),el('label',{class:'vol'},'音量',v));
+  box.replaceChildren(tg('music','音樂'),tg('sfx','音效'),el('label',{class:'vol'},'音量',v));
 }
 renderSound();
+
+// ---- 標題畫面：按一下開始（同時解鎖聲音），法螺貝＋太鼓開場，之後設定畫面放標題曲 ----
+function titleScreen(){
+  const t=$('title');
+  t.querySelector('.tfigs').innerHTML=chibi({n:'織田信長',f:facOf('織田信長')},{arm:'騎',side:0,boss:true})+chibi({n:'今川義元',f:facOf('今川義元')},{arm:'弓',side:1,boss:true,flip:true});
+  const mute=$('titleMute');
+  const drawMute=()=>{const on=audioSettings().music||audioSettings().sfx;mute.textContent=on?'聲音：開':'聲音：關';mute.setAttribute('aria-pressed',String(on))};
+  mute.onclick=e=>{e.stopPropagation();const on=!(audioSettings().music||audioSettings().sfx);setAudio({music:on,sfx:on});SET.audio={...audioSettings()};save();drawMute();renderSound()};
+  drawMute();
+  let gone=false;
+  const go=()=>{
+    if(gone)return;gone=true;unlock();sfx('opening');t.classList.add('out');
+    try{sessionStorage.setItem('slg-title','1')}catch{}
+    removeEventListener('keydown',key);
+    setTimeout(()=>{t.hidden=true;if(!G)play('title')},1100);
+  };
+  const key=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}};
+  t.onclick=go;addEventListener('keydown',key);
+}
+let seen=false;try{seen=!!sessionStorage.getItem('slg-title')}catch{}
+if(seen){$('title').hidden=true;document.addEventListener('pointerdown',()=>{if(!G)play('title')},{once:true})}else titleScreen();
 
 // stats used for a team: builder teams carry the builder's totals (Lv50 + 配點 + 加成);
 // random teams use Lv50 + 50 free points on the higher of 武勇／智略 + 兵種營 Lv5 (10%)
@@ -202,7 +223,7 @@ async function talk(lines){
     dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:chibi({n:ln.who,f},{side,boss:true})}),
       el('div',{class:'tx'},el('b',{style:`color:${SIDE_COL[side]}`},ln.who),el('p',{},ln.text),el('small',{class:'muted'},'點一下繼續'))));
     if(!dlg.open)dlg.showModal();
-    say(ln.text);sfx('select');
+    sfx('select');
     await new Promise(r=>{dlg.onclick=r;dlg.oncancel=e=>{e.preventDefault();r()}});
   }
   dlg.close();
@@ -268,7 +289,7 @@ function renderBoard(){
     const dn=u.drawUntil&&u.drawUntil>=G.day;
     box.append(el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':'')+(u.target?' tgt':'')+(u.lord?' lord':''),style:`--x:${u.x};--y:${u.y};--side:${SIDE_COL[u.side]}`,'data-id':u.id,
       html:chibi({n:b.n,f:b.f},{arm:u.team.arm,side:u.side,boss:true})+
-        `<i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')}));
+        `<i class="base"></i><b class="arm">${u.team.arm[0]}</b><i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')}));
   }
   const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
   const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
@@ -288,17 +309,25 @@ function renderInfo(){
       el('div',{class:'st'},ST4.map(k=>`${k[0]} ${Math.round(g.st[k])}`).join('　')),
       el('div',{class:'sks'},...g.skills.map(s=>skillChip(s.name))))));
   const acts=[];
-  if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard()};acts.push(w)}
+  if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard();autoEnd()};acts.push(w)}
   box.replaceChildren(el('div',{class:'ih'},el('b',{style:`color:${SIDE_COL[u.side]}`},t.name),
     el('small',{},`${ARMS.find(a=>a[0]===t.arm)?.[1]||t.arm}・兵力 ${fmt(total(t))}・移動 ${mv(u)}・射程 ${rg(u)}・地形 ${G.T[u.y][u.x]}${u.garrison?'・守軍':''}${t.bingaku?'・兵學 '+t.bingaku:''}`)),...rows,el('div',{class:'row'},...acts));
 }
 
+// 目前操作的一方全部部隊都行動完，就自動結束這一方的行動（不用再按「結束這天」）
+function autoEnd(){
+  if(!G||G.busy||G.over||aiPhase())return;
+  const side=ctrl();
+  if(G.units.some(u=>u.side===side&&alive(u)&&!u.acted))return;
+  addLog(G.phase||G.mode==='land'?'全部部隊行動完畢，進入下一天。':'我方全部行動完畢，換敵軍行動。');
+  clearTimeout(G.autoT);G.autoT=setTimeout(endTurn,500);
+}
 async function tap(x,y){
   if(!G||G.busy||G.over)return;
   const u=unitAt(x,y),s=G.sel,me=ctrl();
   if(aiPhase())return;
-  if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);return}
-  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();return}}
+  if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);autoEnd();return}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();autoEnd();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;sfx('select');renderBoard();return}
   G.sel=null;G.peek=u||null;renderBoard();
 }
@@ -334,7 +363,7 @@ async function fight(a,d){
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   checkOver();renderBoard();
   if(!G.over&&lines.length)await talk(lines);
-  G.busy=was;
+  G.busy=was;renderBoard();
 }
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
@@ -363,6 +392,7 @@ function checkOver(){
   if(G.over){addLog(G.over);$('overSub').replaceChildren();const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
 }
 async function endTurn(){
+  clearTimeout(G?.autoT);
   if(G.busy||G.over)return;
   G.sel=null;G.peek=null;
   if(G.mode!=='land'&&G.phase===0){
@@ -422,7 +452,7 @@ async function playBattle(a,d,before,r){
   const dlg=$('bt');
   const sides=[a.side===0?a:d,a.side===0?d:a];   // blue on the left
   const pre=t=>t===a?before[0]:before[1];
-  const cards={};
+  const cards={};let stage;
   const col=(u,right)=>el('div',{class:'bcol'+(right?' r':'')},...u.team.gens.map((g,i)=>{
     const c=el('div',{class:'bline'+(pre(u)[i]<=0?' out':''),style:`--side:${SIDE_COL[u.side]}`},
       el('div',{class:'fig',html:chibi({n:g.n,f:g.f},{arm:u.team.arm,side:u.side,boss:i===0,flip:right})}),
@@ -438,7 +468,7 @@ async function playBattle(a,d,before,r){
   const skipB=el('button',{type:'button',class:'btn ghost'},'跳過');skipB.onclick=()=>{skip=true};
   const done=el('button',{type:'button',class:'btn',hidden:''},'返回地圖');
   dlg.replaceChildren(el('div',{class:'bt'},
-    el('div',{class:'stage'},
+    stage=el('div',{class:'stage'},
       el('div',{class:'shd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),rd,el('b',{style:`color:${SIDE_COL[sides[1].side]}`},sides[1].team.name)),
       el('div',{class:'field'},col(sides[0],false),el('div',{class:'mid'},banner,res),col(sides[1],true)),
       el('div',{class:'msg'},face,msg)),
@@ -449,7 +479,7 @@ async function playBattle(a,d,before,r){
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const gen=(s,i)=>(s===a.side?a:d).team.gens[i];
   const speak=(side,i,txt)=>{const g=gen(side,i),u=side===a.side?a:d;face.innerHTML=chibi({n:g.n,f:g.f},{arm:u.team.arm,side,boss:i===0});face.style.setProperty('--side',SIDE_COL[side]);msg.textContent=txt};
-  speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);say('全軍，突擊！');
+  speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);
   const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
   const float=(side,i,txt,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},txt);c.append(f);setTimeout(()=>f.remove(),900)};
   const flash=(side,i,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
@@ -463,7 +493,7 @@ async function playBattle(a,d,before,r){
     if(e.type==='prep'){banner.textContent=`【${e.skill}】準備中`;banner.style.background='#555';lg(`${who} 準備【${e.skill}】`);if(!skip)speak(e.side,e.i,`${who} 正在準備【${e.skill}】……`)}
     if(e.type==='atk'||e.type==='skill'){
       flash(e.side,e.i,cards[e.side+'-'+e.i]?._right?'lunge-l':'lunge-r');
-      if(e.type==='skill'){banner.textContent=`【${e.skill}】${e.guess?'（推估）':''}`;banner.style.background=KCOL[e.kind]||'#666';banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop')}
+      if(e.type==='skill'){banner.textContent=`【${e.skill}】${e.guess?'（推估）':''}`;banner.style.background=KCOL[e.kind]||'#666';banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop');if(!skip){stage.classList.remove('flashw');void stage.offsetWidth;stage.classList.add('flashw')}}
       else banner.textContent='';
       const parts=[];let snd=e.type==='skill'?'skill':'hit',rout=false;
       for(const t of e.tg){
@@ -474,7 +504,7 @@ async function playBattle(a,d,before,r){
       }
       const line=`${who}${e.type==='atk'?' 攻擊':`【${e.skill}】`}${parts.length?'：'+parts.join('、'):''}`;
       lg(line);
-      if(!skip){speak(e.side,e.i,line);sfx(snd);if(rout)setTimeout(()=>sfx('rout'),120)}
+      if(!skip){speak(e.side,e.i,line);sfx(snd,(e.side===a.side?a:d).team.arm);if(rout)setTimeout(()=>sfx('rout'),120)}
     }
     if(!skip)await sleep(ms());
   }
@@ -496,7 +526,6 @@ async function playBattle(a,d,before,r){
   skipB.hidden=true;done.hidden=false;
   const mine=a.side===0?r.res:{W:'L',L:'W',D:'D'}[r.res];   // from the blue side's view
   speak(a.side,0,res.textContent);
-  say(mine==='W'?'敵將，討取！':mine==='L'?'撤退！':'今日到此為止。');
   play(mine==='W'?'win':mine==='L'?'lose':null);
   await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
   if(!G.over)play('map');
@@ -505,9 +534,9 @@ async function playBattle(a,d,before,r){
 // ---- wiring ----
 $('start').onclick=startGame;
 $('endTurn').onclick=endTurn;
-$('reset').onclick=()=>{if(G&&!G.over&&!confirm('放棄這場，回到設定？'))return;G=null;play(null);$('game').hidden=true;$('setup').hidden=false;$('over').hidden=true;renderSetup()};
+$('reset').onclick=()=>{if(G&&!G.over&&!confirm('放棄這場，回到設定？'))return;G=null;play('title');$('game').hidden=true;$('setup').hidden=false;$('over').hidden=true;renderSetup()};
 $('again').onclick=()=>{$('over').hidden=true;startGame()};
-$('toSetup').onclick=()=>{$('over').hidden=true;G=null;play(null);$('game').hidden=true;$('setup').hidden=false;renderSetup()};
+$('toSetup').onclick=()=>{$('over').hidden=true;G=null;play('title');$('game').hidden=true;$('setup').hidden=false;renderSetup()};
 $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
 $('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；地形不影響傷害。`;
 renderSetup();
