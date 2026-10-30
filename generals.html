@@ -126,7 +126,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 <dialog class="sheet" id="sheet"></dialog>
 
 <script type="module">
-const [D,CARDS]=await Promise.all([fetch('land.json').then(r=>r.json()),fetch('data.json').then(r=>r.json())]);
+const [D,CARDS]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json())]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
@@ -141,7 +141,7 @@ const RED_AT=[0,1,3,5];
 const G=new Map();
 for(const c of CARDS)G.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f,img:c.id});
 for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
-const innOf=n=>D.stats[n]?.inn||null;
+const innOf=n=>D.stats[n]?.inn||D.innate?.[n]||null;
 const teachOf=n=>D.teach?.[n]||null;
 const kindOf=s=>D.kind?.[s]||null;
 const kindBadge=s=>{const k=kindOf(s);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
@@ -237,7 +237,8 @@ function openGeneral(n){
   lvIn.oninput=()=>{L=+lvIn.value;lvB.textContent=`Lv${L}`;drawBars()};
   drawBars();
   const tt=D.traitText?.[n]||{};
-  const traits=x?.traits?.length?el('div',{class:'traits'},...x.traits.map((t,j)=>el('div',{class:'trait'},
+  const tl=x?.traits||Object.keys(tt);
+  const traits=tl.length?el('div',{class:'traits'},...tl.map((t,j)=>el('div',{class:'trait'},
     el('span',{class:'red'},j?`${RED_AT[j]} 紅解鎖`:'固有'),el('b',{},t),tt[t]?el('p',{},tt[t]):el('p',{class:'unk'},'效果說明尚未收集')))):el('p',{class:'note'},'特性尚未收集');
   const inn=innOf(n),teach=teachOf(n);
   dlg.replaceChildren(

@@ -290,7 +290,7 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
 <script>
 (async function(){
 const $=s=>document.querySelector(s);
-const POOL=await (await fetch('data.json')).json();
+const POOL=await (await fetch('data.json',{cache:'no-cache'})).json();
 const UP=['石川數正','島津義久','龍造寺隆信','吉岡妙林'];
 const img=g=>`img/c${String(g.id).padStart(3,'0')}.webp`;
 const byR={5:POOL.filter(g=>g.r===5),4:POOL.filter(g=>g.r===4),3:POOL.filter(g=>g.r===3)};
