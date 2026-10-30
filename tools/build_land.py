@@ -296,6 +296,14 @@ out['teach'] = {n: g['teach'] for n, g in det['generals'].items() if g.get('teac
 for n, g in det['generals'].items():   # 4★/3★ have no stat screen, so their innate skill comes from detail.json
     if g.get('inn'): out['innate'][n] = g['inn']
 out['skillText'] = det['skills']
+# ---- 4★ and lower stats (tools/stats20.txt): the game only shows them at their current level, so Lv1 = v - g*(level-1);
+#      innate skill and traits come from detail.json ----
+for line in open(f'{repo}/tools/stats20.txt', encoding='utf-8'):
+    if not line.strip() or line.startswith('#'): continue
+    n, r, L, cost, fac, *vals = line.strip().split('|')
+    st = {k: [round(float(a) - float(b) * (int(L) - 1), 2), float(b)] for k, (a, b) in zip(STAT_KEYS, (v.split() for v in vals))}
+    g = det['generals'][n]
+    stats[n] = dict(c=int(cost), f=fac, r=int(r), st=st, inn=g['inn'], kind='', tags=[], traits=list(g['traits']))
 for n, sk in out['teach'].items():
     out['skills'].setdefault(sk, det['skills'].get(sk, {}).get('g', 'S'))
 for n, t in det['skills'].items():   # the skill's own 戰法 screen beats grades guessed from battle reports
@@ -306,7 +314,7 @@ PK = {'長野業正', '龍造寺隆信', '伊達政宗', '佐竹義重', '石川
       '大久保長安', '相良義陽', '藤林正保', '種子島時堯', '浦上宗景', '吉岡妙林'}
 S3 = {'真田昌幸', '柿崎景家', '立花誾千代', '阿松', '鈴木佐大夫', '安宅冬康', '伊達輝宗', '加藤嘉明'}
 for n, x in stats.items():
-    x['season'] = ('PK' if n in PK else 'S1') if n in cards else ('S3' if n in S3 else 'S2')
+    x['season'] = ('PK' if n in PK else 'S1') if n in cards or x.get('r', 5) < 3 else ('S3' if n in S3 else 'S2')   # 2★/1★ are base-game, not in the gacha pool
 # ---- skill category (指揮/主動/突擊/被動/兵種/內政): from skill text, else the innate kind on the general's stat screen ----
 KIND = {'主': '主動', '突': '突擊', '指': '指揮', '被': '被動'}
 kind = {x['inn']: KIND[x['kind']] for x in stats.values() if x['kind'] in KIND}
