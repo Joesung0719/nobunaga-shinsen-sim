@@ -165,14 +165,25 @@ function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0
 function startStory(){
   const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
   const T=sc.map.map(r=>[...r]);
-  const units=sc.units.map(u=>({id:id++,side:u.side,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,
+  const units=sc.units.map(u=>({id:id++,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
     team:battleTeam({arm:u.arm,bingaku:null,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
-  G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[]};play('map');
+  G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
+    st:{killDay:0,killRain:false,finisher:null,routed:[],hitBy:{},said:new Set()}};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(`劇本「${sc.name}」：${sc.brief}`);
-  renderBoard();
+  renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
   talk(sc.talk.start);
+}
+// 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
+function renderObj(){
+  const box=$('obj');box.hidden=G.mode!=='story';if(box.hidden)return;
+  const sc=G.sc;
+  box.replaceChildren(
+    el('div',{},el('b',{class:'ok'},'勝利'),' '+(sc.win||[]).join('、')),
+    el('div',{},el('b',{class:'ng'},'敗北'),' '+(sc.lose||[]).join('、')),
+    sc.hidden?.length?el('details',{},el('summary',{},`隱藏條件 ×${sc.hidden.length}（結算時揭曉，達成越多評價越高）`),
+      el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'');
 }
 const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
 // story dialogue: one line per tap
@@ -201,7 +212,7 @@ function startGame(){
   G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,over:null,busy:false,log:[]};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'打人：擊潰對方全部部隊獲勝。');
-  renderBoard();
+  renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
 }
 const alive=u=>u.team.gens[0].troops>0;
@@ -291,6 +302,17 @@ async function fight(a,d){
   a.team.mods=raining()&&a.side===0?{dmg:G.sc.surprise}:null;d.team.mods=null;
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
+  const st=G.st,lines=[];
+  if(st){
+    if(a.side===0&&d.key)st.hitBy[d.key]=(st.hitBy[d.key]||0)+1;
+    for(const u of[a,d])if(!alive(u)){
+      if(u.target&&!st.killDay){st.killDay=G.day;st.killRain=raining();st.finisher=(u===d?a:d).key}
+      if(u.side===0&&u.key&&!st.routed.includes(u.key))st.routed.push(u.key);
+      if(u.key)lines.push(...(G.sc.talk['rout_'+u.key]||[]));
+    }
+    const lord=G.units.find(u=>u.lord);
+    if(lord&&alive(lord)&&total(lord.team)<=totalMax(lord.team)/2&&!st.said.has('lordLow')){st.said.add('lordLow');lines.push(...(G.sc.talk.lordLow||[]))}
+  }
   a.acted=true;a.moved=true;
   await playBattle(a,d,before,r);
   const res={W:'勝利',D:'平局',L:'敗北'}[r.res];
@@ -303,21 +325,35 @@ async function fight(a,d){
   if(a.team.mods)addLog(`豪雨奇襲：${a.team.name} 造成的傷害 ×${a.team.mods.dmg}`);
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
-  G.busy=was;checkOver();renderBoard();
+  checkOver();renderBoard();
+  if(!G.over&&lines.length)await talk(lines);
+  G.busy=was;
 }
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
   if(G.mode==='story'){
-    const sc=G.sc,win=G.units.some(u=>u.target&&!alive(u)),lose=G.units.some(u=>u.lord&&!alive(u))||!left(0)||G.day>sc.days;
-    if(win)G.over=`${sc.name}：勝利！（第 ${G.day} 天）`;
-    else if(lose)G.over=`${sc.name}：敗北${G.day>sc.days?`（${sc.days} 天內沒有擊破目標）`:''}`;
-    if(G.over){addLog(G.over);play(win?'win':'lose');talk(win?sc.talk.win:sc.talk.lose).then(()=>{$('overMsg').textContent=G.over;$('over').hidden=false})}
+    const sc=G.sc,win=G.units.some(u=>u.target&&!alive(u)),lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
+    const lose=lordDown||!left(0)||timeUp;
+    if(!win&&!lose)return;
+    let lines,sub=[];
+    if(win){
+      const got=(sc.hidden||[]).map(h=>({h,ok:!!h.test(G.st)})),n=got.filter(x=>x.ok).length;
+      const rk=(sc.rank||[]).find(r=>n>=r.n);
+      G.over=`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
+      sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
+      lines=[...sc.talk.win,...(rk?.ending||[])];
+    }else{
+      G.over=`${sc.name}：敗北（${lordDown?'織田信長隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;
+      lines=(lordDown?sc.talk.loseLord:timeUp?sc.talk.loseTime:null)||sc.talk.lose;
+    }
+    addLog(G.over);sub.slice(1).forEach(x=>addLog(x));play(win?'win':'lose');
+    talk(lines).then(()=>{$('overMsg').textContent=G.over;$('overSub').replaceChildren(...sub.map(x=>el('div',{},x)));$('over').hidden=false});
     return;
   }
   if(!left(1))G.over=G.mode==='land'?'佔領成功！':G.foe==='2p'?'藍方獲勝！':'勝利！';
   else if(!left(0))G.over=G.mode==='land'?'出征失敗：全軍潰走':G.foe==='2p'?'紅方獲勝！':'敗北';
   else if(G.mode==='land'&&G.day>DAYS)G.over=`出征失敗：${DAYS} 天內沒有攻下`;
-  if(G.over){addLog(G.over);const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
+  if(G.over){addLog(G.over);$('overSub').replaceChildren();const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
 }
 async function endTurn(){
   if(G.busy||G.over)return;
@@ -335,7 +371,11 @@ async function endTurn(){
   checkOver();renderBoard();
   if(!G.over&&G.mode==='story'){
     if(raining()&&!wasRain){addLog('豪雨！敵軍無法移動，我方進攻傷害提高。');await talk(G.sc.talk.rain)}
-    else if(!raining()&&wasRain){addLog('雨停了，今川軍恢復行動。');await talk(G.sc.talk.rainEnd)}
+    else if(!raining()&&wasRain){
+      addLog('雨停了，今川軍恢復行動。');
+      for(const u of G.units)if(u.onRainEnd&&alive(u)){Object.assign(u,u.onRainEnd);if(u.ai==='guard'&&!u.anchor)u.anchor=[u.x,u.y];addLog(`${u.team.name} 開始${u.ai==='advance'?'出擊':'戒備'}。`)}
+      await talk(G.sc.talk.rainEnd);
+    }
   }
 }
 async function aiTurn(){
