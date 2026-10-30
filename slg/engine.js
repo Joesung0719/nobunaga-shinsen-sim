@@ -9,12 +9,11 @@ export const K={
   base:5.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
   statDiv:110,       // 屬性差係數 = 1 + (攻方屬性 − 守方屬性) / statDiv，夾在 0.3～3
   counter:[1.15,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.15，被剋方 ×0.87
-  forest:0.9,        // 守方在森林：受到傷害 ×0.9
-  castle:0.85,       // 守方在城／土地上：受到傷害 ×0.85
+  terrain:{},        // 地形對傷害的倍率，例如 {林:0.9}；遊戲內地形沒有攻防加成（Joe），只有這一季的火炬有，數值到了再補
   guess:{主動:{S:[.35,1.7],A:[.35,1.45],B:[.4,1.2]},突擊:{S:[.3,1.9],A:[.3,1.6],B:[.3,1.3]}},
 };
-// 已知相剋（Joe 確認）：鐵炮剋足輕、器械；弓兵剋鐵炮。其他組合尚未確認，視為無相剋。
-export const COUNTER={鐵炮:['槍','器械'],弓:['鐵炮']};
+// 兵種相剋（Joe 確認）：槍兵剋騎兵、騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋槍兵；鐵炮剋器械是更早 Joe 提到的。
+export const COUNTER={槍:['騎'],騎:['弓'],弓:['鐵炮'],鐵炮:['槍','器械']};
 export const ST4=['武勇','智略','統率','速度'];
 const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 機率無法行動',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};
 
@@ -89,7 +88,7 @@ export function battle(A,B,R=Math.random){
     const a=dtype==='兵刃'?g.b.武勇:g.b.智略,df=dtype==='兵刃'?d.b.統率:d.b.智略;
     let f=Math.min(3,Math.max(.3,1+(a-df)/K.statDiv));
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
-    if(dst.terrain==='林')f*=K.forest;else if(dst.terrain==='城')f*=K.castle;
+    f*=K.terrain[dst.terrain]??1;
     let v=Math.sqrt(g.troops)*K.base*rate*f*(0.94+R()*0.12);
     if(hooks.dmg)v=hooks.dmg({src,dst,g,d,dtype,v});
     v=Math.max(1,Math.min(d.troops,Math.round(v)));

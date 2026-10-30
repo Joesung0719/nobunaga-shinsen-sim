@@ -1,12 +1,23 @@
 // Q版武將：程式畫的 SVG（不使用遊戲素材）。
-// 盔甲顏色依勢力、手上武器依兵種、背旗顏色依陣營並寫上名字第一個字；
+// 盔甲顏色依勢力、手上武器依兵種、背旗顏色依陣營並畫上勢力家紋（自繪簡化版）；
 // 前立（頭盔裝飾）、髮色、眼睛依名字雜湊，同一位武將每次長得一樣。
 export const FAC_COL={織田:'#b8473a',豐臣:'#c99a2e',德川:'#3e8a5c',武田:'#a3352f',上杉:'#3d6db8',群雄:'#7b6650'};
 export const SIDE_COL=['#3f7fd9','#d24a3a'];
 const HAIR=['#2a211c','#3b2a20','#1d1d24','#4a3526','#5a4a42'];
 const SKIN=['#f6d6b6','#f1cba6','#f8dcc2'];
 function hash(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.codePointAt(0),16777619);return h>>>0}
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// 勢力家紋（簡化自繪，畫在以 0,0 為中心、半徑約 5 的範圍）
+const KAMON={
+  織田:bg=>[0,72,144,216,288].map(a=>`<circle cx="${(2.6*Math.sin(a*Math.PI/180)).toFixed(2)}" cy="${(-2.6*Math.cos(a*Math.PI/180)).toFixed(2)}" r="2.3"/>`).join('')+`<circle r="1.6" fill="${bg}"/><circle r=".8"/>`,   // 木瓜
+  豐臣:()=>`<path d="M0 4.6 Q-4.8 3.4 -4.6 -.4 Q-2 1.2 0 4.6Z M0 4.6 Q4.8 3.4 4.6 -.4 Q2 1.2 0 4.6Z M0 4.6 Q-1.4 1 0 -.8 Q1.4 1 0 4.6Z"/>`+
+    [[-3,-1.8],[0,-2.8],[3,-1.8]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r=".9"/><circle cx="${x}" cy="${y-1.9}" r=".8"/><circle cx="${x}" cy="${y-3.6}" r=".65"/>`).join(''),   // 桐
+  德川:()=>`<circle r="4.9" fill="none" stroke-width="1"/>`+[0,120,240].map(a=>`<path transform="rotate(${a})" d="M0 0 Q-2.6 -1.2 -1.8 -3.4 Q-.9 -4.3 0 -3.3 Q.9 -4.3 1.8 -3.4 Q2.6 -1.2 0 0Z"/>`).join(''),   // 三葉葵
+  武田:()=>[[0,-2.3],[-2.3,0],[2.3,0],[0,2.3]].map(([x,y])=>`<path d="M${x} ${y-2} L${x+2} ${y} L${x} ${y+2} L${x-2} ${y}Z"/>`).join(''),   // 武田菱
+  上杉:()=>`<circle r="4.6" fill="none" stroke-width="1"/><path d="M-3 2.6 Q0 -4.4 3 2.6" fill="none" stroke-width=".9"/><path d="M-2.4 -2 l1.2 1 M2.4 -2 l-1.2 1" stroke-width=".8"/><ellipse cx="0" cy="1.2" rx="1.5" ry="1.1"/><circle cx="-.9" cy=".3" r=".7"/>`,   // 竹に雀（簡化）
+  群雄:()=>`<circle r="4.7" fill="none" stroke-width="1.1"/><rect x="-3.4" y="-.75" width="6.8" height="1.5"/>`,   // 丸に一
+};
+export const kamonSvg=(f,cx,cy,scale=1,col='#fff',bg='#000')=>`<g transform="translate(${cx} ${cy}) scale(${scale})" fill="${col}" stroke="${col}" stroke-width="0">${(KAMON[f]||KAMON.群雄)(bg)}</g>`;
 
 function crest(k,y){   // 前立
   switch(k){
@@ -45,11 +56,10 @@ export function chibi(g,o={}){
     :eyes===1?`<path d="M24 ${ey} q2.5 -2.6 5 0" stroke="#221a16" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M35 ${ey} q2.5 -2.6 5 0" stroke="#221a16" stroke-width="1.6" fill="none" stroke-linecap="round"/>`
     :`<path d="M24 ${ey-2} l5 1.2" stroke="#221a16" stroke-width="1.4" stroke-linecap="round"/><path d="M40 ${ey-2} l-5 1.2" stroke="#221a16" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="26.8" cy="${ey+.6}" rx="1.8" ry="2.2" fill="#221a16"/><ellipse cx="37.2" cy="${ey+.6}" rx="1.8" ry="2.2" fill="#221a16"/>`;
   const flagCol=SIDE_COL[side];
-  const ch=esc([...g.n][0]||'？');
   const body=`<g>`+
     `<line x1="47" y1="${4+dy}" x2="47" y2="${50+dy}" stroke="#4a3626" stroke-width="1.6"/>`+
     `<rect x="47" y="${4+dy}" width="13" height="19" rx="1" fill="${flagCol}" stroke="${o.boss?'#f2c94c':'#00000055'}" stroke-width="${o.boss?1.6:.8}"/>`+
-    `<text x="53.5" y="${17.6+dy}" font-size="10" text-anchor="middle" fill="#fff" font-weight="900" font-family="Noto Serif TC,serif">${ch}</text>`+
+    kamonSvg(g.f,53.5,13.5+dy,1.08,'#fff',flagCol)+
     (ride?'':`<rect x="25" y="58" width="5.5" height="9" rx="2" fill="#2c2622"/><rect x="33.5" y="58" width="5.5" height="9" rx="2" fill="#2c2622"/>`)+
     `<path d="M21 ${44+dy} Q32 ${38+dy} 43 ${44+dy} L45 ${60+dy} Q32 ${64+dy} 19 ${60+dy}Z" fill="${ar}" stroke="#00000066" stroke-width=".8"/>`+
     `<path d="M21 ${51+dy} Q32 ${55+dy} 43 ${51+dy}" stroke="#00000040" stroke-width="1.2" fill="none"/><path d="M20.5 ${56+dy} Q32 ${60+dy} 44 ${56+dy}" stroke="#f2c94c" stroke-width="1.3" fill="none"/>`+

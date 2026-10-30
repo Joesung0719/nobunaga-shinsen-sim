@@ -124,13 +124,12 @@ function renderSetup(){
 
 // ---- map ----
 let G=null;
-const TER={平:{c:1},林:{c:2},山:{c:99},水:{c:99},橋:{c:1},城:{c:1}};
+// 遊戲內地形不擋路也沒有攻防加成（Joe），目前地形只是裝飾；之後有數值（例如火炬）再加移動耗費
+const TER={平:{c:1},林:{c:1},山:{c:1},水:{c:1},橋:{c:1},城:{c:1}};
 function genMap(mode){
   for(let tries=0;tries<200;tries++){
     const T=Array.from({length:H},()=>Array(W).fill('平'));
-    const b1=Math.floor(Math.random()*3),b2=4+Math.floor(Math.random()*3);
-    for(let x=0;x<W;x++)T[4][x]=x===b1||x===b2?'橋':'水';
-    for(const y of[1,2,3,5,6,7])for(let x=0;x<W;x++){const r=Math.random();T[y][x]=r<.17?'林':r<.25?'山':'平'}
+    for(const y of[1,2,3,4,5,6,7])for(let x=0;x<W;x++){const r=Math.random();T[y][x]=r<.17?'林':r<.25?'山':'平'}
     if(mode==='land')for(const[x,y]of[[2,0],[3,0],[4,0],[2,1],[3,1],[4,1]])T[y][x]='城';
     const spawn0=[[1,8],[3,8],[5,8]],spawn1=mode==='land'?[[3,1],[2,0],[4,0]]:[[1,0],[3,0],[5,0]];
     for(const[x,y]of[...spawn0,...spawn1])if(T[y][x]==='山'||T[y][x]==='林')T[y][x]='平';
@@ -208,7 +207,7 @@ function renderBoard(){
 }
 function renderInfo(){
   const u=G.sel||G.peek;const box=$('info');
-  if(!u||!alive(u)){box.replaceChildren(el('p',{class:'muted'},G.over?'':'點自己的部隊：藍格可移動，紅格是攻擊範圍（弓兵、鐵炮 2 格，其餘 1 格；騎兵移動 3 格、器械 1 格，森林耗 2 步）。點對方部隊看詳細。'));return}
+  if(!u||!alive(u)){box.replaceChildren(el('p',{class:'muted'},G.over?'':'點自己的部隊：藍格可移動，紅格是攻擊範圍（弓兵、鐵炮 2 格，其餘 1 格；騎兵移動 3 格、器械 1 格，其他 2 格）。點對方部隊看詳細。'));return}
   const t=u.team;
   const rows=t.gens.map((g,i)=>el('div',{class:'grow'+(g.troops<=0?' out':'')},
     el('div',{class:'mini',html:chibi({n:g.n,f:g.f},{arm:t.arm,side:u.side,boss:i===0})}),
@@ -280,7 +279,7 @@ async function aiTurn(){
     for(const k of R.keys()){
       const[x,y]=k.split(',').map(Number);
       for(const o of targets(u,{x,y})){
-        const sc=-total(o.team)/totalMax(o.team)*10000-total(o.team)+(G.T[y][x]==='林'?500:0);
+        const sc=-total(o.team)/totalMax(o.team)*10000-total(o.team);
         if(!best||sc>best.sc)best={x,y,o,sc};
       }
     }
@@ -288,7 +287,7 @@ async function aiTurn(){
     // no target: walk toward the nearest enemy
     const foes=G.units.filter(o=>o.side===0&&alive(o));if(!foes.length)break;
     let bk=null;
-    for(const k of R.keys()){const[x,y]=k.split(',').map(Number);const d=Math.min(...foes.map(o=>dist({x,y},o)))+(G.T[y][x]==='林'?-.3:0);if(!bk||d<bk.d)bk={x,y,d}}
+    for(const k of R.keys()){const[x,y]=k.split(',').map(Number);const d=Math.min(...foes.map(o=>dist({x,y},o)));if(!bk||d<bk.d)bk={x,y,d}}
     u.x=bk.x;u.y=bk.y;u.acted=true;renderBoard();
   }
   G.busy=false;renderBoard();
@@ -310,7 +309,7 @@ async function playBattle(a,d,before,r){
       el('i',{class:'hp big'},el('i',{style:`width:${pre(u)[i]/g.max*100}%`})),el('small',{class:'tv'},fmt(pre(u)[i])));
     cards[u.side+'-'+i]=c;c._max=g.max;return c}));
   const banner=el('div',{class:'banner'}),rd=el('div',{class:'rd'},'戰鬥開始'),res=el('div',{class:'bres'});
-  const logBox=el('ol',{class:'blog'});
+  const logBox=el('ol',{class:'blog'}),statBox=el('div',{class:'bstat',hidden:''});
   const sp=el('div',{class:'row'});
   const drawSp=()=>chips(sp,SPEEDS.map(s=>[s[0],s[2]?`×${s[0]} ${s[1]}`:s[1]]),String(speed),v=>{speed=+v;SET.speed=speed;save();drawSp()});drawSp();
   let skip=false;
@@ -321,7 +320,7 @@ async function playBattle(a,d,before,r){
     row(sides[1]),el('div',{class:'mid'},rd,banner,res),row(sides[0]),
     el('div',{class:'bhd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),el('small',{},`${a.team.name} 進攻`)),
     el('div',{class:'row',style:'justify-content:space-between'},sp,el('div',{class:'row'},skipB,done)),
-    el('details',{},el('summary',{},'戰報'),logBox)));
+    statBox,el('details',{},el('summary',{},'戰報'),logBox)));
   dlg.showModal();
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
@@ -354,6 +353,16 @@ async function playBattle(a,d,before,r){
   const verdict={W:'勝利',D:'平局',L:'敗北'}[r.res];
   res.textContent=`${a.team.name}${verdict}`;res.className='bres '+r.res;
   lg(r.res==='D'?`8 回合結束，雙方大將都沒有潰敗：平局`:`${r.res==='W'?d.team.name:a.team.name} 大將潰敗：${a.team.name}${verdict}`);
+  // per-general totals: damage dealt (兵刃／謀略), damage taken, healing — for comparing with real 戰報
+  const tot={};const at=(s,i)=>tot[s+'-'+i]??={out:0,bing:0,mou:0,taken:0,heal:0,act:0};
+  for(const e of r.log)if(e.type==='atk'||e.type==='skill'){
+    const me=at(e.side,e.i);if(e.type==='skill')me.act++;
+    for(const t of e.tg){if(t.v!=null){me.out+=t.v;me[t.dtype==='謀略'?'mou':'bing']+=t.v;at(t.side,t.i).taken+=t.v}if(t.heal)me.heal+=t.heal}
+  }
+  const trs=[];
+  for(const u of[sides[1],sides[0]])u.team.gens.forEach((g,i)=>{const x=at(u.side,i);
+    trs.push(`<tr style="--side:${SIDE_COL[u.side]}"><th>${g.n}</th><td>${fmt(x.bing)}</td><td>${fmt(x.mou)}</td><td>${fmt(x.heal)}</td><td>${fmt(x.taken)}</td><td>${x.act}</td></tr>`)});
+  statBox.innerHTML=`<table><thead><tr><th>武將</th><th>兵刃</th><th>謀略</th><th>治療</th><th>承傷</th><th>戰法</th></tr></thead><tbody>${trs.join('')}</tbody></table>`;statBox.hidden=false;
   skipB.hidden=true;done.hidden=false;
   await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
 }
@@ -365,5 +374,5 @@ $('reset').onclick=()=>{if(G&&!G.over&&!confirm('放棄這場，回到設定？'
 $('again').onclick=()=>{$('over').hidden=true;startGame()};
 $('toSetup').onclick=()=>{$('over').hidden=true;G=null;$('game').hidden=true;$('setup').hidden=false;renderSetup()};
 $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
-$('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（鐵炮剋足輕與器械、弓兵剋鐵炮）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；守方在森林受傷 ×${K.forest}、在土地上 ×${K.castle}。`;
+$('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（槍兵剋騎兵、騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋槍兵與器械）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；地形不影響傷害。`;
 renderSetup();
