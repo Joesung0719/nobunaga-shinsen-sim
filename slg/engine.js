@@ -89,6 +89,7 @@ export function battle(A,B,R=Math.random){
     let f=Math.min(3,Math.max(.3,1+(a-df)/K.statDiv));
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
     f*=K.terrain[dst.terrain]??1;
+    f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）
     let v=Math.sqrt(g.troops)*K.base*rate*f*(0.94+R()*0.12);
     if(hooks.dmg)v=hooks.dmg({src,dst,g,d,dtype,v});
     v=Math.max(1,Math.min(d.troops,Math.round(v)));
