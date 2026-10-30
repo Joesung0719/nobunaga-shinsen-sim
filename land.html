@@ -334,7 +334,7 @@ ul.note{padding-left:1.2em}
 </div>
 
 <script type="module">
-const D=await (await fetch('land.json')).json();
+const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
 const RES={W:'勝利',D:'平局',L:'敗北'};
@@ -566,7 +566,7 @@ function renderTab(){
 }
 
 // ---- team builder ----
-const CARDS=await (await fetch('data.json')).json();
+const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});

@@ -293,6 +293,8 @@ out['art'] = art
 det = json.load(open(f'{repo}/tools/detail.json', encoding='utf-8'))
 out['traitText'] = {n: g['traits'] for n, g in det['generals'].items()}
 out['teach'] = {n: g['teach'] for n, g in det['generals'].items() if g.get('teach')}
+for n, g in det['generals'].items():   # 4★/3★ have no stat screen, so their innate skill comes from detail.json
+    if g.get('inn'): out['innate'][n] = g['inn']
 out['skillText'] = det['skills']
 for n, sk in out['teach'].items():
     out['skills'].setdefault(sk, det['skills'].get(sk, {}).get('g', 'S'))
