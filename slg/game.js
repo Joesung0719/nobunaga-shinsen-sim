@@ -3,7 +3,7 @@ import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
 import {chibi,SIDE_COL} from './chibi.js';
 import {BINGAKU} from './bingaku.js';
 import {SCENARIOS} from './scenarios.js';
-import {play,sfx,say,unlock,setAudio,audioSettings} from './audio.js';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入一次。改動 slg.html 的 CSS 結構時，兩邊一起加 1。
@@ -59,10 +59,10 @@ setAudio(SET.audio||{});
 document.addEventListener('pointerdown',unlock);
 function renderSound(){
   const A=audioSettings(),box=$('snd');
-  const tg=(k,l)=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(A[k])},l);b.onclick=()=>{setAudio({[k]:!A[k]});SET.audio={...audioSettings()};save();renderSound();if(k==='voice'&&A.voice)say('出陣！')};return b};
+  const tg=(k,l)=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(A[k])},l);b.onclick=()=>{setAudio({[k]:!A[k]});SET.audio={...audioSettings()};save();renderSound()};return b};
   const v=el('input',{type:'range',min:'0',max:'1',step:'0.05',value:String(A.vol),'aria-label':'音量'});
   v.oninput=()=>{setAudio({vol:+v.value});SET.audio={...audioSettings()};save()};
-  box.replaceChildren(tg('music','音樂'),tg('sfx','音效'),tg('voice','武將語音'),el('label',{class:'vol'},'音量',v));
+  box.replaceChildren(tg('music','音樂'),tg('sfx','音效'),el('label',{class:'vol'},'音量',v));
 }
 renderSound();
 
@@ -202,7 +202,7 @@ async function talk(lines){
     dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:chibi({n:ln.who,f},{side,boss:true})}),
       el('div',{class:'tx'},el('b',{style:`color:${SIDE_COL[side]}`},ln.who),el('p',{},ln.text),el('small',{class:'muted'},'點一下繼續'))));
     if(!dlg.open)dlg.showModal();
-    say(ln.text);sfx('select');
+    sfx('select');
     await new Promise(r=>{dlg.onclick=r;dlg.oncancel=e=>{e.preventDefault();r()}});
   }
   dlg.close();
@@ -288,17 +288,25 @@ function renderInfo(){
       el('div',{class:'st'},ST4.map(k=>`${k[0]} ${Math.round(g.st[k])}`).join('　')),
       el('div',{class:'sks'},...g.skills.map(s=>skillChip(s.name))))));
   const acts=[];
-  if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard()};acts.push(w)}
+  if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard();autoEnd()};acts.push(w)}
   box.replaceChildren(el('div',{class:'ih'},el('b',{style:`color:${SIDE_COL[u.side]}`},t.name),
     el('small',{},`${ARMS.find(a=>a[0]===t.arm)?.[1]||t.arm}・兵力 ${fmt(total(t))}・移動 ${mv(u)}・射程 ${rg(u)}・地形 ${G.T[u.y][u.x]}${u.garrison?'・守軍':''}${t.bingaku?'・兵學 '+t.bingaku:''}`)),...rows,el('div',{class:'row'},...acts));
 }
 
+// 目前操作的一方全部部隊都行動完，就自動結束這一方的行動（不用再按「結束這天」）
+function autoEnd(){
+  if(!G||G.busy||G.over||aiPhase())return;
+  const side=ctrl();
+  if(G.units.some(u=>u.side===side&&alive(u)&&!u.acted))return;
+  addLog(G.phase||G.mode==='land'?'全部部隊行動完畢，進入下一天。':'我方全部行動完畢，換敵軍行動。');
+  clearTimeout(G.autoT);G.autoT=setTimeout(endTurn,500);
+}
 async function tap(x,y){
   if(!G||G.busy||G.over)return;
   const u=unitAt(x,y),s=G.sel,me=ctrl();
   if(aiPhase())return;
-  if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);return}
-  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();return}}
+  if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);autoEnd();return}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();autoEnd();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;sfx('select');renderBoard();return}
   G.sel=null;G.peek=u||null;renderBoard();
 }
@@ -334,7 +342,7 @@ async function fight(a,d){
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   checkOver();renderBoard();
   if(!G.over&&lines.length)await talk(lines);
-  G.busy=was;
+  G.busy=was;renderBoard();
 }
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
@@ -363,6 +371,7 @@ function checkOver(){
   if(G.over){addLog(G.over);$('overSub').replaceChildren();const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
 }
 async function endTurn(){
+  clearTimeout(G?.autoT);
   if(G.busy||G.over)return;
   G.sel=null;G.peek=null;
   if(G.mode!=='land'&&G.phase===0){
@@ -449,7 +458,7 @@ async function playBattle(a,d,before,r){
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const gen=(s,i)=>(s===a.side?a:d).team.gens[i];
   const speak=(side,i,txt)=>{const g=gen(side,i),u=side===a.side?a:d;face.innerHTML=chibi({n:g.n,f:g.f},{arm:u.team.arm,side,boss:i===0});face.style.setProperty('--side',SIDE_COL[side]);msg.textContent=txt};
-  speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);say('全軍，突擊！');
+  speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);
   const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
   const float=(side,i,txt,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},txt);c.append(f);setTimeout(()=>f.remove(),900)};
   const flash=(side,i,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
@@ -496,7 +505,6 @@ async function playBattle(a,d,before,r){
   skipB.hidden=true;done.hidden=false;
   const mine=a.side===0?r.res:{W:'L',L:'W',D:'D'}[r.res];   // from the blue side's view
   speak(a.side,0,res.textContent);
-  say(mine==='W'?'敵將，討取！':mine==='L'?'撤退！':'今日到此為止。');
   play(mine==='W'?'win':mine==='L'?'lose':null);
   await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
   if(!G.over)play('map');
