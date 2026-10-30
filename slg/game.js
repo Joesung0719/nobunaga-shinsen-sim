@@ -1,14 +1,16 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
-import {chibi,SIDE_COL} from './chibi.js';
-import {isoTerrain,isoGeom} from './iso.js';
-import {BINGAKU} from './bingaku.js';
-import {SCENARIOS} from './scenarios.js';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=7';
+import {chibi,SIDE_COL} from './chibi.js?v=7';
+import {isoTerrain,isoGeom} from './iso.js?v=7';
+import {BINGAKU} from './bingaku.js?v=7';
+import {SCENARIOS} from './scenarios.js?v=7';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=7';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
-// 兩邊各記一個版本號，不一致就強制重新載入一次。改動 slg.html 的 CSS 結構時，兩邊一起加 1。
-const VER='6';
+// 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
+// slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
+// 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
+const VER='7';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
