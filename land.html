@@ -268,7 +268,7 @@ ul.note{padding-left:1.2em}
       <summary>計算方式說明</summary>
       <ul>
         <li>屬性是 Lv50 推算值：Lv1 屬性 + 成長率 × 49，再加上自由配點（未含裝備）。長條上，灰色是基礎值，青色是配點，金色是 % 加成。</li>
-        <li>自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配。配點先加在屬性上，再套用 % 加成。</li>
+        <li>自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配。配點先加在屬性上，再套用 % 加成。立身出世（豐臣秀吉）解鎖後每 10 級再多 3 點；眾志成城這類「我軍全體某屬性提高」的特性會加到全隊。</li>
         <li>特性依紅度解鎖：第 1 個特性固有，第 2～4 個分別要 1、3、5 紅。已解鎖的武威／智慧／領兵／靈巧會加在該武將屬性上。</li>
         <li>兵種等級 = 兵種營 Lv + 隊中已解鎖的兵種特性（例如馬術III 騎兵 +3、鐵炮大將 鐵炮 +3），每級全屬性 +2%。等級上限 10，隊中每有一位該兵種的「兵種大將」上限再 +1。</li>
         <li>協力：三人同勢力時，依協力設施 Lv1–10 加 0.5%～7%。家門：三人同家門時每級加 1%，最高 3%。家門資料尚未收集，請自行勾選。所有加成相加後乘上屬性。</li>
@@ -590,7 +590,16 @@ const skillArm=n=>D.skillText?.[n]?.arm||null;   // 兵種 skills only work with
 const GLV=50;   // attacker level used for the stat preview
 const ST4=['武勇','智略','統率','速度'];
 // free points: +10 per 10 levels and +10 per 紅 (Joe, 2026-10-29)
-const ptsPool=m=>Math.floor(GLV/10)*10+(m.red||0)*10;
+// trait text effects beyond the name-based ones: extra free points per 10 levels (立身出世), team-wide stat % (眾志成城)
+const trText=m=>activeTraits(m).map(t=>D.traitText?.[m.n]?.[t]||'');
+const ptsPer10=m=>10+trText(m).reduce((a,t)=>a+(+t.match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0),0);
+const ptsPool=m=>Math.floor(GLV/10)*ptsPer10(m)+(m.red||0)*10;
+function teamStatPct(){
+  const o={},parts=[];
+  for(const m of S.my.gens)activeTraits(m).forEach(t=>{const x=(D.traitText?.[m.n]?.[t]||'').match(/^我軍全體(武勇|智略|統率|速度)提高([\d.]+)%$/);
+    if(x){o[x[1]]=(o[x[1]]||0)+ +x[2];parts.push([`${t} ${x[1]}`,+x[2]])}});
+  return{o,parts};
+}
 const ptsUsed=m=>ST4.reduce((a,k)=>a+(m.pts?.[k]||0),0);
 function clampPts(m){   // drop points from the last stats first when the pool shrinks
   m.pts=m.pts||{};let over=ptsUsed(m)-ptsPool(m);
@@ -635,7 +644,7 @@ function teamBonus(){
   return{pct:parts.reduce((a,p)=>a+p[1],0),parts};
 }
 function statVals(m,pct){   // per stat: base (Lv50), free points, % bonus, total
-  const x=D.stats?.[m.n];if(!x)return null;const own=ownPct(m);
+  const x=D.stats?.[m.n];if(!x)return null;const own=ownPct(m),team=teamStatPct().o;for(const k in team)own[k]=(own[k]||0)+team[k];
   return ST4.map(k=>{const[b,g]=x.st[k],base=b+g*(GLV-1),a=m.pts?.[k]||0,p=pct+(own[k]||0),tot=(base+a)*(1+p/100);return{k,b,g,base,a,p,tot}});
 }
 
@@ -824,7 +833,8 @@ function renderTeamBar(bonus){
     el('span',{},`協力 Lv${f.co}`),pips(10,f.co,v=>set('co',v)),
     el('span',{},`兵種營 Lv${f.arm}`),pips(5,f.arm,v=>set('arm',v)),
     el('span',{},`家門 Lv${f.ka}`),el('div',{class:'row',style:'gap:10px'},pips(3,f.ka,v=>set('ka',v)),el('label',{},same,'三人同家門')));
-  $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]));
+  const ts=teamStatPct().parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`));
+  $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]),...ts);
 }
 $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S.wounded=0;save();renderArmy();
   $('go').scrollIntoView({behavior:'smooth',block:'center'})};

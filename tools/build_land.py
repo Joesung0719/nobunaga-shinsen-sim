@@ -296,6 +296,8 @@ out['teach'] = {n: g['teach'] for n, g in det['generals'].items() if g.get('teac
 out['skillText'] = det['skills']
 for n, sk in out['teach'].items():
     out['skills'].setdefault(sk, det['skills'].get(sk, {}).get('g', 'S'))
+for n, t in det['skills'].items():   # the skill's own 戰法 screen beats grades guessed from battle reports
+    out['skills'][n] = t['g']
 # ---- season (Joe, 2026-10-29): pool cards with "PK" on the card's bottom-left = PK, other pool cards = S1 (一般大池),
 #      S2 from 封存 5, other 武名商店 cards = S3 ----
 PK = {'長野業正', '龍造寺隆信', '伊達政宗', '佐竹義重', '石川數正', '島津義久', '三好實休', '堀直政',
