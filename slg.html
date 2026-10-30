@@ -173,6 +173,11 @@ dialog.talk::backdrop{background:#0006}
 @keyframes rain{to{background-position:-10px 40px}}
 @media (prefers-reduced-motion:reduce){#board.rain::after{animation:none}}
 .wx{color:#9cc6ea}
+.obj{font-size:.85rem;padding:6px 10px;margin:6px 0;border:1px solid var(--line,#444);border-radius:8px;display:grid;gap:3px}
+.obj b{display:inline-block;padding:0 6px;border-radius:4px;font-size:.75rem;margin-right:2px}
+.obj b.ok{background:#2e6b45}.obj b.ng{background:#7a2e2e}
+.obj summary{cursor:pointer;color:var(--gold)}.obj ul{margin:4px 0 0;padding-left:1.2em}
+.oversub{font-size:.85rem;max-width:520px;display:grid;gap:2px}.oversub:empty{display:none}
 .unit.tgt::before{content:"目標";position:absolute;top:-2%;left:50%;transform:translateX(-50%);font-size:.55rem;background:var(--vermilion);color:#fff;border-radius:3px;padding:0 3px;z-index:1}
 .unit.lord::before{content:"總大將";position:absolute;top:-2%;left:50%;transform:translateX(-50%);font-size:.55rem;background:var(--gold);color:#111;border-radius:3px;padding:0 3px;z-index:1;white-space:nowrap}
 summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
@@ -207,6 +212,7 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
   <section id="game" hidden>
     <div class="panel">
       <div class="gamebar"><div id="turn"></div><div class="row"><button id="endTurn" class="btn" type="button">結束這天</button><button id="reset" class="btn ghost" type="button">重新設定</button></div></div>
+      <div id="obj" class="obj" hidden></div>
     </div>
     <div class="boardwrap" style="margin-top:12px">
       <div id="board" role="grid" aria-label="戰場"></div>
@@ -224,7 +230,7 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
     <p class="muted">地形目前只是裝飾，不擋路也不影響傷害（遊戲內也是如此，只有本季火炬有效果，數值之後補）。打地：守軍不會移動或主動攻擊。攻擊守軍沒贏時守軍恢復滿兵；打成平局時守軍保留剩下的兵力 3 天（代替遊戲裡的 5 分鐘），之後恢復滿兵。官方傷害公式沒有公開，以上倍率都是推估，之後可以拿實際戰報對照調整。兵學欄位已預留，資料到了再補。</p>
   </section>
 </div>
-<div class="over" id="over" hidden><b id="overMsg"></b><div class="row"><button id="again" class="btn" type="button">同樣設定再一場</button><button id="toSetup" class="btn ghost" type="button">回到設定</button></div></div>
+<div class="over" id="over" hidden><b id="overMsg"></b><div id="overSub" class="oversub"></div><div class="row"><button id="again" class="btn" type="button">同樣設定再一場</button><button id="toSetup" class="btn ghost" type="button">回到設定</button></div></div>
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>

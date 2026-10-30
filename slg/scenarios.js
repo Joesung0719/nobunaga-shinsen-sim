@@ -5,10 +5,19 @@
 //          lord: 我方總大將，潰走即敗北；target: 擊破即勝利
 //   rain   [開始天, 結束天]：豪雨期間敵軍不移動（仍會攻擊射程內的部隊），我方發動的戰鬥傷害 × surprise
 //   talk   開場、豪雨、勝利、敗北時的對話（who 是說話的武將）
+//          rout_<key>：部隊 key 潰走時的對話；lordLow：我方總大將兵力剩一半以下時（只觸發一次）
+//   key    部隊代號（主要 NPC 用來掛對話、條件）；onRainEnd：雨停後改變的 AI {ai, r}
+//   win / lose  明列的勝敗條件文字
+//   hidden 隱藏條件：開打時只顯示提示，結算時才揭曉。test(st) 的 st 是戰況紀錄：
+//          st.killDay 擊破目標的天、st.killRain 是否在豪雨中、st.finisher 最後一擊的部隊 key、
+//          st.routed 我方潰走部隊 key 的陣列、st.hitBy[key] 我方攻擊過該敵方部隊的次數
+//   rank   依達成的隱藏條件數評價（由高到低，n 是最少條件數），ending 是對應的結局對話
 // 劇本的武將配置、天數與兵力是遊戲性設計，不是史實考證。
 export const SCENARIOS=[{
   id:'okehazama',name:'桶狹間之戰',year:'永祿三年（1560）',
-  brief:'今川義元率大軍上洛，織田軍兵少。趁豪雨突襲桶狹間的今川本陣，擊破今川義元隊即勝利；織田信長隊潰走或 10 天內未攻下即敗北。',
+  brief:'今川義元率大軍上洛，織田軍兵少。等待豪雨，突襲桶狹間的今川本陣。',
+  win:['擊破今川義元隊（今川本陣）'],
+  lose:['織田信長隊潰走','我方全軍潰走','10 天內沒有擊破今川義元隊'],
   days:10,rain:[3,5],surprise:1.25,
   map:[
     '林林山平林林山',
@@ -22,15 +31,15 @@ export const SCENARIOS=[{
     '平平平城平平平',
   ],
   units:[
-    {side:0,x:3,y:8,arm:'騎',t:10000,lord:true,gens:['織田信長','森可成','池田恆興'],
+    {side:0,key:'nobunaga',x:3,y:8,arm:'騎',t:10000,lord:true,gens:['織田信長','森可成','池田恆興'],
       s:{織田信長:['奇策縱橫','運籌決勝'],森可成:['所向披靡','乘勝追擊'],池田恆興:['乘敵不虞','千軍辟易']}},
-    {side:0,x:1,y:8,arm:'槍',t:10000,gens:['柴田勝家','佐久間盛政','河尻秀隆']},
-    {side:0,x:5,y:8,arm:'弓',t:10000,gens:['前田利家','豐臣秀吉','下方貞清'],
+    {side:0,key:'shibata',x:1,y:8,arm:'槍',t:10000,gens:['柴田勝家','佐久間盛政','河尻秀隆']},
+    {side:0,key:'maeda',x:5,y:8,arm:'弓',t:10000,gens:['前田利家','豐臣秀吉','下方貞清'],
       s:{前田利家:['霹靂一擊','電光石火'],豐臣秀吉:['荷駄崩','疑兵盜城']}},
-    {side:1,x:5,y:1,arm:'弓',t:12000,ai:'hold',target:true,gens:['今川義元','今川氏真','壽桂尼']},
-    {side:1,x:4,y:2,arm:'槍',t:9000,ai:'guard',anchor:[5,1],r:2,gens:['栗山善助','多田三八郎','甘粕景繼']},
-    {side:1,x:1,y:2,arm:'槍',t:8000,ai:'hold',gens:['德川家康','鳥居元忠','大久保忠世']},
-    {side:1,x:1,y:5,arm:'騎',t:8000,ai:'hold',gens:['岡部元信','保科正俊','三枝昌貞']},
+    {side:1,key:'yoshimoto',x:5,y:1,arm:'弓',t:12000,ai:'hold',target:true,onRainEnd:{ai:'guard',r:1},gens:['今川義元','今川氏真','壽桂尼']},
+    {side:1,key:'hatamoto',x:4,y:2,arm:'槍',t:9000,ai:'guard',anchor:[5,1],r:2,onRainEnd:{ai:'advance'},gens:['栗山善助','多田三八郎','甘粕景繼']},
+    {side:1,key:'ieyasu',x:1,y:2,arm:'槍',t:8000,ai:'hold',gens:['德川家康','鳥居元忠','大久保忠世']},
+    {side:1,key:'okabe',x:1,y:5,arm:'騎',t:8000,ai:'hold',gens:['岡部元信','保科正俊','三枝昌貞']},
     {side:1,x:2,y:3,arm:'槍',t:8000,ai:'advance',gens:['鬼庭左月齋','福留親政','遠藤直經']},
     {side:1,x:5,y:3,arm:'鐵炮',t:8000,ai:'advance',gens:['國司元相','岩城親隆','新發田重家']},
   ],
@@ -44,8 +53,45 @@ export const SCENARIOS=[{
       {who:'前田利家',text:'下起大雨了！敵軍看不清我們的動靜。'},
       {who:'織田信長',text:'就是現在。全軍直取桶狹間！（豪雨期間敵軍不移動，我方進攻傷害提高）'},
     ],
-    rainEnd:[{who:'今川義元',text:'雨停了……前方的騷動是怎麼回事？'}],
+    rainEnd:[
+      {who:'今川義元',text:'雨停了……前方的騷動是怎麼回事？旗本，給我把那群尾張兵趕回去！'},
+      {who:'織田信長',text:'雨停了，義元的旗本要動了。還沒得手的話，就硬闖過去！'},
+    ],
+    rout_hatamoto:[
+      {who:'今川義元',text:'旗本……竟然被衝散了！'},
+      {who:'織田信長',text:'本陣已經裸露。目標只有一個，義元的首級！'},
+    ],
+    rout_ieyasu:[{who:'德川家康',text:'（退回大高城的路上）織田上總介……這個人，或許值得記住。'}],
+    rout_shibata:[{who:'織田信長',text:'權六退下了？無妨，剩下的人跟我走！'}],
+    rout_maeda:[{who:'織田信長',text:'犬千代撐不住了……可惡，不能讓他白白犧牲。'}],
+    lordLow:[
+      {who:'森可成',text:'主公，本隊兵力已經折損過半，請不要再前進了！'},
+      {who:'織田信長',text:'退一步就是死。要賭，就賭到最後！'},
+    ],
     win:[{who:'織田信長',text:'今川義元，已經討取！'}],
     lose:[{who:'今川義元',text:'哼，終究是以卵擊石。'}],
+    loseLord:[{who:'今川義元',text:'尾張的小僧，就葬身在這片泥濘裡吧。'},{who:'今川義元',text:'上洛之路，再也沒有人能擋。'}],
+    loseTime:[{who:'今川義元',text:'今川大軍已經通過尾張。織田家……已經沒有機會了。'}],
   },
+  hidden:[
+    {id:'rain',name:'豪雨奇襲',hint:'天時站在少數的一方。',desc:'在豪雨中（第 3–5 天）擊破今川義元隊',test:st=>st.killRain},
+    {id:'own',name:'信長親征',hint:'大將的首級，該由誰來取？',desc:'由織田信長隊給今川義元隊最後一擊',test:st=>st.finisher==='nobunaga'},
+    {id:'safe',name:'全軍生還',hint:'以少擊眾，一兵一卒都很珍貴。',desc:'我方三隊都沒有潰走',test:st=>!st.routed.length},
+    {id:'ieyasu',name:'不戰三河',hint:'今天的敵人，明天未必是敵人。',desc:'我方沒有主動攻擊德川家康隊',test:st=>!st.hitBy.ieyasu},
+    {id:'fast',name:'迅雷不及掩耳',hint:'越快越好。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+  ],
+  rank:[
+    {n:5,rank:'S',title:'天下布武',ending:[
+      {who:'織田信長',text:'雨中一擊，取下東海道第一弓取的首級，而且一兵未失。'},
+      {who:'德川家康',text:'（岡崎城）今川已經不在了……派人去清洲，我想見見那位織田殿。'},
+      {who:'織田信長',text:'從今天起，天下就是我的下一個戰場。'}]},
+    {n:3,rank:'A',title:'桶狹間的奇蹟',ending:[
+      {who:'柴田勝家',text:'主公，今川軍已經四散，尾張保住了！'},
+      {who:'織田信長',text:'這只是開始。回清洲，準備下一戰。'}]},
+    {n:1,rank:'B',title:'慘勝',ending:[
+      {who:'豐臣秀吉',text:'雖然付出了不少代價，總算是贏了呢。'},
+      {who:'織田信長',text:'哼，下次要贏得更漂亮。'}]},
+    {n:0,rank:'C',title:'苦戰',ending:[
+      {who:'織田信長',text:'……贏是贏了，可這樣的打法，下一次就不會這麼幸運。'}]},
+  ],
 }];
