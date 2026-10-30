@@ -51,7 +51,7 @@ input[type=search]{flex:1;min-width:0}
 .gc .m .kb{width:16px;height:16px;font-size:.6rem}
 .gc .v{margin-left:auto;font-family:var(--display);font-size:.8rem;color:var(--gold)}
 .kb{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:.85rem;color:#fff;background:#57504a}
-.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)}
+.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)} .gC,.gD{color:var(--muted,#8a8f98)}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 /* skill list */
 .slist{display:flex;flex-direction:column;gap:8px}
@@ -140,7 +140,7 @@ const RED_AT=[0,1,3,5];
 // ---- one roster: 5★ with stats, plus pool cards without stats yet ----
 const G=new Map();
 for(const c of CARDS)G.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f,img:c.id});
-for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
+for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:x.r??5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
 const innOf=n=>D.stats[n]?.inn||D.innate?.[n]||null;
 const teachOf=n=>D.teach?.[n]||null;
 const kindOf=s=>D.kind?.[s]||null;
@@ -175,7 +175,7 @@ function renderGenerals(){
   chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK']],'season');
   const f2=$('f2');chips(f2,'勢力',[['','全部'],...FACTIONS.map(f=>[f,f])],'fac');
   f2.append(el('span',{class:'lbl',style:'margin-left:8px'},'稀有度'));
-  for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}
+  for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['2','2★'],['1','1★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}
   const q=$('q').value.trim();
   const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)));
   const key=S.sort;
@@ -210,12 +210,16 @@ function renderSkills(){
   const q=$('q').value.trim();
   const srcOk=s=>!S.src||(S.src==='事件'?!!D.skillText?.[s]?.ev:HOLD.get(s)?.some(([,how])=>how===S.src));
   const list=SKILLS.filter(s=>{const k=kindOf(s);return(!S.kind||(S.kind==='?'?!k:k===S.kind))&&srcOk(s)&&(!q||s.includes(q)||HOLD.get(s)?.some(([n])=>n.includes(q)))});
-  const GO=['S','A','B'];
+  const GO=['S','A','B','C','D'];
   list.sort((a,b)=>S.sort==='name'?a.localeCompare(b,'zh-Hant'):GO.indexOf(D.skills?.[a]||'S')-GO.indexOf(D.skills?.[b]||'S')||(D.skillText?.[b]?1:0)-(D.skillText?.[a]?1:0)||a.localeCompare(b,'zh-Hant'));
   $('count').textContent=`${list.length} 個戰法（${list.filter(s=>D.skillText?.[s]).length} 個有說明）`;
   // generals' own skills first; long tail of garrison-only skills has no text yet
   const box=el('div',{class:'slist'});for(const s of list)box.append(skillCard(s));
-  $('list').replaceChildren(list.length?box:el('div',{class:'empty'},'沒有符合的戰法'));
+  // 來源/分類 are remembered between visits, so an empty list may just be a leftover 來源 filter: say so and offer to clear it
+  let empty=el('div',{class:'empty'},'沒有符合的戰法');
+  if(!list.length&&S.src){const b=el('button',{class:'chip',type:'button'},'清除來源篩選');b.onclick=()=>{S.src='';save();render()};
+    empty=el('div',{class:'empty'},`目前「來源＝${S.src}」，這個分類沒有${S.src}戰法。`,b)}
+  $('list').replaceChildren(list.length?box:empty);
 }
 
 // ---- general sheet ----

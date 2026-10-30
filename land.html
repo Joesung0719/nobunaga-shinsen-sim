@@ -88,7 +88,7 @@ input[type=number],select{background:var(--ink);color:var(--paper);border:1px so
 .gen ul{list-style:none;margin:0;padding:0 6px 8px;display:flex;flex-direction:column;gap:3px}
 .gen li{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#1c1916}
 .gen li b{font-family:var(--display);margin-right:5px}
-.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)}
+.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)} .gC,.gD{color:var(--muted,#8a8f98)}
 @media (max-width:520px){.gen .nm{font-size:.8rem}.gen li{font-size:.68rem;padding:1px 5px}}
 
 .tablebox{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:4px}
@@ -570,7 +570,7 @@ const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
-for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:5,c:x.c,img:D.art?.[n]??null});
+for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:x.r??5,c:x.c,img:D.art?.[n]??null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
 // inherited-skill pool: innate skills can never be inherited
@@ -667,7 +667,7 @@ const UI=Object.assign({season:'',fac:'',kind:''},S.ui);
 function pickGeneral(i){
   const m=S.my.gens[i],taken=new Set(S.my.gens.map(g=>g.n));
   openPicker(`選擇${i===0?'大將':'副將'}`,({q,filters,body})=>{
-    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['4','4★'],['3','3★']];
+    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['4','4★'],['3','3★'],['2','2★↓']];
     const fs=[['','全勢力'],...FACTIONS.map(f=>[f,f])];
     const r1=el('div',{class:'row'}),r2=el('div',{class:'row'});filters.append(r1,r2);
     const gs=chipGroup(r1,seasons,UI.season,draw),gf=chipGroup(r2,fs,UI.fac,draw);
@@ -677,7 +677,7 @@ function pickGeneral(i){
       const s=UI.season,f=UI.fac,t=q.value.trim();
       const list=[...ROSTER.values()].filter(g=>{
         const x=D.stats?.[g.n];
-        if(s==='4'||s==='3'){if(g.r!==+s)return false}else if(s&&x?.season!==s)return false;
+        if(s==='4'||s==='3'){if(g.r!==+s)return false}else if(s==='2'){if(g.r>2)return false}else if(s&&x?.season!==s)return false;
         if(f&&x?.f!==f)return false;
         return !t||g.n.includes(t);
       }).sort((a,b)=>b.r-a.r||(+b.c||0)-(+a.c||0)||a.n.localeCompare(b.n,'zh-Hant'));
