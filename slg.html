@@ -138,6 +138,23 @@ dialog::backdrop{background:#000b}
 .bstat th,.bstat td{padding:3px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 .bstat thead th{color:var(--muted);font-weight:500}
 .bstat tbody th{text-align:left;font-weight:500;border-left:3px solid var(--side)}
+/* story */
+.scard{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:6px;padding:10px;background:#171412}
+.scard[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.scard b{font-family:var(--display);font-size:1.15rem;color:var(--gold)}
+.scard small{color:var(--muted);font-size:.75rem}
+.scard p{margin:2px 0;font-size:.82rem;line-height:1.55}
+dialog.talk{position:fixed;inset:auto 0 12px 0;margin:0 auto;width:min(520px,calc(100vw - 16px));cursor:pointer}
+dialog.talk::backdrop{background:#0006}
+.tk{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:center}
+.tk .fig svg{width:76px;height:auto}
+.tk p{margin:4px 0;font-family:var(--display);font-size:1rem;line-height:1.6}
+#board.rain::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;background:repeating-linear-gradient(105deg,transparent 0 9px,rgba(200,220,255,.28) 9px 10px);background-size:40px 40px;animation:rain .45s linear infinite;box-shadow:inset 0 0 60px rgba(20,30,60,.7)}
+@keyframes rain{to{background-position:-10px 40px}}
+@media (prefers-reduced-motion:reduce){#board.rain::after{animation:none}}
+.wx{color:#9cc6ea}
+.unit.tgt::before{content:"目標";position:absolute;top:-2%;left:50%;transform:translateX(-50%);font-size:.55rem;background:var(--vermilion);color:#fff;border-radius:3px;padding:0 3px;z-index:1}
+.unit.lord::before{content:"總大將";position:absolute;top:-2%;left:50%;transform:translateX(-50%);font-size:.55rem;background:var(--gold);color:#111;border-radius:3px;padding:0 3px;z-index:1;white-space:nowrap}
 summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .skd h3{margin:0 0 8px;font-family:var(--display);color:var(--gold)}
 .skd h3 small{color:var(--muted);font-family:var(--body);font-size:.75rem;font-weight:400}
@@ -157,11 +174,12 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
     <div class="row" id="lvRow" style="margin-top:8px"><span class="lbl">土地</span><div class="row" id="lvChips"></div></div>
     <p class="muted" id="lvNote"></p>
     <div class="row" id="foeRow" style="margin-top:8px"><span class="lbl">對手</span><div class="row" id="foeChips"></div></div>
-    <h2 style="margin-top:14px">我方部隊（藍）</h2>
-    <div class="teams" id="mine"></div>
+    <div id="storyRow" style="margin-top:12px"><div class="teams" id="storyList"></div></div>
+    <div id="mineWrap"><h2 style="margin-top:14px">我方部隊（藍）</h2>
+    <div class="teams" id="mine"></div></div>
     <div id="enemyWrap"><h2 style="margin-top:14px">對方部隊（紅）</h2><div class="teams" id="enemy"></div></div>
     <div class="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
-    <p class="muted">「帶入打地頁的組隊」會帶入打地模擬頁目前的隊伍（含紅度、配點與設施加成後的屬性），可以在打地頁換一隊、回來帶入另一格。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
+    <p class="muted" id="mineNote">「帶入打地頁的組隊」會帶入打地模擬頁目前的隊伍（含紅度、配點與設施加成後的屬性），可以在打地頁換一隊、回來帶入另一格。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
     <div class="row" style="justify-content:center;margin-top:12px"><button id="start" class="btn big" type="button">出陣</button></div>
   </section>
 
@@ -188,6 +206,7 @@ summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 <div class="over" id="over" hidden><b id="overMsg"></b><div class="row"><button id="again" class="btn" type="button">同樣設定再一場</button><button id="toSetup" class="btn ghost" type="button">回到設定</button></div></div>
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
+<dialog id="talk" class="talk" aria-label="對話"></dialog>
 <script type="module" src="slg/game.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
 import {chibi,SIDE_COL} from './chibi.js';
 import {BINGAKU} from './bingaku.js';
+import {SCENARIOS} from './scenarios.js';
 
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
@@ -69,7 +70,7 @@ function garrisonTeam(k,lv){
 }
 
 // ---- setup UI ----
-const MODES=[['land','打地'],['pvp','打人']];
+const MODES=[['land','打地'],['pvp','打人'],['story','劇本']];
 function chips(box,opts,cur,on){
   box.replaceChildren(...opts.map(([v,l])=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(cur===v)},l);b.onclick=()=>on(v);return b}));
 }
@@ -117,6 +118,13 @@ function renderSetup(){
   chips($('foeChips'),[['ai','對電腦'],['2p','雙人輪流（同一支手機）']],SET.foe,v=>{SET.foe=v;save();renderSetup()});
   const L=D.levels[SET.lv];
   $('lvNote').textContent=SET.mode==='land'?`守將 Lv${L.glv}・每人 ${fmt(L.per)} 兵・${L.waves||1} 隊守軍・${L.note}`:'';
+  $('storyRow').hidden=SET.mode!=='story';$('mineWrap').hidden=SET.mode==='story';$('mineNote').hidden=SET.mode==='story';
+  SET.sc=SCENARIOS.find(x=>x.id===SET.sc)?.id||SCENARIOS[0].id;
+  $('storyList').replaceChildren(...SCENARIOS.map(sc=>{
+    const b=el('button',{type:'button',class:'scard','aria-pressed':String(SET.sc===sc.id)},
+      el('b',{},sc.name),el('small',{},sc.year),el('p',{},sc.brief),
+      el('div',{class:'figs'},...sc.units.filter(u=>u.side===0).map(u=>el('div',{class:'fig',html:chibi({n:u.gens[0],f:facOf(u.gens[0])},{arm:u.arm,side:0,boss:true})+`<span>${u.gens[0]}</span>`}))));
+    b.onclick=()=>{SET.sc=sc.id;save();renderSetup()};return b}));
   $('mine').replaceChildren(...SET.mine.map((t,i)=>teamCard(t,0,i,SET.mine)));
   $('enemyWrap').hidden=SET.mode!=='pvp';
   $('enemy').replaceChildren(...SET.enemy.map((t,i)=>teamCard(t,1,i,SET.enemy)));
@@ -139,7 +147,36 @@ function genMap(mode){
     if([...spawn0,...spawn1].every(([x,y])=>seen.has(x+','+y)))return{T,spawn0,spawn1};
   }
 }
+// skills for scenario generals: innate + 2 picked from the modelled pool by name (same every time)
+function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
+function startStory(){
+  const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
+  const T=sc.map.map(r=>[...r]);
+  const units=sc.units.map(u=>({id:id++,side:u.side,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,
+    team:battleTeam({arm:u.arm,bingaku:null,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
+  G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[]};
+  $('setup').hidden=true;$('game').hidden=false;
+  addLog(`劇本「${sc.name}」：${sc.brief}`);
+  renderBoard();
+  $('board').scrollIntoView({behavior:'smooth',block:'start'});
+  talk(sc.talk.start);
+}
+const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
+// story dialogue: one line per tap
+async function talk(lines){
+  if(!lines?.length)return;
+  const dlg=$('talk');
+  for(const ln of lines){
+    const f=facOf(ln.who),side=G.units.find(u=>u.team.gens.some(g=>g.n===ln.who))?.side??0;
+    dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:chibi({n:ln.who,f},{side,boss:true})}),
+      el('div',{class:'tx'},el('b',{style:`color:${SIDE_COL[side]}`},ln.who),el('p',{},ln.text),el('small',{class:'muted'},'點一下繼續'))));
+    if(!dlg.open)dlg.showModal();
+    await new Promise(r=>{dlg.onclick=r;dlg.oncancel=e=>{e.preventDefault();r()}});
+  }
+  dlg.close();
+}
 function startGame(){
+  if(SET.mode==='story')return startStory();
   const m=genMap(SET.mode);let id=0;
   const units=[];
   SET.mine.forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
@@ -176,6 +213,7 @@ function reach(u){   // tiles u can move to this turn: Map "x,y" → cost
 }
 const targets=(u,from=u)=>G.units.filter(o=>alive(o)&&o.side!==u.side&&dist(from,o)<=rg(u));
 const ctrl=()=>G.mode==='pvp'&&G.foe==='2p'?G.phase:0;
+const aiPhase=()=>G.phase===1&&(G.mode==='story'||G.mode==='pvp'&&G.foe==='ai');
 
 function addLog(s){G.log.unshift({d:G.day,s});renderLog()}
 function renderLog(){$('mapLog').replaceChildren(...G.log.slice(0,40).map(x=>el('li',{},el('small',{},`第${x.d}天 `),x.s)))}
@@ -196,12 +234,14 @@ function renderBoard(){
     if(!alive(u))continue;
     const b=u.team.gens[0],tot=total(u.team),mx=totalMax(u.team);
     const dn=u.drawUntil&&u.drawUntil>=G.day;
-    box.append(el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':''),style:`--x:${u.x};--y:${u.y};--side:${SIDE_COL[u.side]}`,'data-id':u.id,
+    box.append(el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':'')+(u.target?' tgt':'')+(u.lord?' lord':''),style:`--x:${u.x};--y:${u.y};--side:${SIDE_COL[u.side]}`,'data-id':u.id,
       html:chibi({n:b.n,f:b.f},{arm:u.team.arm,side:u.side,boss:true})+
         `<i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')}));
   }
-  const who=G.mode==='land'?'我方':G.foe==='2p'?(G.phase?'紅方':'藍方'):'我方';
-  $('turn').innerHTML=`第 <b>${G.day}</b> 天${G.mode==='land'?` / ${DAYS}`:''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
+  const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
+  const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
+  box.classList.toggle('rain',raining());
+  $('turn').innerHTML=`第 <b>${G.day}</b> 天${lim?` / ${lim}`:''}${raining()?'・<span class="wx">豪雨</span>':''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
   $('endTurn').disabled=G.busy||!!G.over;
   renderInfo();
 }
@@ -224,7 +264,7 @@ function renderInfo(){
 async function tap(x,y){
   if(!G||G.busy||G.over)return;
   const u=unitAt(x,y),s=G.sel,me=ctrl();
-  if(G.mode==='pvp'&&G.foe==='ai'&&G.phase===1)return;
+  if(aiPhase())return;
   if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);return}
   if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;renderBoard();return}
@@ -234,23 +274,32 @@ async function tap(x,y){
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
+  a.team.mods=raining()&&a.side===0?{dmg:G.sc.surprise}:null;d.team.mods=null;
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
   a.acted=true;a.moved=true;
   await playBattle(a,d,before,r);
   const res={W:'勝利',D:'平局',L:'敗北'}[r.res];
-  const lost=(i,u)=>fmt(before[i].reduce((s,x)=>s+x,0)-total(u.team));
-  addLog(`${a.team.name} 攻擊 ${d.team.name}：${res}（${r.rounds} 回合；攻方損失 ${lost(0,a)}，守方損失 ${lost(1,d)}）`);
+  const lost=(i,u)=>{const v=before[i].reduce((s,x)=>s+x,0)-total(u.team);return v<0?`回復 ${fmt(-v)}`:`損失 ${fmt(v)}`};
+  addLog(`${a.team.name} 攻擊 ${d.team.name}：${res}（${r.rounds} 回合；攻方${lost(0,a)}，守方${lost(1,d)}）`);
   if(d.garrison){
     if(r.res==='D'){d.drawUntil=G.day+DRAW_DAYS-1;addLog(`平局：${d.team.name} 保留剩餘兵力 ${DRAW_DAYS} 天，之後恢復滿兵。`)}
     else if(alive(d)){d.team.gens.forEach(g=>g.troops=g.max);d.drawUntil=null}   // garrison is full again after a loss
   }
+  if(a.team.mods)addLog(`豪雨奇襲：${a.team.name} 造成的傷害 ×${a.team.mods.dmg}`);
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   G.busy=was;checkOver();renderBoard();
 }
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
+  if(G.mode==='story'){
+    const sc=G.sc,win=G.units.some(u=>u.target&&!alive(u)),lose=G.units.some(u=>u.lord&&!alive(u))||!left(0)||G.day>sc.days;
+    if(win)G.over=`${sc.name}：勝利！（第 ${G.day} 天）`;
+    else if(lose)G.over=`${sc.name}：敗北${G.day>sc.days?`（${sc.days} 天內沒有擊破目標）`:''}`;
+    if(G.over){addLog(G.over);talk(win?sc.talk.win:sc.talk.lose).then(()=>{$('overMsg').textContent=G.over;$('over').hidden=false})}
+    return;
+  }
   if(!left(1))G.over=G.mode==='land'?'佔領成功！':G.foe==='2p'?'藍方獲勝！':'勝利！';
   else if(!left(0))G.over=G.mode==='land'?'出征失敗：全軍潰走':G.foe==='2p'?'紅方獲勝！':'敗北';
   else if(G.mode==='land'&&G.day>DAYS)G.over=`出征失敗：${DAYS} 天內沒有攻下`;
@@ -259,23 +308,32 @@ function checkOver(){
 async function endTurn(){
   if(G.busy||G.over)return;
   G.sel=null;G.peek=null;
-  if(G.mode==='pvp'&&G.phase===0){
+  if(G.mode!=='land'&&G.phase===0){
     G.phase=1;for(const u of G.units)if(u.side===1){u.acted=false;u.moved=false}
     renderBoard();
-    if(G.foe==='ai'){await aiTurn();if(G.over)return;}
+    if(aiPhase()){await aiTurn();if(G.over)return;}
     else return;
   }
+  const wasRain=raining();
   G.phase=0;G.day++;
   for(const u of G.units){u.acted=false;u.moved=false;
     if(u.garrison&&u.drawUntil&&G.day>u.drawUntil&&alive(u)){u.team.gens.forEach(g=>g.troops=g.max);u.drawUntil=null;addLog(`${u.team.name} 平局保留時間已過，恢復滿兵。`)}}
   checkOver();renderBoard();
+  if(!G.over&&G.mode==='story'){
+    if(raining()&&!wasRain){addLog('豪雨！敵軍無法移動，我方進攻傷害提高。');await talk(G.sc.talk.rain)}
+    else if(!raining()&&wasRain){addLog('雨停了，今川軍恢復行動。');await talk(G.sc.talk.rainEnd)}
+  }
 }
 async function aiTurn(){
   G.busy=true;renderBoard();
   for(const u of G.units.filter(u=>u.side===1&&alive(u))){
     if(G.over)break;
     await sleep(350);
-    const R=reach(u);let best=null;
+    // hold: never moves; guard: stays within r of its anchor; rain (story) keeps everyone in place
+    const stay=u.ai==='hold'||raining();
+    let R=stay?new Map([[u.x+','+u.y,0]]):reach(u);
+    if(u.ai==='guard'&&!stay)R=new Map([...R].filter(([k])=>{const[x,y]=k.split(',').map(Number);return dist({x,y},{x:u.anchor[0],y:u.anchor[1]})<=u.r}));
+    let best=null;
     for(const k of R.keys()){
       const[x,y]=k.split(',').map(Number);
       for(const o of targets(u,{x,y})){
@@ -285,6 +343,7 @@ async function aiTurn(){
     }
     if(best){u.x=best.x;u.y=best.y;renderBoard();await sleep(300);await fight(u,best.o);continue}
     // no target: walk toward the nearest enemy
+    if(stay||u.ai==='guard'){u.acted=true;continue}
     const foes=G.units.filter(o=>o.side===0&&alive(o));if(!foes.length)break;
     let bk=null;
     for(const k of R.keys()){const[x,y]=k.split(',').map(Number);const d=Math.min(...foes.map(o=>dist({x,y},o)));if(!bk||d<bk.d)bk={x,y,d}}
