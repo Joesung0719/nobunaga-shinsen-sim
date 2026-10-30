@@ -53,7 +53,7 @@ function builderTeam(){
   if(!S?.my?.gens)return null;
   return{src:'builder',arm:S.my.arm||'槍',bingaku:null,gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null}))};
 }
-const SET=Object.assign({mode:'land',lv:6,foe:'ai',mine:[],enemy:[]},load());
+const SET=Object.assign({mode:'land',lv:6,foe:'ai',gar:'hold',mine:[],enemy:[]},load());
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
 setAudio(SET.audio||{});
 document.addEventListener('pointerdown',unlock);
@@ -154,7 +154,8 @@ function showSkill(n){
 }
 function renderSetup(){
   chips($('modeChips'),MODES,SET.mode,v=>{SET.mode=v;save();renderSetup()});
-  $('lvRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
+  $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
+  chips($('garChips'),[['hold','固守（同遊戲）'],['guard','出擊（練習用）']],SET.gar,v=>{SET.gar=v;save();renderSetup()});
   chips($('lvChips'),[3,4,5,6,7,8,9,10].map(v=>[v,`Lv${v}`]),SET.lv,v=>{SET.lv=v;save();renderSetup()});
   chips($('foeChips'),[['ai','對電腦'],['2p','雙人輪流（同一支手機）']],SET.foe,v=>{SET.foe=v;save();renderSetup()});
   const L=D.levels[SET.lv];
@@ -235,9 +236,11 @@ function startGame(){
   SET.mine.forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
   if(SET.mode==='land'){
     const keys=[...teamsAt(SET.lv)].sort(()=>Math.random()-.5).slice(0,D.levels[SET.lv].waves||1);
-    keys.forEach((k,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:garrisonTeam(k,SET.lv),garrison:true}));
+    // 遊戲裡的守軍不會離開土地；「出擊」是練習用：守軍會主動前進攻擊
+    keys.forEach((k,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:garrisonTeam(k,SET.lv),garrison:true,
+      ...(SET.gar==='guard'?{ai:'advance'}:{})}));
   }else SET.enemy.forEach((s,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:battleTeam(s,1)}));
-  G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,over:null,busy:false,log:[]};play('map');
+  G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,garAi:SET.mode==='land'&&SET.gar==='guard',over:null,busy:false,log:[]};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'打人：擊潰對方全部部隊獲勝。');
   renderObj();renderBoard();
@@ -266,7 +269,7 @@ function reach(u){   // tiles u can move to this turn: Map "x,y" → cost
 }
 const targets=(u,from=u)=>G.units.filter(o=>alive(o)&&o.side!==u.side&&dist(from,o)<=rg(u));
 const ctrl=()=>G.mode==='pvp'&&G.foe==='2p'?G.phase:0;
-const aiPhase=()=>G.phase===1&&(G.mode==='story'||G.mode==='pvp'&&G.foe==='ai');
+const aiPhase=()=>G.phase===1&&(G.mode==='story'||G.mode==='pvp'&&G.foe==='ai'||G.garAi);
 
 function addLog(s){G.log.unshift({d:G.day,s});renderLog()}
 function renderLog(){$('mapLog').replaceChildren(...G.log.slice(0,40).map(x=>el('li',{},el('small',{},`第${x.d}天 `),x.s)))}
@@ -319,7 +322,7 @@ function autoEnd(){
   if(!G||G.busy||G.over||aiPhase())return;
   const side=ctrl();
   if(G.units.some(u=>u.side===side&&alive(u)&&!u.acted))return;
-  addLog(G.phase||G.mode==='land'?'全部部隊行動完畢，進入下一天。':'我方全部行動完畢，換敵軍行動。');
+  addLog(G.phase||G.mode==='land'&&!G.garAi?'全部部隊行動完畢，進入下一天。':'我方全部行動完畢，換敵軍行動。');
   clearTimeout(G.autoT);G.autoT=setTimeout(endTurn,500);
 }
 async function tap(x,y){
@@ -395,7 +398,7 @@ async function endTurn(){
   clearTimeout(G?.autoT);
   if(G.busy||G.over)return;
   G.sel=null;G.peek=null;
-  if(G.mode!=='land'&&G.phase===0){
+  if((G.mode!=='land'||G.garAi)&&G.phase===0){
     G.phase=1;for(const u of G.units)if(u.side===1){u.acted=false;u.moved=false}
     renderBoard();
     if(aiPhase()){await aiTurn();if(G.over)return;}
