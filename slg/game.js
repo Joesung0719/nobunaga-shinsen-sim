@@ -1,0 +1,369 @@
+// 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js';
+import {chibi,SIDE_COL} from './chibi.js';
+import {BINGAKU} from './bingaku.js';
+
+const D=await (await fetch('land.json',{cache:'no-cache'})).json();
+const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
+const $=id=>document.getElementById(id);
+const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e[k]=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ---- roster ----
+const ROSTER=new Map();
+for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f});
+for(const[n,x]of Object.entries(D.stats))ROSTER.set(n,Object.assign({n,r:5},ROSTER.get(n),{c:x.c,f:x.f}));
+for(const t of Object.values(D.teams))for(const g of t)if(!ROSTER.has(g.n))ROSTER.set(g.n,{n:g.n,r:g.r,c:g.c,f:''});
+const facOf=n=>ROSTER.get(n)?.f||'';
+const costOf=n=>+ROSTER.get(n)?.c||0;
+const POOL5=Object.entries(D.stats).filter(([,x])=>x.season).map(([n])=>n);
+const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
+const PSK=new Map();const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));return PSK.get(n)};
+const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
+const ARMS=[['騎','騎兵'],['弓','弓兵'],['槍','足輕'],['鐵炮','鐵炮'],['器械','器械']];
+const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2};
+const W=7,H=9,DAYS=20,DRAW_DAYS=3;
+
+// ---- setup state ----
+const KEY='shinsen-slg-v1';
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(SET))}catch{}}
+function randomTeam(){
+  for(let k=0;k<400;k++){
+    const ns=[];while(ns.length<3){const n=pick(POOL5);if(!ns.includes(n))ns.push(n)}
+    const c=ns.reduce((a,n)=>a+costOf(n),0);
+    if(c>20||c<16)continue;
+    const sk=[];while(sk.length<6){const s=pick(GOOD);if(!sk.includes(s))sk.push(s)}
+    return{src:'random',arm:pick(['騎','弓','槍','鐵炮']),bingaku:null,gens:ns.map((n,i)=>({n,s:sk.slice(i*2,i*2+2),t:10000}))};
+  }
+}
+function builderTeam(){
+  let S;try{S=JSON.parse(localStorage.getItem('shinsen-land-v1'))}catch{}
+  if(!S?.my?.gens)return null;
+  return{src:'builder',arm:S.my.arm||'槍',bingaku:null,gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null}))};
+}
+const SET=Object.assign({mode:'land',lv:6,foe:'ai',mine:[],enemy:[]},load());
+for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
+
+// stats used for a team: builder teams carry the builder's totals (Lv50 + 配點 + 加成);
+// random teams use Lv50 + 50 free points on the higher of 武勇／智略 + 兵種營 Lv5 (10%)
+function genStats(g){
+  if(g.st)return{...g.st};
+  const s=statsAt(D,g.n,50,ROSTER.get(g.n)?.r);
+  const k=s.武勇>=s.智略?'武勇':'智略';s[k]+=50;
+  for(const x of ST4)s[x]=Math.round(s[x]*1.1*10)/10;
+  return s;
+}
+function battleTeam(spec,side){
+  return{name:spec.gens[0].n+'隊',side,arm:spec.arm,bingaku:spec.bingaku,terrain:'平',
+    gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps)}))};
+}
+const teamsAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv}[a-z]$`).test(k));
+function armOfGarrison(k){const r=D.reports.find(r=>r.t===k&&r.ty);return r?r.ty:pick(['騎','弓','槍','鐵炮'])}
+function garrisonTeam(k,lv){
+  const L=D.levels[lv],t=D.teams[k];
+  return{name:t[2].n+'隊',side:1,arm:armOfGarrison(k),bingaku:null,terrain:'城',key:k,
+    gens:[t[2],t[0],t[1]].map(g=>({n:g.n,f:facOf(g.n),st:statsAt(D,g.n,L.glv,g.r),troops:L.per,max:L.per,skills:g.s.map(ps)}))};
+}
+
+// ---- setup UI ----
+const MODES=[['land','打地'],['pvp','打人']];
+function chips(box,opts,cur,on){
+  box.replaceChildren(...opts.map(([v,l])=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(cur===v)},l);b.onclick=()=>on(v);return b}));
+}
+function teamCard(spec,side,i,list){
+  const cost=spec.gens.reduce((a,g)=>a+costOf(g.n),0);
+  const figs=el('div',{class:'figs'},...spec.gens.map((g,j)=>el('div',{class:'fig',html:chibi({n:g.n,f:facOf(g.n)},{arm:spec.arm,side,boss:j===0})+`<span>${g.n}</span>`})));
+  const arms=el('div',{class:'row arms'});
+  chips(arms,ARMS.map(([k,l])=>[k,l]),spec.arm,v=>{spec.arm=v;save();renderSetup()});
+  const bg=el('select',{'aria-label':'兵學'},el('option',{value:''},BINGAKU.length?'兵學：未設定':'兵學：待補（資料之後提供）'),...BINGAKU.map(b=>el('option',{value:b.id},b.name)));
+  bg.value=spec.bingaku||'';bg.disabled=!BINGAKU.length;bg.onchange=()=>{spec.bingaku=bg.value||null;save()};
+  const rnd=el('button',{type:'button',class:'btn ghost'},'隨機換一隊');rnd.onclick=()=>{list[i]=randomTeam();save();renderSetup()};
+  const imp=el('button',{type:'button',class:'btn ghost'},'帶入打地頁的組隊');
+  imp.onclick=()=>{const t=builderTeam();if(!t){alert('還沒有組隊資料：請先到「打地模擬」頁面的「我方組隊」選好武將。');return}list[i]=t;save();renderSetup()};
+  const skills=el('div',{class:'sks'},...spec.gens.map(g=>el('div',{},el('b',{},g.n),' ',[innateOf(D,g.n),...g.s].filter(Boolean).map(s=>skillChip(s)).reduce((a,c)=>(a.append(c),a),el('span')))));
+  return el('div',{class:'tcard',style:`--side:${SIDE_COL[side]}`},
+    el('div',{class:'th'},el('b',{},`第 ${i+1} 隊 · ${spec.gens[0].n}隊`),el('small',{},`Cost ${cost} · ${fmt(spec.gens.reduce((a,g)=>a+g.t,0))} 兵 · ${spec.src==='builder'?'打地頁組隊':'隨機'}`)),
+    figs,arms,skills,el('div',{class:'row'},rnd,imp,bg));
+}
+const MOD_LABEL={text:['依說明','t'],guess:['推估','g'],none:['未模擬','n']};
+function skillChip(n){
+  const s=ps(n),[l,c]=MOD_LABEL[s.modeled];
+  const b=el('button',{type:'button',class:`sk ${c}`,title:`${n}（${s.kind}／${l}）`},n);
+  b.onclick=()=>showSkill(n);return b;
+}
+function showSkill(n){
+  const s=ps(n),[l]=MOD_LABEL[s.modeled];
+  const parts=[];
+  if(s.rate!=null&&s.modeled!=='none')parts.push(`發動率 ${Math.round(s.rate*100)}%${s.each?'（每回合判定）':''}`);
+  if(s.dmg)parts.push(`${s.dtype==='auto'?'兵刃／謀略':s.dtype}傷害率 ${Math.round(s.dmg*100)}%，${s.n[0]===s.n[1]?s.n[0]:s.n.join('–')} 個目標`);
+  if(s.heal)parts.push(`治療率 ${Math.round(s.heal*100)}%`);
+  if(s.status)parts.push(`${Math.round(s.status.p*100)}% 使目標${s.status.k.join('、')} ${s.status.dur} 回合`);
+  if(s.self)parts.push(`自身${s.self.ks.join('、')} +${s.self.v}`);
+  if(s.prep)parts.push('準備 1 回合後發動');
+  $('skDlg').replaceChildren(el('div',{class:'skd'},
+    el('h3',{},n,el('small',{},` ${s.kind}・${s.g}・${l}`)),
+    el('p',{},s.text||'（還沒有收錄這個戰法的說明文字）'),
+    el('p',{class:'muted'},s.modeled==='none'?'戰棋模擬目前不計算這個戰法的效果。':s.modeled==='guess'?`沒有說明文字，用通用值推估：${parts.join('；')}`:`模擬採用：${parts.join('；')}（數值取滿級）`),
+    el('form',{method:'dialog'},el('button',{class:'btn'},'關閉'))));
+  $('skDlg').showModal();
+}
+function renderSetup(){
+  chips($('modeChips'),MODES,SET.mode,v=>{SET.mode=v;save();renderSetup()});
+  $('lvRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
+  chips($('lvChips'),[3,4,5,6,7,8,9,10].map(v=>[v,`Lv${v}`]),SET.lv,v=>{SET.lv=v;save();renderSetup()});
+  chips($('foeChips'),[['ai','對電腦'],['2p','雙人輪流（同一支手機）']],SET.foe,v=>{SET.foe=v;save();renderSetup()});
+  const L=D.levels[SET.lv];
+  $('lvNote').textContent=SET.mode==='land'?`守將 Lv${L.glv}・每人 ${fmt(L.per)} 兵・${L.waves||1} 隊守軍・${L.note}`:'';
+  $('mine').replaceChildren(...SET.mine.map((t,i)=>teamCard(t,0,i,SET.mine)));
+  $('enemyWrap').hidden=SET.mode!=='pvp';
+  $('enemy').replaceChildren(...SET.enemy.map((t,i)=>teamCard(t,1,i,SET.enemy)));
+}
+
+// ---- map ----
+let G=null;
+const TER={平:{c:1},林:{c:2},山:{c:99},水:{c:99},橋:{c:1},城:{c:1}};
+function genMap(mode){
+  for(let tries=0;tries<200;tries++){
+    const T=Array.from({length:H},()=>Array(W).fill('平'));
+    const b1=Math.floor(Math.random()*3),b2=4+Math.floor(Math.random()*3);
+    for(let x=0;x<W;x++)T[4][x]=x===b1||x===b2?'橋':'水';
+    for(const y of[1,2,3,5,6,7])for(let x=0;x<W;x++){const r=Math.random();T[y][x]=r<.17?'林':r<.25?'山':'平'}
+    if(mode==='land')for(const[x,y]of[[2,0],[3,0],[4,0],[2,1],[3,1],[4,1]])T[y][x]='城';
+    const spawn0=[[1,8],[3,8],[5,8]],spawn1=mode==='land'?[[3,1],[2,0],[4,0]]:[[1,0],[3,0],[5,0]];
+    for(const[x,y]of[...spawn0,...spawn1])if(T[y][x]==='山'||T[y][x]==='林')T[y][x]='平';
+    // every spawn must reach the other side
+    const seen=new Set(['3,8']),q=[[3,8]];
+    while(q.length){const[x,y]=q.shift();for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,k=nx+','+ny;if(nx<0||ny<0||nx>=W||ny>=H||seen.has(k)||TER[T[ny][nx]].c>9)continue;seen.add(k);q.push([nx,ny])}}
+    if([...spawn0,...spawn1].every(([x,y])=>seen.has(x+','+y)))return{T,spawn0,spawn1};
+  }
+}
+function startGame(){
+  const m=genMap(SET.mode);let id=0;
+  const units=[];
+  SET.mine.forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
+  if(SET.mode==='land'){
+    const keys=[...teamsAt(SET.lv)].sort(()=>Math.random()-.5).slice(0,D.levels[SET.lv].waves||1);
+    keys.forEach((k,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:garrisonTeam(k,SET.lv),garrison:true}));
+  }else SET.enemy.forEach((s,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:battleTeam(s,1)}));
+  G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,over:null,busy:false,log:[]};
+  $('setup').hidden=true;$('game').hidden=false;
+  addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'打人：擊潰對方全部部隊獲勝。');
+  renderBoard();
+  $('board').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const alive=u=>u.team.gens[0].troops>0;
+const unitAt=(x,y)=>G.units.find(u=>u.x===x&&u.y===y&&alive(u));
+const total=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0);
+const totalMax=t=>t.gens.reduce((a,g)=>a+g.max,0);
+const mv=u=>MOVE[u.team.arm]||2,rg=u=>RANGE[u.team.arm]||1;
+const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+function reach(u){   // tiles u can move to this turn: Map "x,y" → cost
+  const out=new Map([[u.x+','+u.y,0]]),q=[[u.x,u.y,0]];
+  while(q.length){
+    q.sort((a,b)=>a[2]-b[2]);const[x,y,c]=q.shift();
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;
+      const nc=c+TER[G.T[ny][nx]].c;if(nc>mv(u))continue;
+      const o=unitAt(nx,ny);if(o&&o.side!==u.side)continue;   // allies can be passed, enemies block
+      const k=nx+','+ny;if(out.has(k)&&out.get(k)<=nc)continue;
+      out.set(k,nc);q.push([nx,ny,nc]);
+    }
+  }
+  for(const k of[...out.keys()]){const[x,y]=k.split(',').map(Number);const o=unitAt(x,y);if(o&&o!==u)out.delete(k)}
+  return out;
+}
+const targets=(u,from=u)=>G.units.filter(o=>alive(o)&&o.side!==u.side&&dist(from,o)<=rg(u));
+const ctrl=()=>G.mode==='pvp'&&G.foe==='2p'?G.phase:0;
+
+function addLog(s){G.log.unshift({d:G.day,s});renderLog()}
+function renderLog(){$('mapLog').replaceChildren(...G.log.slice(0,40).map(x=>el('li',{},el('small',{},`第${x.d}天 `),x.s)))}
+
+function renderBoard(){
+  const box=$('board');box.replaceChildren();
+  const sel=G.sel,R=sel&&!sel.moved?reach(sel):null,A=sel?targets(sel):[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const t=G.T[y][x],k=x+','+y;
+    const cls=['tile','t-'+t];
+    if(R&&R.has(k)&&!(sel.x===x&&sel.y===y))cls.push('mv');
+    if(A.some(o=>o.x===x&&o.y===y))cls.push('atk');
+    if(sel&&sel.x===x&&sel.y===y)cls.push('sel');
+    const b=el('button',{type:'button',class:cls.join(' '),'aria-label':`${x+1},${y+1} ${t}`,style:`grid-column:${x+1};grid-row:${y+1}`});
+    b.onclick=()=>tap(x,y);box.append(b);
+  }
+  for(const u of G.units){
+    if(!alive(u))continue;
+    const b=u.team.gens[0],tot=total(u.team),mx=totalMax(u.team);
+    const dn=u.drawUntil&&u.drawUntil>=G.day;
+    box.append(el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':''),style:`--x:${u.x};--y:${u.y};--side:${SIDE_COL[u.side]}`,'data-id':u.id,
+      html:chibi({n:b.n,f:b.f},{arm:u.team.arm,side:u.side,boss:true})+
+        `<i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')}));
+  }
+  const who=G.mode==='land'?'我方':G.foe==='2p'?(G.phase?'紅方':'藍方'):'我方';
+  $('turn').innerHTML=`第 <b>${G.day}</b> 天${G.mode==='land'?` / ${DAYS}`:''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
+  $('endTurn').disabled=G.busy||!!G.over;
+  renderInfo();
+}
+function renderInfo(){
+  const u=G.sel||G.peek;const box=$('info');
+  if(!u||!alive(u)){box.replaceChildren(el('p',{class:'muted'},G.over?'':'點自己的部隊：藍格可移動，紅格是攻擊範圍（弓兵、鐵炮 2 格，其餘 1 格；騎兵移動 3 格、器械 1 格，森林耗 2 步）。點對方部隊看詳細。'));return}
+  const t=u.team;
+  const rows=t.gens.map((g,i)=>el('div',{class:'grow'+(g.troops<=0?' out':'')},
+    el('div',{class:'mini',html:chibi({n:g.n,f:g.f},{arm:t.arm,side:u.side,boss:i===0})}),
+    el('div',{},el('div',{class:'gn'},el('b',{},g.n),i===0?el('span',{class:'tag'},'大將'):null,el('small',{},`${fmt(Math.max(0,g.troops))} / ${fmt(g.max)}`)),
+      el('i',{class:'hp big'},el('i',{style:`width:${Math.max(0,g.troops)/g.max*100}%`})),
+      el('div',{class:'st'},ST4.map(k=>`${k[0]} ${Math.round(g.st[k])}`).join('　')),
+      el('div',{class:'sks'},...g.skills.map(s=>skillChip(s.name))))));
+  const acts=[];
+  if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard()};acts.push(w)}
+  box.replaceChildren(el('div',{class:'ih'},el('b',{style:`color:${SIDE_COL[u.side]}`},t.name),
+    el('small',{},`${ARMS.find(a=>a[0]===t.arm)?.[1]||t.arm}・兵力 ${fmt(total(t))}・移動 ${mv(u)}・射程 ${rg(u)}・地形 ${G.T[u.y][u.x]}${u.garrison?'・守軍':''}${t.bingaku?'・兵學 '+t.bingaku:''}`)),...rows,el('div',{class:'row'},...acts));
+}
+
+async function tap(x,y){
+  if(!G||G.busy||G.over)return;
+  const u=unitAt(x,y),s=G.sel,me=ctrl();
+  if(G.mode==='pvp'&&G.foe==='ai'&&G.phase===1)return;
+  if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);return}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();return}}
+  if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;renderBoard();return}
+  G.sel=null;G.peek=u||null;renderBoard();
+}
+
+async function fight(a,d){
+  const was=G.busy;G.busy=true;G.sel=null;
+  d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
+  const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
+  const r=battle(a.team,d.team);
+  a.acted=true;a.moved=true;
+  await playBattle(a,d,before,r);
+  const res={W:'勝利',D:'平局',L:'敗北'}[r.res];
+  const lost=(i,u)=>fmt(before[i].reduce((s,x)=>s+x,0)-total(u.team));
+  addLog(`${a.team.name} 攻擊 ${d.team.name}：${res}（${r.rounds} 回合；攻方損失 ${lost(0,a)}，守方損失 ${lost(1,d)}）`);
+  if(d.garrison){
+    if(r.res==='D'){d.drawUntil=G.day+DRAW_DAYS-1;addLog(`平局：${d.team.name} 保留剩餘兵力 ${DRAW_DAYS} 天，之後恢復滿兵。`)}
+    else if(alive(d)){d.team.gens.forEach(g=>g.troops=g.max);d.drawUntil=null}   // garrison is full again after a loss
+  }
+  if(!alive(d))addLog(`${d.team.name} 潰走！`);
+  if(!alive(a))addLog(`${a.team.name} 潰走！`);
+  G.busy=was;checkOver();renderBoard();
+}
+function checkOver(){
+  const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
+  if(!left(1))G.over=G.mode==='land'?'佔領成功！':G.foe==='2p'?'藍方獲勝！':'勝利！';
+  else if(!left(0))G.over=G.mode==='land'?'出征失敗：全軍潰走':G.foe==='2p'?'紅方獲勝！':'敗北';
+  else if(G.mode==='land'&&G.day>DAYS)G.over=`出征失敗：${DAYS} 天內沒有攻下`;
+  if(G.over){addLog(G.over);$('overMsg').textContent=G.over;$('over').hidden=false}
+}
+async function endTurn(){
+  if(G.busy||G.over)return;
+  G.sel=null;G.peek=null;
+  if(G.mode==='pvp'&&G.phase===0){
+    G.phase=1;for(const u of G.units)if(u.side===1){u.acted=false;u.moved=false}
+    renderBoard();
+    if(G.foe==='ai'){await aiTurn();if(G.over)return;}
+    else return;
+  }
+  G.phase=0;G.day++;
+  for(const u of G.units){u.acted=false;u.moved=false;
+    if(u.garrison&&u.drawUntil&&G.day>u.drawUntil&&alive(u)){u.team.gens.forEach(g=>g.troops=g.max);u.drawUntil=null;addLog(`${u.team.name} 平局保留時間已過，恢復滿兵。`)}}
+  checkOver();renderBoard();
+}
+async function aiTurn(){
+  G.busy=true;renderBoard();
+  for(const u of G.units.filter(u=>u.side===1&&alive(u))){
+    if(G.over)break;
+    await sleep(350);
+    const R=reach(u);let best=null;
+    for(const k of R.keys()){
+      const[x,y]=k.split(',').map(Number);
+      for(const o of targets(u,{x,y})){
+        const sc=-total(o.team)/totalMax(o.team)*10000-total(o.team)+(G.T[y][x]==='林'?500:0);
+        if(!best||sc>best.sc)best={x,y,o,sc};
+      }
+    }
+    if(best){u.x=best.x;u.y=best.y;renderBoard();await sleep(300);await fight(u,best.o);continue}
+    // no target: walk toward the nearest enemy
+    const foes=G.units.filter(o=>o.side===0&&alive(o));if(!foes.length)break;
+    let bk=null;
+    for(const k of R.keys()){const[x,y]=k.split(',').map(Number);const d=Math.min(...foes.map(o=>dist({x,y},o)))+(G.T[y][x]==='林'?-.3:0);if(!bk||d<bk.d)bk={x,y,d}}
+    u.x=bk.x;u.y=bk.y;u.acted=true;renderBoard();
+  }
+  G.busy=false;renderBoard();
+}
+
+// ---- battle playback ----
+const SPEEDS=[['1','普通',650],['2','快',300],['4','很快',120]];
+let speed=+(SET.speed||1);
+const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0'};
+async function playBattle(a,d,before,r){
+  const dlg=$('bt');
+  const sides=[a.side===0?a:d,a.side===0?d:a];   // blue at the bottom
+  const pre=t=>t===a?before[0]:before[1];
+  const cards={};
+  const row=(u)=>el('div',{class:'brow'},...u.team.gens.map((g,i)=>{
+    const c=el('div',{class:'bcard'+(pre(u)[i]<=0?' out':''),style:`--side:${SIDE_COL[u.side]}`},
+      el('div',{class:'fig',html:chibi({n:g.n,f:g.f},{arm:u.team.arm,side:u.side,boss:i===0})}),
+      el('div',{class:'bn'},el('b',{},g.n),i===0?el('span',{class:'tag'},'大將'):null),
+      el('i',{class:'hp big'},el('i',{style:`width:${pre(u)[i]/g.max*100}%`})),el('small',{class:'tv'},fmt(pre(u)[i])));
+    cards[u.side+'-'+i]=c;c._max=g.max;return c}));
+  const banner=el('div',{class:'banner'}),rd=el('div',{class:'rd'},'戰鬥開始'),res=el('div',{class:'bres'});
+  const logBox=el('ol',{class:'blog'});
+  const sp=el('div',{class:'row'});
+  const drawSp=()=>chips(sp,SPEEDS.map(s=>[s[0],s[2]?`×${s[0]} ${s[1]}`:s[1]]),String(speed),v=>{speed=+v;SET.speed=speed;save();drawSp()});drawSp();
+  let skip=false;
+  const skipB=el('button',{type:'button',class:'btn ghost'},'跳過');skipB.onclick=()=>{skip=true};
+  const done=el('button',{type:'button',class:'btn',hidden:''},'返回地圖');
+  dlg.replaceChildren(el('div',{class:'bt'},
+    el('div',{class:'bhd'},el('b',{style:`color:${SIDE_COL[sides[1].side]}`},sides[1].team.name),el('small',{},`地形 ${d.team.terrain}${d.garrison?'・守軍':''}`)),
+    row(sides[1]),el('div',{class:'mid'},rd,banner,res),row(sides[0]),
+    el('div',{class:'bhd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),el('small',{},`${a.team.name} 進攻`)),
+    el('div',{class:'row',style:'justify-content:space-between'},sp,el('div',{class:'row'},skipB,done)),
+    el('details',{},el('summary',{},'戰報'),logBox)));
+  dlg.showModal();
+  const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
+  const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
+  const float=(side,i,txt,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},txt);c.append(f);setTimeout(()=>f.remove(),900)};
+  const flash=(side,i,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
+  const lg=s=>logBox.append(el('li',{},s));
+  const ms=()=>SPEEDS.find(s=>+s[0]===speed)[2];
+  for(const e of r.log){
+    if(e.type==='round'){rd.textContent=`第 ${e.round} 回合`;lg(`— 第 ${e.round} 回合 —`);if(!skip)await sleep(ms()*.6);continue}
+    if(e.type==='end')break;
+    const who=e.side!=null?nm(e.side,e.i):'';
+    if(e.type==='stun'){float(e.side,e.i,e.why,'st');lg(`${who} ${e.why}，無法行動`)}
+    if(e.type==='prep'){banner.textContent=`${who}【${e.skill}】準備中`;banner.style.background='#555';lg(`${who} 準備【${e.skill}】`)}
+    if(e.type==='atk'||e.type==='skill'){
+      flash(e.side,e.i,e.side===0?'lunge-up':'lunge-dn');
+      if(e.type==='skill'){banner.textContent=`${who}【${e.skill}】${e.guess?'（推估）':''}`;banner.style.background=KCOL[e.kind]||'#666';banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop')}
+      const parts=[];
+      for(const t of e.tg){
+        const tn=nm(t.side,t.i);
+        if(t.v!=null){setT(t.side,t.i,t.left);float(t.side,t.i,'-'+fmt(t.v),t.dtype==='謀略'?'mo':'hit');flash(t.side,t.i,'shake');parts.push(`${tn} -${fmt(t.v)}${t.rout?'（潰敗）':''}`)}
+        if(t.heal){setT(t.side,t.i,t.left);float(t.side,t.i,'+'+fmt(t.heal),'heal');parts.push(`${tn} +${fmt(t.heal)}`)}
+        if(t.status){float(t.side,t.i,t.status,'st');parts.push(`${tn} ${t.status}`)}
+      }
+      lg(`${who}${e.type==='atk'?' 普通攻擊':`【${e.skill}】`}${parts.length?'：'+parts.join('、'):''}`);
+    }
+    if(!skip)await sleep(ms());
+  }
+  // final troops (also covers 跳過)
+  for(const u of[a,d])u.team.gens.forEach((g,i)=>setT(u.side,i,g.troops));
+  const verdict={W:'勝利',D:'平局',L:'敗北'}[r.res];
+  res.textContent=`${a.team.name}${verdict}`;res.className='bres '+r.res;
+  lg(r.res==='D'?`8 回合結束，雙方大將都沒有潰敗：平局`:`${r.res==='W'?d.team.name:a.team.name} 大將潰敗：${a.team.name}${verdict}`);
+  skipB.hidden=true;done.hidden=false;
+  await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
+}
+
+// ---- wiring ----
+$('start').onclick=startGame;
+$('endTurn').onclick=endTurn;
+$('reset').onclick=()=>{if(G&&!G.over&&!confirm('放棄這場，回到設定？'))return;G=null;$('game').hidden=true;$('setup').hidden=false;$('over').hidden=true;renderSetup()};
+$('again').onclick=()=>{$('over').hidden=true;startGame()};
+$('toSetup').onclick=()=>{$('over').hidden=true;G=null;$('game').hidden=true;$('setup').hidden=false;renderSetup()};
+$('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
+$('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（鐵炮剋足輕與器械、弓兵剋鐵炮）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；守方在森林受傷 ×${K.forest}、在土地上 ×${K.castle}。`;
+renderSetup();
