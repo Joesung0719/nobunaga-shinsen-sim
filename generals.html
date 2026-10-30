@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>真戰武將資料庫</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Same lacquer + gold look as the other pages. Layout: filters, card grid; a card opens the general's sheet. */
+:root{
+  --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
+  --gold:#e3b75a;--violet:#b77cff;--steel:#7fa3d6;--vermilion:#c8442c;--jade:#5fb58a;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+nav.site{display:flex;gap:6px;flex-wrap:wrap}
+nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem}
+nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:14px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:inherit;font-size:.82rem}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.chip:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.tabs{display:flex;gap:6px}
+.tabs .chip{font-family:var(--display);font-size:.95rem;padding:6px 18px}
+.filters{display:flex;flex-direction:column;gap:8px}
+.filters .lbl{font-size:.72rem;color:var(--muted);min-width:3em}
+input[type=search],select{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:inherit;font-size:.88rem}
+input[type=search]{flex:1;min-width:0}
+.count{font-size:.8rem;color:var(--muted)}
+/* general cards */
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.gc{position:relative;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:#0e0c0b;cursor:pointer;padding:0;color:inherit;font:inherit;text-align:left;display:flex;flex-direction:column}
+.gc.r5{border-color:#c9962d} .gc.r4{border-color:#8e5bd6} .gc.r3{border-color:#4f78b0}
+.gc .im{aspect-ratio:292/320;background:linear-gradient(160deg,#2a2420,#120f0d);display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:2.2rem;color:rgba(255,240,210,.2);overflow:hidden}
+.gc .im img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.gc .c{position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.75);font-size:.75rem;font-weight:700;display:grid;place-items:center}
+.gc .s{position:absolute;right:4px;top:4px;font-size:.62rem;background:rgba(0,0,0,.75);border-radius:3px;padding:1px 5px}
+.gc .n{font-family:var(--display);font-weight:700;font-size:.88rem;padding:4px 6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc .m{display:flex;align-items:center;gap:4px;padding:2px 6px 6px;font-size:.66rem;color:var(--muted);min-height:22px}
+.gc .m .kb{width:16px;height:16px;font-size:.6rem}
+.gc .v{margin-left:auto;font-family:var(--display);font-size:.8rem;color:var(--gold)}
+.kb{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:.85rem;color:#fff;background:#57504a}
+.gS{color:var(--gold)} .gA{color:var(--violet)} .gB{color:var(--steel)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+/* skill list */
+.slist{display:flex;flex-direction:column;gap:8px}
+.sk{border:1px solid var(--line);border-radius:8px;background:#171412;padding:10px 12px;display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px}
+.sk h3{margin:0;font-family:var(--display);font-size:1rem;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sk h3 .g{font-weight:900}
+.sk .meta{font-size:.72rem;color:var(--muted);margin-top:2px}
+.sk p{margin:6px 0 0;font-size:.82rem;line-height:1.65}
+.sk p.unk{color:var(--muted)}
+.sk .boss{color:var(--gold);font-size:.8rem;margin-top:4px;line-height:1.6}
+.who{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.who button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:#1f1a17;color:var(--paper);font:inherit;font-size:.75rem;padding:2px 10px 2px 2px;cursor:pointer}
+.who img,.who .ph{width:24px;height:24px;border-radius:50%;object-fit:cover;object-position:top;background:#2a2420;display:grid;place-items:center;font-size:.7rem}
+.who small{color:var(--muted)}
+/* general sheet */
+dialog.sheet{background:var(--lacquer);color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0;width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 48px)}
+dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
+.sh-top{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;padding:16px;position:relative}
+@media (max-width:600px){.sh-top{grid-template-columns:110px minmax(0,1fr);gap:12px;padding:12px}}
+.sh-pic{border-radius:8px;overflow:hidden;border:2px solid #c9962d;aspect-ratio:292/400;background:linear-gradient(160deg,#6b5020,#1c150a);display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:3rem;color:rgba(255,240,210,.2)}
+.sh-pic.r4{border-color:#8e5bd6} .sh-pic.r3{border-color:#4f78b0}
+.sh-pic img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.sh-x{position:absolute;right:10px;top:8px;border:0;background:none;color:var(--paper);font-size:1.5rem;cursor:pointer;line-height:1}
+.sh-name{font-family:var(--display);font-weight:900;font-size:1.6rem;letter-spacing:.08em;margin:0 30px 6px 0}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.badge{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.badge.gold{border-color:#c9962d;color:var(--gold)}
+.lvsw{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted);margin-bottom:8px}
+.lvsw input{flex:1;accent-color:var(--gold)}
+.lvsw b{color:var(--paper);min-width:3.2em}
+.sbar{display:grid;grid-template-columns:2.4em minmax(0,1fr) 3em 4.4em;gap:8px;align-items:center;font-size:.78rem;margin-top:5px}
+.sbar i{font-style:normal;color:var(--muted)}
+.sbar .trk{height:10px;border-radius:5px;background:#2b2420;overflow:hidden}
+.sbar .trk u{display:block;height:100%;background:linear-gradient(90deg,#8c7a5c,#e3b75a);text-decoration:none}
+.sbar b{font-family:var(--display);font-size:1rem;text-align:right;font-variant-numeric:tabular-nums}
+.sbar small{color:var(--muted);font-size:.68rem;text-align:right}
+.sh-body{padding:0 16px 18px;display:flex;flex-direction:column;gap:16px}
+.sh-body h4{margin:0 0 8px;font-family:var(--display);color:var(--gold);font-size:.95rem;letter-spacing:.08em}
+.traits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:600px){.traits{grid-template-columns:minmax(0,1fr)}}
+.trait{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#171412}
+.trait b{font-family:var(--display)}
+.trait .red{float:right;font-size:.7rem;color:#e0533a}
+.trait p{margin:4px 0 0;font-size:.78rem;line-height:1.6;color:var(--paper)}
+.trait p.unk{color:var(--muted)}
+.note{font-size:.8rem;color:var(--muted);line-height:1.7;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>真戰武將資料庫</h1>
+      <p>武將屬性、成長、特性與戰法 · 資料來自玩家截圖</p>
+    </div>
+    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="land.html">打地模擬</a><a href="generals.html" aria-current="page">武將資料庫</a></nav>
+  </header>
+
+  <section class="panel filters">
+    <div class="row tabs" role="group" aria-label="資料庫" id="tabs"></div>
+    <div class="row"><input type="search" id="q" placeholder="搜尋武將或戰法名稱" autocomplete="off"><select id="sort" aria-label="排序"></select></div>
+    <div class="row" id="f1"></div>
+    <div class="row" id="f2"></div>
+    <div class="count" id="count"></div>
+  </section>
+
+  <section class="panel" id="list"></section>
+
+  <p class="note">屬性為截圖中的 Lv1 數值與每級成長，Lv50 = Lv1 + 成長 × 49（未含配點、紅度特性與設施加成）。特性第 1 個固有，第 2～4 個分別在 1、3、5 紅解鎖。戰法說明的「a→b」代表 Lv1→滿級。尚未收集的部分會標示出來，資料會隨截圖持續補齊。</p>
+</div>
+<dialog class="sheet" id="sheet"></dialog>
+
+<script type="module">
+const [D,CARDS]=await Promise.all([fetch('land.json').then(r=>r.json()),fetch('data.json').then(r=>r.json())]);
+const $=id=>document.getElementById(id);
+const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
+const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
+const ST6=['武勇','智略','統率','速度','政務','魅力'];
+const KINDS=['指揮','主動','突擊','被動','兵種','內政'];
+const KLABEL={兵種:'兵種＆陣型'};
+const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0',內政:'#8d8370'};
+const FACTIONS=['織田','豐臣','德川','武田','上杉','群雄'];
+const RED_AT=[0,1,3,5];
+
+// ---- one roster: 5★ with stats, plus pool cards without stats yet ----
+const G=new Map();
+for(const c of CARDS)G.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f,img:c.id});
+for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
+const innOf=n=>D.stats[n]?.inn||null;
+const teachOf=n=>D.teach?.[n]||null;
+const kindOf=s=>D.kind?.[s]||null;
+const kindBadge=s=>{const k=kindOf(s);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
+const lv=(x,k,L)=>x.st[k][0]+x.st[k][1]*(L-1);
+// skill → generals carrying it (innate or 傳授)
+const HOLD=new Map();
+const hold=(s,n,how)=>{if(!s)return;if(!HOLD.has(s))HOLD.set(s,[]);HOLD.get(s).push([n,how])};
+for(const n of G.keys()){hold(innOf(n),n,'固有');hold(teachOf(n),n,'傳授')}
+const SKILLS=[...new Set([...Object.keys(D.skillText||{}),...HOLD.keys()])];
+
+// ---- state (remembered per viewer) ----
+const KEY='shinsen-db-v1';
+const S=Object.assign({tab:'g',season:'',fac:'',r:'5',kind:'',sort:'cost'},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}})());
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
+function chips(box,label,opts,key){
+  box.replaceChildren(el('span',{class:'lbl'},label));
+  for(const[k,t]of opts){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S[key]===k)},t);b.onclick=()=>{S[key]=k;save();render()};box.append(b)}
+}
+const SORTS={g:[['cost','Cost'],['武勇','武勇（Lv50）'],['智略','智略（Lv50）'],['統率','統率（Lv50）'],['速度','速度（Lv50）'],['name','名稱']],s:[['grade','等級'],['name','名稱']]};
+
+function render(){
+  $('tabs').replaceChildren(...[['g','武將'],['s','戰法']].map(([k,t])=>{const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.tab===k)},t);b.onclick=()=>{S.tab=k;save();render()};return b}));
+  const sorts=SORTS[S.tab];if(!sorts.some(s=>s[0]===S.sort))S.sort=sorts[0][0];
+  $('sort').replaceChildren(...sorts.map(([k,t])=>el('option',{value:k},`排序：${t}`)));$('sort').value=S.sort;
+  if(S.tab==='g')renderGenerals();else renderSkills();
+}
+$('sort').onchange=e=>{S.sort=e.target.value;save();render()};
+$('q').oninput=()=>render();
+
+function renderGenerals(){
+  chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK']],'season');
+  const f2=$('f2');chips(f2,'勢力',[['','全部'],...FACTIONS.map(f=>[f,f])],'fac');
+  f2.append(el('span',{class:'lbl',style:'margin-left:8px'},'稀有度'));
+  for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}
+  const q=$('q').value.trim();
+  const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)));
+  const key=S.sort;
+  list.sort((a,b)=>key==='name'?a.n.localeCompare(b.n,'zh-Hant'):key==='cost'?b.r-a.r||(b.c||0)-(a.c||0)||a.n.localeCompare(b.n,'zh-Hant'):(b.x?lv(b.x,key,50):-1)-(a.x?lv(a.x,key,50):-1));
+  $('count').textContent=`${list.length} 名武將（${list.filter(g=>g.x).length} 名有屬性資料）`;
+  const grid=el('div',{class:'ggrid'});
+  for(const g of list){
+    const inn=innOf(g.n),v=g.x&&ST6.includes(key)?Math.round(lv(g.x,key,50)):null;
+    const b=el('button',{class:`gc r${g.r}`,type:'button'},
+      el('div',{class:'im'},g.img!=null?el('img',{src:artSrc(g.img),alt:'',loading:'lazy'}):g.n[0]),
+      el('div',{class:'c'},String(g.c??'?')),g.x?.season?el('div',{class:'s'},g.x.season):null,
+      el('div',{class:'n'},g.n),
+      el('div',{class:'m'},inn?kindBadge(inn):null,el('span',{},g.f||''),v!=null?el('span',{class:'v'},String(v)):null));
+    b.onclick=()=>openGeneral(g.n);grid.append(b);
+  }
+  $('list').replaceChildren(list.length?grid:el('div',{class:'empty'},'沒有符合的武將'));
+}
+
+function skillCard(s,{withHolders=true}={}){
+  const t=D.skillText?.[s],gr=D.skills?.[s]||t?.g||'?',k=kindOf(s);
+  const meta=[k?KLABEL[k]||k:'類型未知',t?.tags,t?.target,t&&`發動 ${t.rate}`,t?.arm&&`限${t.arm}`].filter(Boolean).join('・');
+  const who=withHolders&&HOLD.get(s)?el('div',{class:'who'},...HOLD.get(s).map(([n,how])=>{const g=G.get(n);
+    const b=el('button',{type:'button'},g?.img!=null?el('img',{src:artSrc(g.img),alt:''}):el('span',{class:'ph'},n[0]),n,el('small',{},how));b.onclick=()=>openGeneral(n);return b})):null;
+  return el('div',{class:'sk',id:`s-${s}`},kindBadge(s),el('div',{},
+    el('h3',{},el('span',{class:`g g${gr}`},gr),s),el('div',{class:'meta'},meta),
+    t?el('p',{},t.text):el('p',{class:'unk'},'效果說明尚未收集'),
+    t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,who));
+}
+function renderSkills(){
+  chips($('f1'),'分類',[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],'kind');
+  $('f2').replaceChildren();
+  const q=$('q').value.trim();
+  const list=SKILLS.filter(s=>{const k=kindOf(s);return(!S.kind||(S.kind==='?'?!k:k===S.kind))&&(!q||s.includes(q)||HOLD.get(s)?.some(([n])=>n.includes(q)))});
+  const GO=['S','A','B'];
+  list.sort((a,b)=>S.sort==='name'?a.localeCompare(b,'zh-Hant'):GO.indexOf(D.skills?.[a]||'S')-GO.indexOf(D.skills?.[b]||'S')||(D.skillText?.[b]?1:0)-(D.skillText?.[a]?1:0)||a.localeCompare(b,'zh-Hant'));
+  $('count').textContent=`${list.length} 個戰法（${list.filter(s=>D.skillText?.[s]).length} 個有說明）`;
+  // generals' own skills first; long tail of garrison-only skills has no text yet
+  const box=el('div',{class:'slist'});for(const s of list)box.append(skillCard(s));
+  $('list').replaceChildren(list.length?box:el('div',{class:'empty'},'沒有符合的戰法'));
+}
+
+// ---- general sheet ----
+const dlg=$('sheet');
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+dlg.addEventListener('close',()=>{if(location.hash)history.replaceState(null,'',location.pathname)});
+function openGeneral(n){
+  const g=G.get(n);if(!g)return;const x=g.x;
+  history.replaceState(null,'',`#${encodeURIComponent(n)}`);
+  const close=el('button',{class:'sh-x',type:'button','aria-label':'關閉'},'×');close.onclick=()=>dlg.close();
+  const bars=el('div');
+  let L=50;
+  const lvIn=el('input',{type:'range',min:'1',max:'50',value:'50','aria-label':'等級'}),lvB=el('b',{},'Lv50');
+  const drawBars=()=>{
+    if(!x){bars.replaceChildren(el('p',{class:'note'},'屬性尚未收集'));return}
+    const top=Math.max(...ST6.map(k=>lv(x,k,50)));
+    bars.replaceChildren(...ST6.map(k=>{const v=lv(x,k,L);return el('div',{class:'sbar'},el('i',{},k),el('div',{class:'trk'},el('u',{style:`width:${v/top*100}%`})),el('b',{},String(Math.round(v))),el('small',{},`+${x.st[k][1]}/級`))}));
+  };
+  lvIn.oninput=()=>{L=+lvIn.value;lvB.textContent=`Lv${L}`;drawBars()};
+  drawBars();
+  const tt=D.traitText?.[n]||{};
+  const traits=x?.traits?.length?el('div',{class:'traits'},...x.traits.map((t,j)=>el('div',{class:'trait'},
+    el('span',{class:'red'},j?`${RED_AT[j]} 紅解鎖`:'固有'),el('b',{},t),tt[t]?el('p',{},tt[t]):el('p',{class:'unk'},'效果說明尚未收集')))):el('p',{class:'note'},'特性尚未收集');
+  const inn=innOf(n),teach=teachOf(n);
+  dlg.replaceChildren(
+    el('div',{class:'sh-top'},close,
+      el('div',{class:`sh-pic r${g.r}`},g.img!=null?el('img',{src:artSrc(g.img),alt:n}):n[0]),
+      el('div',{},el('h2',{class:'sh-name'},n),
+        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null),
+        x?el('div',{class:'lvsw'},'等級',lvIn,lvB):null,bars)),
+    el('div',{class:'sh-body'},
+      el('div',{},el('h4',{},'特性'),traits),
+      el('div',{},el('h4',{},'固有戰法'),inn?skillCard(inn,{withHolders:false}):el('p',{class:'note'},'尚未收集')),
+      el('div',{},el('h4',{},'傳授戰法'),teach?skillCard(teach):el('p',{class:'note'},'尚未收集'))));
+  if(!dlg.open)dlg.showModal();
+  dlg.scrollTop=0;
+}
+
+render();
+const h=decodeURIComponent(location.hash.slice(1));if(h&&G.has(h))openGeneral(h);
+</script>
+</body>
+</html>
