@@ -100,44 +100,124 @@ td.n,th.n{text-align:right}
 .r5t{color:var(--gold)} .r4t{color:var(--violet)} .r3t{color:var(--steel)}
 .empty{padding:22px;text-align:center;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-/* team builder */
+/* team builder: picture-first cards; every choice opens a picker instead of a dropdown */
+:root{--k指揮:#5b8fd8;--k主動:#d0573c;--k突擊:#e3923a;--k被動:#4fae7f;--k兵種:#a771f0;--k內政:#8d8370;--k未分類:#57504a}
 .slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 @media (max-width:760px){.slots{grid-template-columns:minmax(0,1fr)}}
-.slot{border:1px solid var(--line);border-radius:6px;padding:10px;background:#171412;display:flex;flex-direction:column;gap:8px}
-.slot .hd{display:flex;gap:10px;align-items:center}
-.slot .face{width:58px;flex:none;aspect-ratio:292/400;border-radius:4px;overflow:hidden;border:2px solid var(--line);background:#0e0c0b;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:1.4rem;color:rgba(255,240,210,.25)}
-.slot .face.r5{border-color:#c9962d} .slot .face.r4{border-color:#8e5bd6} .slot .face.r3{border-color:#4f78b0}
-.slot .face img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
-.slot .season{margin-left:6px;font-size:.68rem;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--paper)}
-.slot .role{font-family:var(--display);font-weight:700;font-size:.8rem;color:var(--muted)}
-.slot .role.boss{color:var(--gold)}
-.slot .sk{font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:#1c1916;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot .sk b{font-family:var(--display);margin-right:5px}
-.slot .sk.unk{color:var(--muted)}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-variant-numeric:tabular-nums}
-.stats-row span{border:1px solid var(--line);border-radius:4px;text-align:center;font-family:var(--display);font-weight:700;font-size:.95rem;padding:2px 0}
-.stats-row i{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:.65rem;color:var(--muted)}
-.pts{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.pts input{width:100%;min-width:0;text-align:center}
-.pts-hd{font-size:.72rem;color:var(--muted)}
-.pts-hd b.over{color:#e06c5a}
-.stats-row.unk{display:block;font-size:.75rem;color:var(--muted)}
-.traits{display:flex;flex-wrap:wrap;gap:4px}
-.traits span{font-size:.72rem;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--paper)}
-.traits span.lock{color:var(--muted);opacity:.55;text-decoration:line-through}
-.traits span small{color:var(--muted);margin-left:3px}
-.slot details{font-size:.75rem;color:var(--muted);line-height:1.5}
-.slot details summary{cursor:pointer;color:var(--paper)}
-.slot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted)}
-.teamfoot{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
-.teamfoot label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted);min-width:120px}
-.teamfoot .sum{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.teamfoot .sum b{color:var(--paper)}
-.teamfoot .sum .over{color:var(--vermilion)}
-.teamfoot .sbtn[disabled]{opacity:.45;cursor:default}
-.teamfoot .sbtn{width:auto;padding:7px 16px}
-.teamfoot label.chk{min-width:auto;justify-content:flex-end}
-.teamfoot label.chk span{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--paper);padding:7px 0}
+.slot{border:1px solid var(--line);border-radius:8px;background:#171412;display:flex;flex-direction:column;overflow:hidden}
+.slot.boss{border-color:#7a5c22}
+.hero{position:relative;display:block;width:100%;padding:0;border:0;cursor:pointer;background:linear-gradient(160deg,#6b5020,#1c150a);aspect-ratio:292/250;overflow:hidden;color:inherit;font:inherit;text-align:left}
+@media (max-width:760px){.hero{aspect-ratio:292/190}}
+.hero.r4{background:linear-gradient(160deg,#3d2860,#120d1b)} .hero.r3{background:linear-gradient(160deg,#233a5c,#0c121c)}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.hero .ph{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:3.4rem;color:rgba(255,240,210,.18)}
+.hero::after{content:"";position:absolute;inset:auto 0 0 0;height:55%;background:linear-gradient(transparent,rgba(10,8,7,.92))}
+.hero .tag{position:absolute;top:8px;z-index:1;font-family:var(--display);font-weight:700;font-size:.75rem;border-radius:4px;padding:1px 8px;background:rgba(0,0,0,.6)}
+.hero .tag.role{left:8px} .hero .tag.role.boss{background:linear-gradient(#ffe99a,#d8a840);color:#3a2606}
+.hero .tag.season{right:8px;border:1px solid rgba(255,255,255,.25)}
+.hero .cost{position:absolute;left:8px;top:34px;z-index:1;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.7);display:grid;place-items:center;font-weight:700;font-size:.85rem}
+.hero .nm{position:absolute;left:10px;right:10px;bottom:8px;z-index:1;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.hero .nm b{font-family:var(--display);font-weight:900;font-size:1.25rem;letter-spacing:.06em;text-shadow:0 1px 4px #000}
+.hero .nm span{font-size:.72rem;color:var(--muted)}
+.hero .swap{position:absolute;right:8px;top:34px;z-index:1;font-size:.7rem;color:var(--paper);background:rgba(0,0,0,.55);border-radius:999px;padding:2px 8px;opacity:.85}
+.slot .body{padding:10px;display:flex;flex-direction:column;gap:10px}
+.reds{display:flex;align-items:center;gap:6px}
+.reds button{width:22px;height:22px;padding:0;border:0;cursor:pointer;background:none;color:#4a3f37;font-size:1.05rem;line-height:1}
+.reds button.on{color:#e0533a;text-shadow:0 0 6px rgba(224,83,58,.5)}
+.reds small{font-size:.72rem;color:var(--muted);margin-left:auto}
+.bars{display:flex;flex-direction:column;gap:5px}
+.sbar{display:grid;grid-template-columns:2.2em minmax(0,1fr) 2.6em auto;gap:6px;align-items:center;font-size:.75rem}
+.sbar>i{font-style:normal;color:var(--muted)}
+.sbar .trk{height:10px;border-radius:5px;background:#2b2420;overflow:hidden;display:flex}
+.sbar .trk u{display:block;height:100%;background:#8c7a5c;text-decoration:none}
+.sbar .trk s{display:block;height:100%;background:#e3b75a;text-decoration:none}
+.sbar .trk em{display:block;height:100%;background:#4fb7c8}
+.sbar b{font-family:var(--display);font-size:.95rem;text-align:right;font-variant-numeric:tabular-nums}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.step button{border:0;background:none;color:var(--paper);width:22px;height:20px;cursor:pointer;padding:0;font-size:.9rem}
+.step button:disabled{opacity:.3;cursor:default}
+.step span{min-width:2em;text-align:center;font-variant-numeric:tabular-nums;color:#7fd6e0}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:8px;border-radius:2px;margin-right:3px;vertical-align:middle}
+.legend .left{margin-left:auto;color:var(--paper)}
+.legend .left b{color:#7fd6e0}
+.skills{display:flex;flex-direction:column;gap:6px}
+.skt{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;text-align:left;cursor:pointer;
+  background:#1f1a17;border:1px solid var(--line);border-radius:6px;padding:6px 8px;color:var(--paper);font:inherit}
+.skt:hover{border-color:#6b5a44}
+.skt.empty{border-style:dashed;color:var(--muted);background:transparent}
+.kb{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:.85rem;color:#fff;background:var(--k未分類)}
+.skt .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.skt .t b{font-family:var(--display);font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skt .t small{font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skt .g{font-family:var(--display);font-weight:900;font-size:1rem}
+.skt .warn{color:var(--vermilion);font-size:.68rem}
+.tr4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.tri{border:1px solid var(--line);border-radius:6px;background:#1f1a17;padding:5px 2px 4px;text-align:center;cursor:pointer;color:var(--paper);font:inherit;position:relative}
+.tri .ic{display:block;font-family:var(--display);font-weight:900;font-size:1rem;line-height:1.2}
+.tri .tn{display:block;font-size:.62rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tri.lock{opacity:.4}
+.tri.lock::after{content:attr(data-red);position:absolute;top:1px;right:3px;font-size:.58rem;color:#e0533a}
+.tri.k0{border-color:#7a5c22} .tri.arm .ic{color:#a771f0} .tri.stat .ic{color:#e3b75a}
+.troopln{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted)}
+.troopln input{flex:1}
+.troopln b{color:var(--paper);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.tip{font-size:.75rem;line-height:1.6;color:var(--paper);background:#0e0c0b;border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.tip .kicker{color:var(--muted);font-size:.7rem;display:block;margin-bottom:2px}
+.tip .boss{color:var(--gold)}
+/* team strip under the cards */
+.teambar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+.tb-box{border:1px solid var(--line);border-radius:8px;padding:10px;background:#171412;display:flex;flex-direction:column;gap:8px}
+.tb-box h4{margin:0;font-size:.72rem;color:var(--muted);font-weight:500;letter-spacing:.08em}
+.meter{height:10px;border-radius:5px;background:#2b2420;overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#c9962d,#ffe99a)}
+.meter.over i{background:var(--vermilion)}
+.big{font-family:var(--display);font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
+.big small{font-size:.8rem;color:var(--muted);font-weight:400}
+.big .over{color:var(--vermilion)}
+.arms{display:flex;gap:6px}
+.arms button{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--muted);font:inherit;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:1px}
+.arms button b{font-family:var(--display);font-size:1rem}
+.arms button small{font-size:.62rem}
+.arms button[aria-pressed="true"]{border-color:#a771f0;color:var(--paper);background:rgba(167,113,240,.15)}
+.fac{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:.78rem}
+.fac .pips{display:flex;gap:3px;flex-wrap:wrap}
+.fac .pips button{width:16px;height:16px;border-radius:3px;border:1px solid var(--line);background:#2b2420;cursor:pointer;padding:0}
+.fac .pips button.on{background:var(--gold);border-color:var(--gold)}
+.fac label{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--paper)}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:.72rem;border-radius:999px;padding:2px 8px;background:#2b2420;color:var(--paper)}
+.pill b{color:var(--gold)}
+.tb-box .sbtn[disabled]{opacity:.45;cursor:default}
+details.help{font-size:.8rem;color:var(--muted);margin-top:12px}
+details.help summary{cursor:pointer;color:var(--paper)}
+details.help ul{margin:8px 0 0;padding-left:1.2em;line-height:1.7}
+/* pickers */
+dialog.pick{background:var(--lacquer);color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0;width:min(860px,calc(100vw - 32px));max-height:calc(100dvh - 48px)}
+dialog.pick::backdrop{background:rgba(0,0,0,.7)}
+.pk-hd{position:sticky;top:0;z-index:2;background:var(--lacquer);padding:12px 14px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.pk-hd .r1{display:flex;gap:8px;align-items:center}
+.pk-hd h3{margin:0;font-family:var(--display);color:var(--gold);font-size:1rem;flex:1}
+.pk-hd input[type=search]{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font:inherit;font-size:.85rem;width:100%}
+.pk-x{border:0;background:none;color:var(--paper);font-size:1.4rem;cursor:pointer;line-height:1;padding:0 4px}
+.pk-body{padding:12px 14px 16px}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.gc{position:relative;border:2px solid var(--line);border-radius:6px;overflow:hidden;background:#0e0c0b;cursor:pointer;padding:0;color:inherit;font:inherit;text-align:center}
+.gc.r5{border-color:#c9962d} .gc.r4{border-color:#8e5bd6} .gc.r3{border-color:#4f78b0}
+.gc .im{aspect-ratio:292/300;background:linear-gradient(160deg,#2a2420,#120f0d);display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:1.8rem;color:rgba(255,240,210,.2)}
+.gc .im img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.gc .n{font-family:var(--display);font-weight:700;font-size:.78rem;padding:3px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc .c{position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);font-size:.68rem;font-weight:700;display:grid;place-items:center}
+.gc .s{position:absolute;right:3px;top:3px;font-size:.6rem;background:rgba(0,0,0,.75);border-radius:3px;padding:0 4px}
+.gc[disabled]{opacity:.3;cursor:default}
+.gc.cur{outline:2px solid var(--paper)}
+.slist{display:flex;flex-direction:column;gap:6px}
+.srow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#1f1a17;cursor:pointer;text-align:left;color:inherit;font:inherit;width:100%}
+.srow[disabled]{opacity:.35;cursor:default}
+.srow .t b{font-family:var(--display);font-size:.95rem;margin-right:6px}
+.srow .t small{font-size:.7rem;color:var(--muted)}
+.srow .t p{margin:3px 0 0;font-size:.74rem;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.srow .g{font-family:var(--display);font-weight:900}
 .note{font-size:.82rem;color:var(--muted);line-height:1.75;margin:0;max-width:72ch}
 .note b{color:var(--paper);font-weight:500}
 .note em{font-style:normal;color:var(--vermilion)}
@@ -165,18 +245,39 @@ ul.note{padding-left:1.2em}
   <section class="panel">
     <h2>我方組隊</h2>
     <div class="slots" id="slots"></div>
-    <div class="teamfoot">
-      <label for="arm">兵種<select id="arm"><option>槍</option><option>騎</option><option>弓</option><option>鐵炮</option><option>器械</option></select></label>
-      <label for="facCo">協力設施 Lv<select id="facCo"></select></label>
-      <label for="facArm">兵種營 Lv<select id="facArm"></select></label>
-      <label for="facKa">協力-家門 Lv<select id="facKa"></select></label>
-      <label class="chk"><span><input type="checkbox" id="sameKa"> 三人同家門</span></label>
-      <div class="sum" id="teamSum"></div>
-      <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
+    <div class="teambar">
+      <div class="tb-box">
+        <h4>COST ／ 兵力</h4>
+        <div class="big" id="costBig"></div>
+        <div class="meter" id="costMeter"><i></i></div>
+        <div class="big" id="troopBig"></div>
+        <button class="sbtn" id="applyTeam" type="button">以此隊出征（兵力補滿）</button>
+      </div>
+      <div class="tb-box">
+        <h4>部隊兵種</h4>
+        <div class="arms" id="arms" role="group" aria-label="兵種"></div>
+        <div class="pills" id="armInfo"></div>
+      </div>
+      <div class="tb-box">
+        <h4>設施加成（全屬性）</h4>
+        <div class="fac" id="fac"></div>
+        <div class="pills" id="bonusPills"></div>
+      </div>
     </div>
-    <p class="sum" id="bonusSum" style="margin-top:8px;font-size:.85rem;color:var(--muted)"></p>
-    <p class="note" style="margin-top:10px">屬性為 Lv50 推算值（Lv1 屬性 + 成長率 × 49，加上自由配點，未含裝備），已套用設施的全屬性加成：三人同勢力加協力（Lv1–10：0.5%～7%），三人同家門加家門（每級 1%，最高 3%），兵種等級每級 2%，等級 = 兵種營 Lv + 隊中武將已解鎖的「X術」特性（例如馬術III 騎兵 +3）。特性依紅度解鎖（第 2～4 個特性分別要 1、3、5 紅），已解鎖的武威／智慧／領兵／靈巧會加在該武將的屬性上。自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配，配點先加在屬性上再套用百分比加成。加成相加後乘上屬性；家門資料尚未收集，請自行勾選。目前已收集 101 名 5★ 武將；隊伍 Cost 上限 20。戰法數值還沒收集，<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力。數值到齊後會改成逐回合計算，組好的隊伍會保留。</p>
+    <details class="help">
+      <summary>計算方式說明</summary>
+      <ul>
+        <li>屬性是 Lv50 推算值：Lv1 屬性 + 成長率 × 49，再加上自由配點（未含裝備）。長條上，灰色是基礎值，青色是配點，金色是 % 加成。</li>
+        <li>自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配。配點先加在屬性上，再套用 % 加成。</li>
+        <li>特性依紅度解鎖：第 1 個特性固有，第 2～4 個分別要 1、3、5 紅。已解鎖的武威／智慧／領兵／靈巧會加在該武將屬性上。</li>
+        <li>兵種等級 = 兵種營 Lv + 隊中已解鎖的兵種特性（例如馬術III 騎兵 +3、鐵炮大將 鐵炮 +3），每級全屬性 +2%。</li>
+        <li>協力：三人同勢力時，依協力設施 Lv1–10 加 0.5%～7%。家門：三人同家門時每級加 1%，最高 3%。家門資料尚未收集，請自行勾選。所有加成相加後乘上屬性。</li>
+        <li>戰法依類型上色：指揮、主動、突擊、被動、兵種＆陣型。內政戰法不會出現在打地的選單。固有戰法不能傳承。</li>
+        <li>隊伍 Cost 上限 20。<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力；數值到齊後會改成逐回合計算，組好的隊伍會保留。</li>
+      </ul>
+    </details>
   </section>
+  <dialog class="pick" id="pick"></dialog>
 
   <section class="panel">
     <div class="board">
@@ -477,30 +578,15 @@ const INNATE=new Set(Object.values(D.innate));
 const SKILLS=Object.entries(D.skills).filter(([n])=>!INNATE.has(n));
 for(const m of S.my.gens)m.s=m.s.map(x=>INNATE.has(x)?'':x);   // drop innate picks saved by older versions
 const GRADE_ORDER=['S','A','B'];
-function genSelect(cur,taken){
-  const sel=el('select');
-  for(const r of [5,4,3]){
-    const og=el('optgroup',{label:`${r}★`});
-    for(const g of [...ROSTER.values()].filter(g=>g.r===r).sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'))){
-      const o=el('option',{value:g.n},g.n+(D.stats?.[g.n]?.season?`［${D.stats[g.n].season}］`:'')+(g.garrison?'（守將）':''));if(taken.has(g.n)&&g.n!==cur)o.disabled=true;og.append(o);
-    }
-    sel.append(og);
-  }
-  sel.value=cur;return sel;
-}
-function skillTip(n){
-  const t=D.skillText?.[n];if(!t)return'';
-  return `${n}｜${t.kind} ${t.tags}｜${t.target}｜發動 ${t.rate}\n${t.text}${t.boss?`\n大將技：${t.boss}`:''}`;
-}
-function skillSelect(cur,exclude){
-  const sel=el('select');sel.append(el('option',{value:''},'（未選）'));
-  for(const gr of GRADE_ORDER){
-    const og=el('optgroup',{label:`${gr} 級`});
-    for(const[n,g]of SKILLS)if(g===gr){const o=el('option',{value:n,title:skillTip(n)},n+(D.skillText?.[n]?' ✎':''));if(exclude.has(n)&&n!==cur)o.disabled=true;og.append(o)}
-    sel.append(og);
-  }
-  sel.value=cur;return sel;
-}
+// skill categories (指揮/主動/突擊/被動/兵種＆陣型/內政); 內政 skills are kept in the data but never offered for land battles
+const KINDS=['指揮','主動','突擊','被動','兵種'];
+const KLABEL={兵種:'兵種＆陣型'};
+const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0',內政:'#8d8370'};
+const kindOf=n=>D.kind?.[n]||null;
+const kindBadge=n=>{const k=kindOf(n);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
+const SKILL_POOL=SKILLS.filter(([n])=>kindOf(n)!=='內政');
+for(const m of S.my.gens)m.s=m.s.map(x=>kindOf(x)==='內政'?'':x);
+const skillArm=n=>D.skillText?.[n]?.arm||null;   // 兵種 skills only work with that 兵種
 const GLV=50;   // attacker level used for the stat preview
 const ST4=['武勇','智略','統率','速度'];
 // free points: +10 per 10 levels and +10 per 紅 (Joe, 2026-10-29)
@@ -512,92 +598,232 @@ function clampPts(m){   // drop points from the last stats first when the pool s
 }
 // facility all-stat bonuses (Joe's 設施 screenshots): 協力 Lv1–10, 家門 Lv1–3, 兵種營 Lv1–5
 const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
+const ARMS=[['騎','騎兵'],['弓','弓兵'],['槍','足輕'],['鐵炮','鐵炮'],['器械','器械']];
 const ARM_CAMP={槍:'足輕營',騎:'騎兵營',弓:'弓兵營',鐵炮:'鐵炮營',器械:'器械營'};
+const ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'};
 const FACTIONS=['織田','豐臣','德川','武田','上杉','群雄'];
 const RED_AT=[0,1,3,5];   // 紅度 (階) needed for trait slots 1–4
 const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
 const STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
 const NUM={I:1,II:2,III:3};
-function traitFx(t){   // effects we can read from the trait name alone
-  let m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
+function traitFx(t,n){   // effects we can read from the trait text (when collected) or the trait name
+  const txt=D.traitText?.[n]?.[t];
+  let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
+  if(m)return{arm:Object.fromEntries(m[1].split('、').filter(w=>ARM_WORD[w]).map(w=>[ARM_WORD[w],+m[2]]))};
+  m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
   if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],NUM[m[2]]]))};
   m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);
-  if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][NUM[m[2]]-1]};   // II 2.5% and III 3% from screenshots; I assumed 2%
+  if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][NUM[m[2]]-1]};   // I 2%, II 2.5%, III 3% (screenshots)
   return{};
 }
 const traitsOf=n=>D.stats?.[n]?.traits||[];
 const activeTraits=m=>traitsOf(m.n).filter((_,i)=>(m.red||0)>=RED_AT[i]);
 function armLevel(){
   const f=S.my.fac;let t=0;
-  for(const m of S.my.gens)for(const tr of activeTraits(m))t+=traitFx(tr).arm?.[S.my.arm]||0;
+  for(const m of S.my.gens)for(const tr of activeTraits(m))t+=traitFx(tr,m.n).arm?.[S.my.arm]||0;
   return{lv:f.arm+t,camp:f.arm,tr:t};
 }
-function ownPct(m){const o={};for(const tr of activeTraits(m)){const x=traitFx(tr);if(x.stat)o[x.stat]=(o[x.stat]||0)+x.pct}return o}
+function ownPct(m){const o={};for(const tr of activeTraits(m)){const x=traitFx(tr,m.n);if(x.stat)o[x.stat]=(o[x.stat]||0)+x.pct}return o}
 function teamBonus(){
   const f=S.my.fac,parts=[];
   const facs=S.my.gens.map(m=>D.stats?.[m.n]?.f);
   if(f.co&&facs[0]&&FACTIONS.includes(facs[0])&&facs.every(x=>x===facs[0]))parts.push([`協力-${facs[0]}`,CO_PCT[f.co]]);
   if(f.same&&f.ka)parts.push(['協力-家門',f.ka]);
-  const al=armLevel();if(al.lv)parts.push([`${S.my.arm}兵 Lv${al.lv}（${ARM_CAMP[S.my.arm]} ${al.camp}＋特性 ${al.tr}）`,al.lv*2]);
+  const al=armLevel();if(al.lv)parts.push([`${S.my.arm}兵 Lv${al.lv}`,al.lv*2]);
   return{pct:parts.reduce((a,p)=>a+p[1],0),parts};
 }
-function statBox(n,pct=0,own={},pts={}){
-  const x=D.stats?.[n];
-  if(!x)return el('div',{class:'stats-row unk'},'屬性：尚未收集');
-  const cells=ST4.map(k=>{const[b,g]=x.st[k],a=pts[k]||0,base=b+g*(GLV-1)+a,p=pct+(own[k]||0);return el('span',{title:`Lv1 ${b}，每級 +${g}；Lv50 ${Math.round(base-a)}${a?`＋配點 ${a}`:''}，加成 +${p}%`},el('i',{},k),String(Math.round(base*(1+p/100))))});
-  return el('div',{class:'stats-row'},...cells);
+function statVals(m,pct){   // per stat: base (Lv50), free points, % bonus, total
+  const x=D.stats?.[m.n];if(!x)return null;const own=ownPct(m);
+  return ST4.map(k=>{const[b,g]=x.st[k],base=b+g*(GLV-1),a=m.pts?.[k]||0,p=pct+(own[k]||0),tot=(base+a)*(1+p/100);return{k,b,g,base,a,p,tot}});
+}
+
+// ---- pickers (one <dialog>, filled per use) ----
+const dlg=$('pick');
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+function openPicker(title,build){
+  const q=el('input',{type:'search',placeholder:'搜尋名稱',autocomplete:'off'});
+  const filters=el('div',{style:'display:flex;flex-direction:column;gap:6px'}),body=el('div',{class:'pk-body'});
+  const x=el('button',{class:'pk-x',type:'button','aria-label':'關閉'},'×');x.onclick=()=>dlg.close();
+  dlg.replaceChildren(el('div',{class:'pk-hd'},el('div',{class:'r1'},el('h3',{},title),x),q,filters),body);
+  build({q,filters,body});
+  dlg.showModal();
+}
+function chipGroup(box,opts,cur,on){   // single-choice chips; returns a getter
+  let v=cur;const bs=opts.map(([k,label])=>{const b=el('button',{class:'chip',type:'button','aria-pressed':String(k===v)},label);b.onclick=()=>{v=k;bs.forEach((x,i)=>x.setAttribute('aria-pressed',String(opts[i][0]===v)));on()};return b});
+  box.append(...bs);return()=>v;
+}
+const UI=Object.assign({season:'',fac:'',kind:''},S.ui);
+function pickGeneral(i){
+  const m=S.my.gens[i],taken=new Set(S.my.gens.map(g=>g.n));
+  openPicker(`選擇${i===0?'大將':'副將'}`,({q,filters,body})=>{
+    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['4','4★'],['3','3★']];
+    const fs=[['','全勢力'],...FACTIONS.map(f=>[f,f])];
+    const r1=el('div',{class:'row'}),r2=el('div',{class:'row'});filters.append(r1,r2);
+    const gs=chipGroup(r1,seasons,UI.season,draw),gf=chipGroup(r2,fs,UI.fac,draw);
+    q.oninput=draw;
+    function draw(){
+      UI.season=gs();UI.fac=gf();S.ui=UI;save();
+      const s=UI.season,f=UI.fac,t=q.value.trim();
+      const list=[...ROSTER.values()].filter(g=>{
+        const x=D.stats?.[g.n];
+        if(s==='4'||s==='3'){if(g.r!==+s)return false}else if(s&&x?.season!==s)return false;
+        if(f&&x?.f!==f)return false;
+        return !t||g.n.includes(t);
+      }).sort((a,b)=>b.r-a.r||(+b.c||0)-(+a.c||0)||a.n.localeCompare(b.n,'zh-Hant'));
+      const grid=el('div',{class:'ggrid'});
+      for(const g of list){
+        const x=D.stats?.[g.n];
+        const b=el('button',{class:`gc r${g.r}${g.n===m.n?' cur':''}`,type:'button',title:g.n+(x?`｜${x.f}｜Cost ${g.c}`:'')},
+          el('div',{class:'im'},g.img!=null?el('img',{src:artSrc(g.img),alt:'',loading:'lazy'}):g.n[0]),
+          el('div',{class:'c'},String(g.c??'?')),x?.season?el('div',{class:'s'},x.season):g.garrison?el('div',{class:'s'},'守將'):null,
+          el('div',{class:'n'},g.n));
+        if(taken.has(g.n)&&g.n!==m.n)b.disabled=true;
+        b.onclick=()=>{m.n=g.n;m.s=m.s.map(s=>s===innateOf(m.n)?'':s);save();dlg.close();renderBuilder()};
+        grid.append(b);
+      }
+      body.replaceChildren(list.length?grid:el('div',{class:'empty'},'沒有符合的武將'));
+    }
+    draw();
+  });
+}
+function skillRow(n,disabled,onPick){
+  const t=D.skillText?.[n],gr=D.skills[n]||'?',k=kindOf(n);
+  const b=el('button',{class:'srow',type:'button'},kindBadge(n),
+    el('div',{class:'t'},el('b',{},n),el('small',{},[k?KLABEL[k]||k:'類型未知',t?.tags,t?.target,t&&`發動 ${t.rate}`,skillArm(n)&&`限${skillArm(n)}`].filter(Boolean).join('・')),
+      el('p',{},t?t.text:'效果說明尚未收集')),
+    el('span',{class:`g g${gr}`},gr));
+  if(disabled)b.disabled=true;else if(onPick)b.onclick=onPick;
+  return b;
+}
+function pickSkill(i,j){
+  const m=S.my.gens[i],inn=innateOf(m.n),cur=m.s[j];
+  const used=new Set([inn,...m.s.filter((_,k)=>k!==j)]);
+  openPicker(`傳承戰法 ${j+1}・${m.n}`,({q,filters,body})=>{
+    const r1=el('div',{class:'row'});filters.append(r1);
+    const gk=chipGroup(r1,[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],UI.kind,draw);
+    q.oninput=draw;
+    function draw(){
+      UI.kind=gk();S.ui=UI;save();
+      const kf=UI.kind,t=q.value.trim();
+      const list=SKILL_POOL.filter(([n])=>{const k=kindOf(n);return(!kf||(kf==='?'?!k:k===kf))&&(!t||n.includes(t))})
+        .sort((a,b)=>GRADE_ORDER.indexOf(a[1])-GRADE_ORDER.indexOf(b[1])||(D.skillText?.[b[0]]?1:0)-(D.skillText?.[a[0]]?1:0)||a[0].localeCompare(b[0],'zh-Hant'));
+      const box=el('div',{class:'slist'});
+      if(cur)box.append(Object.assign(el('button',{class:'sbtn',type:'button'},`移除「${cur}」`),{onclick:()=>{m.s[j]='';save();dlg.close();renderBuilder()}}));
+      for(const[n]of list)box.append(skillRow(n,used.has(n),()=>{m.s[j]=n;save();dlg.close();renderBuilder()}));
+      body.replaceChildren(list.length?box:el('div',{class:'empty'},'沒有符合的戰法'));
+    }
+    draw();
+  });
+}
+function showSkill(n,role){
+  const t=D.skillText?.[n];
+  openPicker(n,({q,body})=>{
+    q.hidden=true;
+    body.append(skillRow(n,true),el('div',{class:'tip',style:'margin-top:8px'},
+      el('span',{class:'kicker'},role),t?t.text:'效果說明尚未收集',t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null));
+  });
+}
+
+// ---- builder cards ----
+function skillTile(n,label,onclick,arm){
+  if(!n)return Object.assign(el('button',{class:'skt empty',type:'button'},el('span',{class:'kb',style:'background:transparent;border:1px dashed var(--line)'},'＋'),el('div',{class:'t'},el('b',{},label),el('small',{},'點選加入')),el('span')),{onclick});
+  const t=D.skillText?.[n],gr=D.skills[n]||'?',k=kindOf(n),need=skillArm(n);
+  const off=need&&ARMS.find(a=>a[1]===need)?.[0]!==S.my.arm;
+  return Object.assign(el('button',{class:'skt',type:'button',title:t?t.text:''},kindBadge(n),
+    el('div',{class:'t'},el('b',{},n),off?el('small',{class:'warn'},`需${need}才會生效`):el('small',{},[label,k?KLABEL[k]||k:null,t?.tags].filter(Boolean).join('・'))),
+    el('span',{class:`g g${gr}`},gr)),{onclick});
+}
+function traitTiles(m){
+  const trs=traitsOf(m.n);if(!trs.length)return null;
+  const tt=D.traitText?.[m.n]||{};
+  const box=el('div',{class:'tr4'}),tip=el('div',{class:'tip',hidden:''});
+  let open=-1;
+  trs.forEach((t,j)=>{
+    const fx=traitFx(t,m.n),on=(m.red||0)>=RED_AT[j];
+    const ic=fx.arm?'兵':fx.stat?fx.stat[0]:t[0];
+    const b=el('button',{class:`tri${on?'':' lock'}${j?'':' k0'}${fx.arm?' arm':fx.stat?' stat':''}`,type:'button','data-red':`${RED_AT[j]}紅`,title:`${t}：${tt[t]||'效果尚未收集'}`},
+      el('span',{class:'ic'},ic),el('span',{class:'tn'},t));
+    b.onclick=()=>{if(open===j){tip.hidden=true;open=-1;return}open=j;tip.hidden=false;
+      tip.replaceChildren(el('span',{class:'kicker'},j?`${RED_AT[j]} 紅解鎖${on?'（已解鎖）':''}`:'固有特性'),el('b',{},t),'：',tt[t]||'效果尚未收集')};
+    box.append(b);
+  });
+  return el('div',{},box,tip);
+}
+function statBars(m,pct){
+  const v=statVals(m,pct);
+  if(!v)return el('div',{class:'legend'},'屬性：尚未收集');
+  const top=Math.max(320,...S.my.gens.flatMap(g=>(statVals(g,pct)||[]).map(x=>x.tot)));
+  const pool=ptsPool(m),left=pool-ptsUsed(m);
+  const rows=v.map(x=>{
+    const w=y=>`width:${y/top*100}%`;
+    const minus=el('button',{type:'button','aria-label':`${x.k} −5`},'−'),plus=el('button',{type:'button','aria-label':`${x.k} +5`},'+');
+    minus.disabled=!x.a;plus.disabled=!left;
+    minus.onclick=()=>{m.pts[x.k]=Math.max(0,x.a-5);save();renderBuilder()};
+    plus.onclick=()=>{m.pts[x.k]=x.a+Math.min(5,left);save();renderBuilder()};
+    return el('div',{class:'sbar',title:`Lv1 ${x.b}，每級 +${x.g}；Lv50 ${Math.round(x.base)}${x.a?`＋配點 ${x.a}`:''}，加成 +${x.p}%`},
+      el('i',{},x.k),
+      el('div',{class:'trk'},el('u',{style:w(x.base)}),el('em',{style:w(x.a)}),el('s',{style:w(x.tot-x.base-x.a)})),
+      el('b',{},String(Math.round(x.tot))),
+      el('div',{class:'step'},minus,el('span',{},String(x.a)),plus));
+  });
+  return el('div',{class:'bars'},...rows,
+    el('div',{class:'legend'},el('span',{},el('i',{style:'background:#8c7a5c'}),'Lv50'),el('span',{},el('i',{style:'background:#4fb7c8'}),'配點'),el('span',{},el('i',{style:'background:#e3b75a'}),'加成'),
+      el('span',{class:'left',html:`配點剩 <b>${left}</b> / ${pool}`})));
 }
 function renderBuilder(){
   const box=$('slots');box.replaceChildren();
-  const taken=new Set(S.my.gens.map(g=>g.n));
   const bonus=teamBonus();
   S.my.gens.forEach((m,i)=>{
-    const g=ROSTER.get(m.n)||{n:m.n,r:4,c:'?',img:null};
-    const face=el('div',{class:'face r'+g.r});
-    if(g.img!=null)face.append(el('img',{src:artSrc(g.img),alt:g.n}));else face.append(g.n[0]);
-    const gs=genSelect(m.n,taken);gs.onchange=()=>{m.n=gs.value;m.s=m.s.map(x=>x===innateOf(m.n)?'':x);save();renderBuilder()};
-    const inn=innateOf(m.n);
-    const innEl=inn?el('div',{class:'sk',title:skillTip(inn)||'固有戰法',html:`<b class="g${D.skills[inn]||'A'}">${D.skills[inn]||'?'}</b>${inn}（固有）`}):el('div',{class:'sk unk'},'固有戰法：尚未收集');
-    const it=D.skillText?.[inn];
-    const innDet=it?el('details',{},el('summary',{},'固有戰法說明'),`${it.kind}・${it.tags}・${it.target}・發動 ${it.rate}：${it.text}`,it.boss?el('div',{},`大將技：${it.boss}`):null):null;
-    const red=el('select',{title:'紅度（階）'});for(let r=0;r<=5;r++)red.append(el('option',{value:String(r)},`${r} 紅`));
-    red.value=String(m.red||0);red.onchange=()=>{m.red=+red.value;clampPts(m);save();renderBuilder()};
-    const tt=D.traitText?.[m.n]||{};
-    const trs=traitsOf(m.n);
-    const trEl=trs.length?el('div',{class:'traits'},...trs.map((t,j)=>el('span',{class:(m.red||0)>=RED_AT[j]?'':'lock',title:(tt[t]||'效果尚未收集')+(j?`（${RED_AT[j]} 紅解鎖）`:'（固有特性）')},t,j?el('small',{},`${RED_AT[j]}紅`):null))):null;
-    const slots=m.s.map((cur,j)=>{
-      const ex=new Set([inn,...m.s.filter((_,k)=>k!==j)]);
-      const sel=skillSelect(cur,ex);sel.title=skillTip(cur);sel.onchange=()=>{m.s[j]=sel.value;save();renderBuilder()};
-      return el('label',{},`傳承戰法 ${j+1}`,sel);
-    });
     clampPts(m);
-    const pool=ptsPool(m),left=pool-ptsUsed(m);
-    const ptsEl=el('div',{class:'pts'},...ST4.map(k=>{
-      const inp=el('input',{type:'number',min:'0',max:String(pool),step:'1',value:String(m.pts[k]||0),'aria-label':`${k}配點`});
-      inp.onchange=()=>{const v=Math.max(0,Math.floor(+inp.value||0));m.pts[k]=Math.min(v,(m.pts[k]||0)+pool-ptsUsed(m));save();renderBuilder()};
-      return el('label',{},k,inp);
-    }));
-    const ptsHd=el('div',{class:'pts-hd',html:`配點 剩餘 <b>${left}</b> / ${pool}（Lv${GLV} ${Math.floor(GLV/10)*10}＋紅度 ${(m.red||0)*10}）`});
-    const tr=el('input',{type:'number',min:'100',max:'20000',step:'100',value:String(m.t)});
-    tr.onchange=()=>{m.t=Math.max(100,Math.min(20000,+tr.value||9900));save();renderBuilder()};
-    box.append(el('div',{class:'slot'},
-      el('div',{class:'hd'},face,el('div',{style:'flex:1;min-width:0;display:flex;flex-direction:column;gap:4px'},
-        el('span',{class:'role'+(i===0?' boss':'')},i===0?'大將':'副將',D.stats?.[m.n]?.season?el('span',{class:'season'},D.stats[m.n].season):null),el('label',{},'武將',gs))),
-      el('label',{},'紅度',red),innEl,innDet,...slots,trEl,ptsHd,ptsEl,statBox(m.n,bonus.pct,ownPct(m),m.pts),el('label',{},'兵力',tr)));
+    const g=ROSTER.get(m.n)||{n:m.n,r:4,c:'?',img:null},x=D.stats?.[m.n];
+    const hero=el('button',{class:`hero r${g.r}`,type:'button','aria-label':`更換武將（目前：${m.n}）`},
+      g.img!=null?el('img',{src:artSrc(g.img),alt:''}):el('div',{class:'ph'},g.n[0]),
+      el('span',{class:'tag role'+(i===0?' boss':'')},i===0?'大將':'副將'),
+      x?.season?el('span',{class:'tag season'},x.season):null,
+      el('span',{class:'cost'},String(g.c??'?')),el('span',{class:'swap'},'更換'),
+      el('span',{class:'nm'},el('b',{},m.n),el('span',{},x?`${x.f}`:g.garrison?'守將':'')));
+    hero.onclick=()=>pickGeneral(i);
+    const reds=el('div',{class:'reds',role:'group','aria-label':'紅度'});
+    for(let r=1;r<=5;r++){
+      const b=el('button',{type:'button',class:r<=(m.red||0)?'on':'','aria-label':`${r} 紅`},'◆');
+      b.onclick=()=>{m.red=(m.red||0)===r?r-1:r;clampPts(m);save();renderBuilder()};reds.append(b);
+    }
+    reds.append(el('small',{},`${m.red||0} 紅`));
+    const inn=innateOf(m.n);
+    const skills=el('div',{class:'skills'},
+      inn?skillTile(inn,'固有',()=>showSkill(inn,'固有戰法（不能傳承）')):el('div',{class:'skt empty'},el('span',{class:'kb'},'？'),el('div',{class:'t'},el('b',{},'固有戰法尚未收集')),el('span')),
+      ...m.s.map((n,j)=>skillTile(n,`傳承 ${j+1}`,()=>pickSkill(i,j))));
+    const tr=el('input',{type:'range',min:'1000',max:'20000',step:'100',value:String(m.t),'aria-label':'兵力'});
+    const tv=el('b',{},fmt(m.t));
+    tr.oninput=()=>{tv.textContent=fmt(+tr.value)};
+    tr.onchange=()=>{m.t=+tr.value;save();renderBuilder()};
+    box.append(el('div',{class:'slot'+(i===0?' boss':'')},hero,el('div',{class:'body'},
+      reds,statBars(m,bonus.pct),skills,traitTiles(m),el('label',{class:'troopln'},'兵力',tr,tv))));
   });
-  $('arm').value=S.my.arm;
-  const f=S.my.fac;$('facCo').value=f.co;$('facArm').value=f.arm;$('facKa').value=f.ka;$('sameKa').checked=f.same;
-  $('bonusSum').innerHTML=bonus.parts.length?`全屬性加成 <b style="color:var(--paper)">+${bonus.pct}%</b>（${bonus.parts.map(p=>`${p[0]} ${p[1]}%`).join('、')}）`:'目前沒有設施加成';
-  const cost=S.my.gens.reduce((a,m)=>a+(+ROSTER.get(m.n)?.c||0),0),troops=S.my.gens.reduce((a,m)=>a+m.t,0);
-  const over=cost>COST_CAP;
-  $('teamSum').innerHTML=`Cost 合計 <b class="${over?'over':''}">${cost} / ${COST_CAP}</b>　兵力合計 <b>${fmt(troops)}</b>${over?'<br><span class="over">超過 Cost 上限，無法出征</span>':''}`;
-  $('applyTeam').disabled=over;
+  renderTeamBar(bonus);
 }
-$('arm').onchange=e=>{S.my.arm=e.target.value;save();renderBuilder()};
-for(const[id,max]of[['facCo',10],['facArm',5],['facKa',3]])
-  $(id).replaceChildren(...Array.from({length:max+1},(_,i)=>el('option',{value:String(i)},String(i))));
-for(const[id,k]of[['facCo','co'],['facArm','arm'],['facKa','ka']])$(id).onchange=e=>{S.my.fac[k]=+e.target.value;save();renderBuilder()};
-$('sameKa').onchange=e=>{S.my.fac.same=e.target.checked;save();renderBuilder()};
+function pips(n,cur,on){
+  const box=el('div',{class:'pips'});
+  for(let v=1;v<=n;v++){const b=el('button',{type:'button',class:v<=cur?'on':'','aria-label':`Lv${v}`});b.onclick=()=>on(cur===v?v-1:v);box.append(b)}
+  return box;
+}
+function renderTeamBar(bonus){
+  const cost=S.my.gens.reduce((a,m)=>a+(+ROSTER.get(m.n)?.c||0),0),troops=S.my.gens.reduce((a,m)=>a+m.t,0),over=cost>COST_CAP;
+  $('costBig').innerHTML=`<span class="${over?'over':''}">${cost}</span><small> / ${COST_CAP} Cost${over?'（超過上限）':''}</small>`;
+  $('costMeter').className='meter'+(over?' over':'');$('costMeter').firstElementChild.style.width=`${Math.min(1,cost/COST_CAP)*100}%`;
+  $('troopBig').innerHTML=`${fmt(troops)}<small> 兵</small>`;
+  $('applyTeam').disabled=over;
+  const al=armLevel();
+  $('arms').replaceChildren(...ARMS.map(([k,label])=>{const b=el('button',{type:'button','aria-pressed':String(S.my.arm===k)},el('b',{},k[0]),el('small',{},label));b.onclick=()=>{S.my.arm=k;save();renderBuilder()};return b}));
+  $('armInfo').replaceChildren(el('span',{class:'pill',html:`${S.my.arm}兵 <b>Lv${al.lv}</b>`}),el('span',{class:'pill'},`${ARM_CAMP[S.my.arm]} ${al.camp}`),el('span',{class:'pill'},`特性 +${al.tr}`));
+  const f=S.my.fac,set=(k,v)=>{f[k]=v;save();renderBuilder()};
+  const same=el('input',{type:'checkbox'});same.checked=f.same;same.onchange=()=>set('same',same.checked);
+  $('fac').replaceChildren(
+    el('span',{},`協力 Lv${f.co}`),pips(10,f.co,v=>set('co',v)),
+    el('span',{},`兵種營 Lv${f.arm}`),pips(5,f.arm,v=>set('arm',v)),
+    el('span',{},`家門 Lv${f.ka}`),el('div',{class:'row',style:'gap:10px'},pips(3,f.ka,v=>set('ka',v)),el('label',{},same,'三人同家門')));
+  $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]));
+}
 $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S.wounded=0;save();renderArmy();
   $('go').scrollIntoView({behavior:'smooth',block:'center'})};
 

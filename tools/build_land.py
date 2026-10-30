@@ -302,5 +302,10 @@ PK = {'長野業正', '龍造寺隆信', '伊達政宗', '佐竹義重', '石川
       '大久保長安', '相良義陽', '藤林正保', '種子島時堯', '浦上宗景', '吉岡妙林'}
 for n, x in stats.items():
     x['season'] = ('PK' if n in PK else 'S1') if n in cards else ('S2' if n in det['generals'] else 'S3')
+# ---- skill category (指揮/主動/突擊/被動/兵種/內政): from skill text, else the innate kind on the general's stat screen ----
+KIND = {'主': '主動', '突': '突擊', '指': '指揮', '被': '被動'}
+kind = {x['inn']: KIND[x['kind']] for x in stats.values() if x['kind'] in KIND}
+kind.update({n: t['kind'] for n, t in det['skills'].items()})
+out['kind'] = kind
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print('stats', len(stats), 'art', len(art), 'skillText', len(det['skills']))
