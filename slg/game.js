@@ -309,7 +309,7 @@ async function playBattle(a,d,before,r){
       el('i',{class:'hp big'},el('i',{style:`width:${pre(u)[i]/g.max*100}%`})),el('small',{class:'tv'},fmt(pre(u)[i])));
     cards[u.side+'-'+i]=c;c._max=g.max;return c}));
   const banner=el('div',{class:'banner'}),rd=el('div',{class:'rd'},'戰鬥開始'),res=el('div',{class:'bres'});
-  const logBox=el('ol',{class:'blog'});
+  const logBox=el('ol',{class:'blog'}),statBox=el('div',{class:'bstat',hidden:''});
   const sp=el('div',{class:'row'});
   const drawSp=()=>chips(sp,SPEEDS.map(s=>[s[0],s[2]?`×${s[0]} ${s[1]}`:s[1]]),String(speed),v=>{speed=+v;SET.speed=speed;save();drawSp()});drawSp();
   let skip=false;
@@ -320,7 +320,7 @@ async function playBattle(a,d,before,r){
     row(sides[1]),el('div',{class:'mid'},rd,banner,res),row(sides[0]),
     el('div',{class:'bhd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),el('small',{},`${a.team.name} 進攻`)),
     el('div',{class:'row',style:'justify-content:space-between'},sp,el('div',{class:'row'},skipB,done)),
-    el('details',{},el('summary',{},'戰報'),logBox)));
+    statBox,el('details',{},el('summary',{},'戰報'),logBox)));
   dlg.showModal();
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;c.querySelector('.hp>i').style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
@@ -353,6 +353,16 @@ async function playBattle(a,d,before,r){
   const verdict={W:'勝利',D:'平局',L:'敗北'}[r.res];
   res.textContent=`${a.team.name}${verdict}`;res.className='bres '+r.res;
   lg(r.res==='D'?`8 回合結束，雙方大將都沒有潰敗：平局`:`${r.res==='W'?d.team.name:a.team.name} 大將潰敗：${a.team.name}${verdict}`);
+  // per-general totals: damage dealt (兵刃／謀略), damage taken, healing — for comparing with real 戰報
+  const tot={};const at=(s,i)=>tot[s+'-'+i]??={out:0,bing:0,mou:0,taken:0,heal:0,act:0};
+  for(const e of r.log)if(e.type==='atk'||e.type==='skill'){
+    const me=at(e.side,e.i);if(e.type==='skill')me.act++;
+    for(const t of e.tg){if(t.v!=null){me.out+=t.v;me[t.dtype==='謀略'?'mou':'bing']+=t.v;at(t.side,t.i).taken+=t.v}if(t.heal)me.heal+=t.heal}
+  }
+  const trs=[];
+  for(const u of[sides[1],sides[0]])u.team.gens.forEach((g,i)=>{const x=at(u.side,i);
+    trs.push(`<tr style="--side:${SIDE_COL[u.side]}"><th>${g.n}</th><td>${fmt(x.bing)}</td><td>${fmt(x.mou)}</td><td>${fmt(x.heal)}</td><td>${fmt(x.taken)}</td><td>${x.act}</td></tr>`)});
+  statBox.innerHTML=`<table><thead><tr><th>武將</th><th>兵刃</th><th>謀略</th><th>治療</th><th>承傷</th><th>戰法</th></tr></thead><tbody>${trs.join('')}</tbody></table>`;statBox.hidden=false;
   skipB.hidden=true;done.hidden=false;
   await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
 }
