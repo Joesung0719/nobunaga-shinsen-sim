@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>真戰Q版戰棋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
+:root{
+  --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
+  --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+nav.site{display:flex;gap:6px;flex-wrap:wrap}
+nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem}
+nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:14px}
+.panel h2{font-family:var(--display);font-size:1.1rem;margin:0 0 10px;color:var(--gold);letter-spacing:.08em}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:.82rem}
+.chip{cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:inherit;font-size:.85rem}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.btn{cursor:pointer;font:inherit;font-weight:700;border-radius:4px;border:1px solid var(--gold);background:var(--gold);color:var(--ink);padding:8px 16px}
+.btn.ghost{background:transparent;color:var(--paper);border-color:var(--line);font-weight:500;padding:6px 12px;font-size:.85rem}
+.btn.big{font-family:var(--display);font-size:1.2rem;letter-spacing:.2em;padding:10px 28px}
+.btn:disabled{opacity:.45;cursor:default}
+.chip:focus-visible,.btn:focus-visible,select:focus-visible,.tile:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+select{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:inherit;font-size:.85rem}
+.lbl{font-size:.78rem;color:var(--muted);min-width:3em}
+
+/* setup */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:10px}
+.tcard{border:1px solid var(--line);border-left:4px solid var(--side);border-radius:6px;padding:10px;background:#171412;display:flex;flex-direction:column;gap:8px}
+.th{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.th small{color:var(--muted);font-size:.75rem}
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.figs .fig{display:flex;flex-direction:column;align-items:center;font-size:.75rem}
+.figs svg{width:72px;height:auto}
+.arms .chip{padding:2px 10px;font-size:.78rem}
+.sks{display:flex;flex-direction:column;gap:3px;font-size:.78rem}
+.sks>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.sks span{display:contents}
+.sk{cursor:pointer;font:inherit;font-size:.72rem;border-radius:3px;padding:1px 6px;border:1px solid;background:transparent;color:var(--paper)}
+.sk.t{border-color:#5fb58a}.sk.g{border-color:#e3923a;border-style:dashed}.sk.n{border-color:#4b443c;color:var(--muted)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-top:8px}
+.legend .sk{cursor:default}
+
+/* board */
+.gamebar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+#turn{font-family:var(--display);font-size:1.05rem}
+#turn b{color:var(--gold);font-size:1.3rem}
+.boardwrap{display:grid;grid-template-columns:minmax(0,480px) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:820px){.boardwrap{grid-template-columns:minmax(0,1fr)}}
+#board{position:relative;width:100%;max-width:480px;margin:0 auto;aspect-ratio:7/9;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(9,1fr);
+  border:2px solid #4a3d2c;border-radius:6px;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.tile{border:0;margin:0;padding:0;cursor:pointer;position:relative;box-shadow:inset 0 0 0 .5px #00000033;background-color:#5f7a3e;-webkit-tap-highlight-color:transparent}
+.t-平{background:#6b8a45 radial-gradient(circle at 30% 40%,#7a9a50 0 8%,transparent 9%),radial-gradient(circle at 70% 75%,#7a9a50 0 6%,transparent 7%)}
+.t-林{background:#4f7238 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%232f5a2a' stroke='%23203d1c' stroke-width='.8'%3E%3Cpath d='M10 4 L17 18 H3Z'/%3E%3Cpath d='M28 12 L36 27 H20Z'/%3E%3Cpath d='M13 20 L21 35 H5Z'/%3E%3C/g%3E%3Cg fill='%235a3b22'%3E%3Crect x='9' y='18' width='2' height='3'/%3E%3Crect x='27' y='27' width='2' height='3'/%3E%3Crect x='12' y='35' width='2' height='3'/%3E%3C/g%3E%3C/svg%3E") center/88% no-repeat}
+.t-山{background:#7c7462 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M2 34 L15 10 L23 22 L28 15 L38 34Z' fill='%23948a76' stroke='%2350483a' stroke-width='1'/%3E%3Cpath d='M15 10 L19 17 L16 16 L13 18Z' fill='%23eee'/%3E%3C/svg%3E") center/90% no-repeat}
+.t-水{background:#3b6f9e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M4 14 q4 -4 8 0 t8 0 M18 28 q4 -4 8 0 t8 0' stroke='%239cc6ea' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") center/90% no-repeat}
+.t-橋{background:#3b6f9e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='9' y='0' width='22' height='40' fill='%23a5784a'/%3E%3Cpath d='M9 5h22M9 12h22M9 19h22M9 26h22M9 33h22' stroke='%236e4a2a' stroke-width='1.2'/%3E%3Cpath d='M9 0v40M31 0v40' stroke='%234a311b' stroke-width='2'/%3E%3C/svg%3E") center/100% no-repeat}
+.t-城{background:#8d7a5a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M0 10h40M0 20h40M0 30h40M10 0v10M30 0v10M20 10v10M0 10v10M10 20v10M30 20v10M20 30v10' stroke='%23736246' stroke-width='1'/%3E%3C/svg%3E") center/100%}
+.tile.mv::after,.tile.atk::after{content:"";position:absolute;inset:2px;border-radius:4px}
+.tile.mv::after{background:rgba(90,160,255,.38);box-shadow:inset 0 0 0 1.5px rgba(170,210,255,.9)}
+.tile.atk::after{background:rgba(235,70,50,.42);box-shadow:inset 0 0 0 2px #ff9a80;animation:pulse 1s ease-in-out infinite alternate}
+.tile.sel::before{content:"";position:absolute;inset:1px;border:2px solid var(--gold);border-radius:4px;z-index:1}
+@keyframes pulse{from{opacity:.55}to{opacity:1}}
+.unit{position:absolute;width:calc(100%/7);height:calc(100%/9);left:calc(var(--x)*100%/7);top:calc(var(--y)*100%/9);pointer-events:none;
+  transition:left .28s ease,top .28s ease;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:2}
+.unit svg{width:96%;height:auto;margin-bottom:6%;filter:drop-shadow(0 0 2px var(--side))}
+.unit.done svg{filter:grayscale(.75) brightness(.8)}
+.unit.on svg{animation:bob .6s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-6%)}}
+.unit .hp{position:absolute;left:10%;right:10%;bottom:3%;height:5px}
+.unit .cnt{position:absolute;left:3%;top:3%;font-size:.62rem;background:var(--side);color:#fff;border-radius:50%;width:1.35em;height:1.35em;display:grid;place-items:center;line-height:1}
+.unit .dw{position:absolute;right:2%;top:3%;font-size:.58rem;background:var(--steel);color:#111;border-radius:3px;padding:0 2px}
+i.hp{display:block;background:#2a1f1b;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1px #0008}
+i.hp>i{display:block;height:100%;background:linear-gradient(90deg,#4fb7c8,#7fd6e0);transition:width .35s}
+i.hp.big{height:6px;margin:3px 0}
+.info{min-height:120px}
+.ih{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.ih small{color:var(--muted);font-size:.78rem}
+.grow{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:center;border-top:1px solid var(--line);padding:6px 0}
+.grow.out{opacity:.45}
+.mini svg{width:52px;height:auto}
+.gn{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.gn small{color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;font-size:.75rem}
+.tag{font-size:.65rem;background:var(--gold);color:var(--ink);border-radius:3px;padding:0 4px}
+.st{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+#mapLog{list-style:none;margin:0;padding:0;font-size:.8rem;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:3px}
+#mapLog small{color:var(--muted)}
+.over{position:fixed;inset:auto 0 0 0;background:#000c;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;z-index:20;border-top:1px solid var(--gold)}
+.over b{font-family:var(--display);font-size:1.6rem;color:var(--gold);letter-spacing:.15em}
+
+/* battle dialog */
+dialog{background:var(--lacquer);color:var(--paper);border:1px solid var(--gold);border-radius:8px;padding:12px;width:min(520px,calc(100vw - 16px));max-height:calc(100dvh - 16px)}
+dialog::backdrop{background:#000b}
+.bt{display:flex;flex-direction:column;gap:8px}
+.bhd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.bhd small{color:var(--muted);font-size:.75rem}
+.brow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bcard{position:relative;border:1px solid var(--line);border-bottom:3px solid var(--side);border-radius:6px;padding:4px;background:#171412;text-align:center}
+.bcard .fig svg{width:min(88px,100%);height:auto}
+.bcard.out .fig{filter:grayscale(1);opacity:.4;transform:rotate(-12deg) translateY(8%)}
+.bcard .bn{font-size:.72rem;display:flex;gap:3px;justify-content:center;align-items:center;white-space:nowrap;overflow:hidden}
+.bcard .tv{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.lunge-up{animation:lu .32s ease}.lunge-dn{animation:ld .32s ease}
+@keyframes lu{50%{transform:translateY(-14px) scale(1.06)}}
+@keyframes ld{50%{transform:translateY(14px) scale(1.06)}}
+.shake{animation:sh .3s ease}
+@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.fl{position:absolute;left:50%;top:28%;transform:translateX(-50%);font-weight:900;font-size:1rem;pointer-events:none;animation:fl .9s ease-out forwards;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap}
+.fl.hit{color:#ff8a6a}.fl.mo{color:#c79bff}.fl.heal{color:#7ee0a0}.fl.st{color:#ffd76a;font-size:.8rem}
+@keyframes fl{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-36px)}}
+.mid{min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.rd{font-family:var(--display);color:var(--muted);font-size:.85rem;letter-spacing:.1em}
+.banner{font-family:var(--display);font-weight:700;font-size:.95rem;border-radius:4px;padding:2px 10px;min-height:1.5em;color:#fff}
+.banner:empty{visibility:hidden}
+.banner.pop{animation:pop .3s ease}
+@keyframes pop{from{transform:scale(1.4);opacity:.3}}
+.bres{font-family:var(--display);font-weight:900;font-size:1.5rem;letter-spacing:.15em}
+.bres.W{color:var(--gold);text-shadow:0 0 16px rgba(227,183,90,.6)}.bres.D{color:var(--steel)}.bres.L{color:var(--vermilion)}
+.blog{font-size:.75rem;max-height:30vh;overflow:auto;margin:6px 0 0;padding-left:1.4em;color:#d8ccb0}
+summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
+.skd h3{margin:0 0 8px;font-family:var(--display);color:var(--gold)}
+.skd h3 small{color:var(--muted);font-family:var(--body);font-size:.75rem;font-weight:400}
+.skd p{font-size:.88rem;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>Q版戰棋</h1><p>打地、打人的小型戰棋：每格一支部隊，接觸就打 8 回合自動戰鬥</p></div>
+    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="land.html">打地模擬</a><a href="slg.html" aria-current="page">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
+  </header>
+
+  <section id="setup" class="panel">
+    <h2>出陣設定</h2>
+    <div class="row"><span class="lbl">模式</span><div class="row" id="modeChips"></div></div>
+    <div class="row" id="lvRow" style="margin-top:8px"><span class="lbl">土地</span><div class="row" id="lvChips"></div></div>
+    <p class="muted" id="lvNote"></p>
+    <div class="row" id="foeRow" style="margin-top:8px"><span class="lbl">對手</span><div class="row" id="foeChips"></div></div>
+    <h2 style="margin-top:14px">我方部隊（藍）</h2>
+    <div class="teams" id="mine"></div>
+    <div id="enemyWrap"><h2 style="margin-top:14px">對方部隊（紅）</h2><div class="teams" id="enemy"></div></div>
+    <div class="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
+    <p class="muted">「帶入打地頁的組隊」會帶入打地模擬頁目前的隊伍（含紅度、配點與設施加成後的屬性），可以在打地頁換一隊、回來帶入另一格。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
+    <div class="row" style="justify-content:center;margin-top:12px"><button id="start" class="btn big" type="button">出陣</button></div>
+  </section>
+
+  <section id="game" hidden>
+    <div class="panel">
+      <div class="gamebar"><div id="turn"></div><div class="row"><button id="endTurn" class="btn" type="button">結束這天</button><button id="reset" class="btn ghost" type="button">重新設定</button></div></div>
+    </div>
+    <div class="boardwrap" style="margin-top:12px">
+      <div id="board" role="grid" aria-label="戰場"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="panel info" id="info"></div>
+        <div class="panel"><h2>戰況</h2><ul id="mapLog"></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>規則與推估</h2>
+    <p class="muted">戰鬥依速度決定出手順序，每位武將每回合：判定主動戰法（及每回合判定的指揮、被動戰法）→ 普通攻擊 → 判定突擊戰法。大將潰敗即分出勝負，8 回合後雙方大將都在則為平局。兵力在連戰之間延續；武將兵力歸零就不再出戰，大將歸零整隊潰走。</p>
+    <p class="muted" id="formula"></p>
+    <p class="muted">打地：守軍不會移動或主動攻擊。攻擊守軍沒贏時守軍恢復滿兵；打成平局時守軍保留剩下的兵力 3 天（代替遊戲裡的 5 分鐘），之後恢復滿兵。官方傷害公式沒有公開，以上倍率都是推估，之後可以拿實際戰報對照調整。兵學欄位已預留，資料到了再補。</p>
+  </section>
+</div>
+<div class="over" id="over" hidden><b id="overMsg"></b><div class="row"><button id="again" class="btn" type="button">同樣設定再一場</button><button id="toSetup" class="btn ghost" type="button">回到設定</button></div></div>
+<dialog id="bt" aria-label="戰鬥"></dialog>
+<dialog id="skDlg" aria-label="戰法說明"></dialog>
+<script type="module" src="slg/game.js"></script>
+</body>
+</html>
