@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Q版戰棋 Phaser 原型｜桶狹間</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=LXGW+WenKai+TC:wght@400;700&display=swap">
+<style>
+:root{--ink:#121010;--paper:#efe3c8;--muted:#a39882;--gold:#e3b75a;--vermilion:#c8442c}
+html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% 35%,#5d6f63 0%,#2e3a33 45%,#141815 100%);color:var(--paper);font-family:"LXGW WenKai TC","Noto Serif TC",serif;overflow:hidden}
+#stage{position:fixed;inset:0}
+.hud{position:fixed;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));
+  background:linear-gradient(#000c,#0000);pointer-events:none;z-index:2}
+.hud h1{margin:0;font-family:"Noto Serif TC",serif;font-weight:900;font-size:1.15rem;letter-spacing:.08em;color:var(--gold);text-shadow:0 2px 0 #0008}
+.hud .day{font-size:.9rem;color:var(--paper)}
+.btns{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+button{font:inherit;font-size:.9rem;color:var(--paper);background:linear-gradient(#3a2a1e,#1d1612);border:1px solid #8a6a2a;border-radius:6px;padding:6px 10px;
+  box-shadow:inset 0 1px 0 #fff2,0 2px 0 #0008;cursor:pointer}
+button[aria-pressed="true"]{background:linear-gradient(#7d2b20,#4a1a12);border-color:var(--gold)}
+.tip{position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));z-index:2;font-size:.82rem;color:var(--muted);text-align:center;pointer-events:none;text-shadow:0 1px 2px #000}
+.tip b{color:var(--gold)}
+a{color:var(--gold)}
+@media (max-width:600px){.hud h1{font-size:1rem}.tip{font-size:.72rem}button{font-size:.8rem;padding:5px 8px}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud">
+  <div><h1>桶狹間之戰 · Phaser 原型</h1><div class="day" id="day">第 1 天</div></div>
+  <div class="btns">
+    <button id="endDay" type="button">結束這天</button>
+    <button id="rain" type="button" aria-pressed="false">豪雨</button>
+    <button id="tilt" type="button" aria-pressed="false" title="模型沙盤感（較吃效能）">移軸</button>
+    <button id="mute" type="button" aria-pressed="false">音效</button>
+    <button type="button" onclick="location.href='../../slg.html'">回正式版</button>
+  </div>
+</div>
+<div class="tip" id="tip">點<b>藍色</b>部隊 → 點藍格移動、點紅色敵軍開戰。拖曳移動鏡頭，滾輪或雙指縮放。傷害數字是示意亂數，不是正式戰鬥公式。</div>
+<script src="../../vendor/phaser/phaser-4.2.1.min.js"></script>
+<script type="module" src="main.js?v=1"></script>
+</body>
+</html>
