@@ -2,7 +2,7 @@
 // 官方公式沒有公開，這裡的傷害公式、相剋倍率、地形加成都是推估值（集中在 K 裡，方便之後用戰報對照調整）。
 // 戰法效果從 land.json 的 skillText 說明文字讀出（發動率、傷害率、目標數、治療率、控制狀態、自身屬性加點），
 // 沒有說明文字的戰法依類型與等級給通用值，並標成「推估」。
-import {bingakuHooks} from './bingaku.js?v=7';
+import {bingakuHooks} from './bingaku.js?v=8';
 
 export const K={
   rounds:8,
