@@ -1,16 +1,16 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=9';
-import {chibi,SIDE_COL} from './chibi.js?v=9';
-import {isoTerrain,isoGeom} from './iso.js?v=9';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=9';
-import {SCENARIOS} from './scenarios.js?v=9';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=9';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=10';
+import {chibi,SIDE_COL} from './chibi.js?v=10';
+import {isoTerrain,isoGeom} from './iso.js?v=10';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=10';
+import {SCENARIOS} from './scenarios.js?v=10';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=10';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='9';
+const VER='10';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -106,7 +106,7 @@ function genStats(g){
 function battleTeam(spec,side){
   return{name:spec.gens[0].n+'隊',side,arm:spec.arm,terrain:'平',
     gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps),
-      bg:bgCompile(g.bg,ROSTER.get(g.n)?.r,g.red||0),bgs:bgSummary(g.bg,ROSTER.get(g.n)?.r)}))};
+      bg:bgCompile(g.bg,ROSTER.get(g.n)?.r,g.red||0,g.n),bgs:bgSummary(g.bg,ROSTER.get(g.n)?.r,g.n)}))};
 }
 const teamsAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv}[a-z]$`).test(k));
 function armOfGarrison(k){const r=D.reports.find(r=>r.t===k&&r.ty);return r?r.ty:pick(['騎','弓','槍','鐵炮'])}
@@ -137,7 +137,7 @@ function teamCard(spec,side,i,list){
   const arms=el('div',{class:'row arms'});
   chips(arms,ARMS.map(([k,l])=>[k,l]),spec.arm,v=>{spec.arm=v;if(spec.my)spec.my.arm=v;save();renderSetup()});
   // 兵學是每位武將各自的配點，在打地頁組隊設定（按「編輯這隊」）
-  const bgl=spec.gens.map(g=>[g.n,bgSummary(g.bg,ROSTER.get(g.n)?.r)]).filter(x=>x[1]);
+  const bgl=spec.gens.map(g=>[g.n,bgSummary(g.bg,ROSTER.get(g.n)?.r,g.n)]).filter(x=>x[1]);
   const bg=el('small',{class:'muted'},bgl.length?'兵學：'+bgl.map(x=>`${x[0]} ${x[1]}`).join('｜'):'兵學：未設定（按「編輯這隊」配點）');
   const ed=el('button',{type:'button',class:'btn'},'編輯這隊');
   ed.onclick=()=>{save();location.href=`land.html?slg=${list===SET.mine?'mine':'enemy'}-${i}`};
