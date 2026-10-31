@@ -172,7 +172,7 @@ $('sort').onchange=e=>{S.sort=e.target.value;save();render()};
 $('q').oninput=()=>render();
 
 function renderGenerals(){
-  chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK']],'season');
+  chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['限定','限定']],'season');
   const f2=$('f2');chips(f2,'勢力',[['','全部'],...FACTIONS.map(f=>[f,f])],'fac');
   f2.append(el('span',{class:'lbl',style:'margin-left:8px'},'稀有度'));
   for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['2','2★'],['1','1★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}

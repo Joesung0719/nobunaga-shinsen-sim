@@ -683,7 +683,7 @@ const UI=Object.assign({season:'',fac:'',kind:''},S.ui);
 function pickGeneral(i){
   const m=S.my.gens[i],taken=new Set(S.my.gens.map(g=>g.n));
   openPicker(`選擇${i===0?'大將':'副將'}`,({q,filters,body})=>{
-    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['4','4★'],['3','3★'],['2','2★↓']];
+    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['限定','限定'],['4','4★'],['3','3★'],['2','2★↓']];
     const fs=[['','全勢力'],...FACTIONS.map(f=>[f,f])];
     const r1=el('div',{class:'row'}),r2=el('div',{class:'row'});filters.append(r1,r2);
     const gs=chipGroup(r1,seasons,UI.season,draw),gf=chipGroup(r2,fs,UI.fac,draw);

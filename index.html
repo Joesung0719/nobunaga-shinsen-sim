@@ -54,6 +54,10 @@ nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:va
 /* banner */
 #banner{background:radial-gradient(120% 90% at 20% 30%,#f7e7b9 0%,#e9cf86 35%,#b88a3c 70%,#5b3c14 100%)}
 #banner::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 0 0,rgba(255,255,255,.05) 0 2cqw,transparent 2cqw 4cqw);pointer-events:none}
+.bn-art{position:absolute;left:0;top:0;width:62cqw;height:47cqw;background:center top/cover no-repeat;
+  -webkit-mask-image:linear-gradient(to right,#000 80%,transparent),linear-gradient(to bottom,#000 78%,transparent);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,#000 80%,transparent),linear-gradient(to bottom,#000 78%,transparent);mask-composite:intersect}
+.bn-art[hidden]{display:none}
 .bn-heroes{position:absolute;left:2cqw;top:5cqw;width:56cqw;height:29cqw;display:flex;align-items:flex-end}
 .hero{position:relative;width:15cqw;height:27cqw;margin-right:-1.5cqw;overflow:hidden;
   -webkit-mask:linear-gradient(to bottom,#000 72%,transparent 96%);mask:linear-gradient(to bottom,#000 72%,transparent 96%)}
@@ -198,7 +202,7 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
   <header class="top">
     <div>
       <h1>真戰登用模擬器</h1>
-      <p>PK賽季名將／S1初始大卡池 · 單抽／五抽 · 30 抽保底 · 官方機率公告</p>
+      <p>劍心永繼（活動限定）／名將登用 · 單抽／五抽 · 30 抽保底 · 官方機率公告</p>
     </div>
     <nav class="site" aria-label="頁面"><a href="./" aria-current="page">登用模擬</a><a href="slg.html">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
     <div class="res" aria-live="polite">
@@ -211,6 +215,7 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
   <div class="stage" id="stage">
     <!-- banner -->
     <section class="view" id="banner">
+      <div class="bn-art" id="bnArt" hidden></div>
       <div class="bn-heroes" id="heroes"></div>
       <div class="hero-tags" id="heroTags"></div>
       <div class="bn-copy" id="bnCopy"></div>
@@ -259,12 +264,13 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
         <label for="p5">5★ 機率（%）<input id="p5" type="number" step="0.1" min="0" max="100"></label>
         <label for="p4">4★ 機率（%）<input id="p4" type="number" step="0.1" min="0" max="100"></label>
         <label for="pity">5★ 保底次數<input id="pity" type="number" step="1" min="1" max="200"></label>
-        <label for="up">UP 武將權重倍數<input id="up" type="number" step="0.5" min="1" max="50"></label>
+        <label for="up">限定武將權重倍數（劍心永繼）<input id="up" type="number" step="0.5" min="1" max="50"></label>
         <label class="ck" for="g5"><input id="g5" type="checkbox"> 每 5 次必得 4★ 以上（額外贈送）</label>
+        <label class="ck" for="limMei"><input id="limMei" type="checkbox"> 名將登用也放入限定武將（遊戲內不會）</label>
         <label class="ck" for="opening"><input id="opening" type="checkbox"> 播放登用開場動畫</label>
         <label class="ck" for="skipAnim"><input id="skipAnim" type="checkbox"> 快速模式（不播動畫）</label>
       </div>
-      <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選。PK賽季卡池沒有公告數字，5★ 機率比照 S1，UP 武將權重 ×6 是依活動文字「最大6倍」<b>推估</b>，S1 沒有的新武將以 0.16% 為基準。</p>
+      <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選，公告沒有的武將以同星級基準（5★ 0.16%、4★ 0.90%、3★ 3.44%）計算。<b>名將登用</b>放入資料庫裡所有非限定武將，之後新增的武將會自動加入。<b>劍心永繼</b>只放遊戲「武將一覽」列出的 37 名，沒有公告數字：限定武將柳生宗嚴、上泉信綱權重 ×6 是沿用上一期 PK 卡池「最大6倍」的<b>推估</b>。</p>
       <details class="rates" id="rates"><summary>目前卡池的個別武將機率</summary><div id="rateList"></div></details>
     </section>
   </div>
@@ -291,14 +297,14 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
 (async function(){
 const $=s=>document.querySelector(s);
 const POOL=await (await fetch('data.json',{cache:'no-cache'})).json();
-const UP=['石川數正','島津義久','龍造寺隆信','吉岡妙林'];
+const OLD_UP=['石川數正','島津義久','龍造寺隆信','吉岡妙林'];   // 舊 PK賽季卡池（只用來顯示舊紀錄）
 const img=g=>`img/c${String(g.id).padStart(3,'0')}.webp`;
 const byR={5:POOL.filter(g=>g.r===5),4:POOL.filter(g=>g.r===4),3:POOL.filter(g=>g.r===3)};
 const QUOTES=['吾乃{n}，願為主公效犬馬之勞。','天下大勢，盡在此一戰。吾乃{n}，前來助陣。','{n}在此，願隨主公馳騁沙場。'];
 
 // ---------- state ----------
 const KEY='shinsen-gacha-v2';
-const DEF={cfg:{p5:5.6,p4:36,pity:30,up:6,g5:true,skipAnim:false,opening:true},log:[],own:{},bn:'pk',pb:{pk:0,s1:0},fb:{pk:0,s1:0},coin:0};
+const DEF={cfg:{p5:5.6,p4:36,pity:30,up:6,g5:true,skipAnim:false,opening:true,limMei:false},log:[],own:{},bn:'ken',pb:{ken:0,mei:0},fb:{ken:0,mei:0},coin:0};
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S||!S.cfg||!S.pb)S=structuredClone(DEF);
@@ -307,20 +313,31 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 
 // ---------- banners ----------
 const BASE={5:0.16,4:0.9,3:3.44};
+// 劍心永繼（紅葉季一週年活動限定，Joe 2026-10-31 的「武將一覽」截圖）：只放這 37 名
+const KEN=['柳生宗嚴','上泉信綱','荒木村重','佐久間信盛','福島正則','板垣信方','山本勘助','甘粕景持','太田資正','真柄直隆','森可成','小島彌太郎','十河一存','可兒才藏',
+  '鈴木重朝','坂井政尚','栗山善助','小山田信茂','新發田重家','福原貞俊','磯野員昌','山內一豐','武田義信','脇坂安治',
+  '長野業盛','不破光治','河尻秀隆','林秀貞','小早川秀秋','內藤信成','金森長近','本莊實乃','色部長實','色部勝長','口羽通良','杉浦玄任','遠藤基信'];
+const KEN_UP=['柳生宗嚴','上泉信綱'];
 const BANNERS={
-  pk:{tab:'PK賽季武將',title:'PK賽季<span>名將</span>',sub:'名將 <b>限時概率提升</b>',copy:'限時期間5星武將登用最大<b>6倍</b>獲得機率！',
-      heroes:UP,tag:'新登場',note:'5★ 比照 S1 公告機率，UP 權重為推估值',
-      pool:POOL,weight:g=>(g.s1??BASE[g.r])*(g.r===5&&UP.includes(g.n)?S.cfg.up:1),isUp:g=>g.r===5&&UP.includes(g.n)},
-  s1:{tab:'S1初始大卡池',title:'名將<span>登用</span>',sub:'S1賽季 <b>初始大卡池</b>',copy:'5星武將登用機率 <b>5.60%</b>',
-      heroes:['織田信長','武田信玄','上杉謙信','德川家康'],tag:'名將',note:'機率依官方〈機率公告〉2025-08-29',
-      pool:POOL.filter(g=>g.s1),weight:g=>g.s1,isUp:()=>false}
+  ken:{tab:'劍心永繼',title:'劍心<span>永繼</span>',sub:'活動限定 <b>名將限時登場</b>',copy:'柳生宗嚴、上泉信綱為<b>活動限定</b>武將',
+      art:'img/bn_ken.webp',heroes:KEN_UP,tag:'新登場',note:'活動限定武將僅能於限時期間取得；限定武將權重為推估值',
+      pool:KEN.map(n=>POOL.find(g=>g.n===n)).filter(Boolean),weight:g=>(g.s1??BASE[g.r])*(KEN_UP.includes(g.n)?S.cfg.up:1),isUp:g=>KEN_UP.includes(g.n)},
+  // 名將登用：所有非限定武將（data.json 新增的武將會自動加入）
+  mei:{tab:'名將登用',title:'名將<span>登用</span>',sub:'常駐卡池 <b>全武將登場</b>',copy:'5星武將登用機率 <b>5.60%</b>',
+      art:'img/bn_mei.webp',heroes:['德川家康','織田信長','豐臣秀吉'],tag:'名將',note:'公告機率依官方〈機率公告〉2025-08-29，未公告的武將以同星級基準計算',
+      get pool(){return POOL.filter(g=>S.cfg.limMei||!g.lim)},weight:g=>g.s1??BASE[g.r],isUp:()=>false}
 };
-const B=()=>BANNERS[S.bn]||BANNERS.pk;
+const LEGACY={pk:'PK賽季武將',s1:'S1初始大卡池'};   // 舊版紀錄的卡池名稱
+const bnTab=k=>BANNERS[k]?.tab||LEGACY[k]||k;
+if(!BANNERS[S.bn])S.bn='ken';
+const B=()=>BANNERS[S.bn];
 $('#tabs').innerHTML=Object.entries(BANNERS).map(([k,b])=>`<button class="tab" role="tab" type="button" data-bn="${k}">${b.tab}</button>`).join('');
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{S.bn=t.dataset.bn;save();renderBanner();refresh()});
 function renderBanner(){
   const b=B();
   document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.bn===S.bn));
+  $('#bnArt').hidden=!b.art;if(b.art)$('#bnArt').style.backgroundImage=`url(${b.art})`;
+  $('#heroes').hidden=$('#heroTags').hidden=!!b.art;
   $('#heroes').innerHTML=b.heroes.map(n=>{const g=POOL.find(x=>x.n===n);return `<div class="hero"><img src="${img(g)}" alt=""></div>`}).join('');
   $('#heroTags').innerHTML=b.heroes.map(n=>`<div class="tag"><em>${b.tag}</em>${n}</div>`).join('');
   $('#bnTitle').innerHTML=b.title;$('#bnSub').innerHTML=b.sub;$('#bnCopy').innerHTML=b.copy;$('#bnNote').textContent=b.note;
@@ -336,7 +353,7 @@ renderBanner();
 
 // ---------- settings ----------
 ['p5','p4','pity','up'].forEach(k=>{const el=$('#'+k);el.value=S.cfg[k];el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){S.cfg[k]=v;save();refresh()}})});
-['g5','skipAnim','opening'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
+['g5','skipAnim','opening','limMei'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
 
 // ---------- roll ----------
 function pick(r){
@@ -353,7 +370,7 @@ function rollOne(){
   const pityAt=S.pb[k];
   if(r===5)S.pb[k]=0;
   const isNew=!S.own[g.id];S.own[g.id]=(S.own[g.id]||0)+1;
-  const e={i:S.log.length+1,id:g.id,r,isNew,gift,bn:k,pity:pityAt,t:Date.now()};
+  const e={i:S.log.length+1,id:g.id,r,isNew,gift,bn:k,pity:pityAt,t:Date.now(),up:B().isUp(g)};
   S.log.push(e);return {g,e};
 }
 
@@ -482,7 +499,7 @@ function intro(g){
       <div class="fac">${g.f==='群雄'?'群雄':g.f}勢力</div>
       <div class="iname">${g.n}</div>
       <div class="istars">${'★'.repeat(g.r)}</div>
-      <div class="imeta"><b>Cost ${g.c}</b>${UP.includes(g.n)?'<b>限時UP</b>':''}<br>首次登用，新武將加入麾下。</div>
+      <div class="imeta"><b>Cost ${g.c}</b>${g.lim?'<b>限定</b>':''}<br>首次登用，新武將加入麾下。</div>
       <div class="portrait"><img src="${img(g)}" alt="${g.n}"></div>
       <div class="quote">${q}</div>
       <div class="tap">點擊任意處繼續</div>`;
@@ -554,10 +571,10 @@ $('#reset').onclick=()=>{
 function renderLog(){
   const rows=S.log.filter(e=>filter==='all'||String(e.r)===filter).slice(-500).reverse();
   $('#log').innerHTML=rows.length?rows.map(e=>{const g=POOL[e.id];const d=new Date(e.t);
-    return `<tr><td>${e.i}</td><td class="nm"><img src="${img(g)}" alt="" loading="lazy">${g.n}${e.bn==='pk'&&UP.includes(g.n)&&e.r===5?' <span class="pill">UP</span>':''}</td>
+    return `<tr><td>${e.i}</td><td class="nm"><img src="${img(g)}" alt="" loading="lazy">${g.n}${e.up||e.bn==='pk'&&OLD_UP.includes(g.n)&&e.r===5?' <span class="pill">UP</span>':''}</td>
     <td class="star${e.r}">${'★'.repeat(e.r)}</td><td>${g.c}</td><td>${g.f}</td>
     <td>${e.isNew?'<span class="pill new">新武將</span>':'<span class="pill">重複</span>'}${e.gift?' <span class="pill">額外贈送</span>':''}</td>
-    <td>${e.r===5?e.pity+' 抽出金':e.pity}</td><td>${(BANNERS[e.bn]||BANNERS.pk).tab}</td><td>${d.toLocaleTimeString('zh-TW',{hour12:false})}</td></tr>`}).join('')
+    <td>${e.r===5?e.pity+' 抽出金':e.pity}</td><td>${bnTab(e.bn)}</td><td>${d.toLocaleTimeString('zh-TW',{hour12:false})}</td></tr>`}).join('')
     :`<tr><td colspan="9" class="empty">還沒有紀錄。按上方的「1次登用」或「5次登用」開始抽卡。</td></tr>`;
 }
 function refresh(){
