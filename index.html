@@ -303,7 +303,7 @@ const QUOTES=['吾乃{n}，願為主公效犬馬之勞。','天下大勢，盡�
 
 // ---------- state ----------
 const KEY='shinsen-gacha-v2';
-const DEF={cfg:{p5:5.6,p4:36,pity:30,coreP:5,corePity:6,g5:true,skipAnim:false,opening:true,limMei:false},log:[],own:{},bn:'ken',pb:{ken:0,mei:0},fb:{ken:0,mei:0},coin:0,cg:{ken:0}};
+const DEF={cfg:{p5:5.6,p4:36,pity:30,coreP:5,corePity:6,g5:true,skipAnim:false,opening:true,limMei:false},log:[],own:{},bn:'ken',pb:{ken:0,mei:0},fb:{ken:0,mei:0},coin:0,cg:{ken:0,mei:0}};
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S||!S.cfg||!S.pb)S=structuredClone(DEF);
@@ -317,10 +317,10 @@ const KEN=['柳生宗嚴','上泉信綱','荒木村重','佐久間信盛','福�
   '鈴木重朝','坂井政尚','栗山善助','小山田信茂','新發田重家','福原貞俊','磯野員昌','山內一豐','武田義信','脇坂安治',
   '長野業盛','不破光治','河尻秀隆','林秀貞','小早川秀秋','內藤信成','金森長近','本莊實乃','色部長實','色部勝長','口羽通良','杉浦玄任','遠藤基信'];
 const KEN_UP=['柳生宗嚴','上泉信綱'];
+const isCore=g=>g.r===5&&(!!g.lim||(g.m||0)>=1400);
 const BANNERS={
   ken:{tab:'劍心永繼',title:'劍心<span>永繼</span>',sub:'活動限定 <b>名將限時登場</b>',copy:'柳生宗嚴、上泉信綱為<b>活動限定</b>武將',
       art:'img/bn_ken.webp',heroes:KEN_UP,tag:'新登場',note:'活動限定武將僅能於限時期間取得；限定武將機率為推估值',
-      core:KEN_UP,
       pool:KEN.map(n=>POOL.find(g=>g.n===n)).filter(Boolean),weight:g=>g.s1??BASE[g.r],isUp:g=>KEN_UP.includes(g.n)},
   // 名將登用：所有非限定武將（data.json 新增的武將會自動加入）
   mei:{tab:'名將登用',title:'名將<span>登用</span>',sub:'常駐卡池 <b>全武將登場</b>',copy:'5星武將登用機率 <b>5.60%</b>',
@@ -345,8 +345,9 @@ function renderBanner(){
 function rateList(){
   const b=B(),tier={5:S.cfg.p5,4:S.cfg.p4,3:Math.max(0,100-S.cfg.p5-S.cfg.p4)};
   $('#rateList').innerHTML=[5,4,3].map(r=>{
-    const gs=b.pool.filter(g=>g.r===r),cp=r===5&&b.core?S.cfg.coreP/100:0,rest=gs.filter(g=>!(cp&&b.core.includes(g.n))),t=rest.reduce((a,g)=>a+b.weight(g),0);
-    const li=gs.map(g=>[g,cp&&b.core.includes(g.n)?tier[r]*cp/b.core.length:tier[r]*(1-cp)*b.weight(g)/t]).sort((x,y)=>y[1]-x[1]).map(([g,v])=>`<li class="${b.isUp(g)?'up':''}"><span>${g.n}</span><span>${v.toFixed(2)}%</span></li>`).join('');
+    const gs=b.pool.filter(g=>g.r===r),cs=gs.filter(isCore),ns=gs.filter(g=>!isCore(g)),cp=cs.length&&ns.length?S.cfg.coreP/100:0;
+    const sum=a=>a.reduce((x,g)=>x+b.weight(g),0),tc=sum(cs),tn=sum(ns);
+    const li=gs.map(g=>[g,!cp?tier[r]*b.weight(g)/sum(gs):isCore(g)?tier[r]*cp*b.weight(g)/tc:tier[r]*(1-cp)*b.weight(g)/tn]).sort((x,y)=>y[1]-x[1]).map(([g,v])=>`<li class="${b.isUp(g)?'up':''}"><span>${g.n}</span><span>${v.toFixed(2)}%</span></li>`).join('');
     return `<div class="tier">${r}★ 共 ${gs.length} 名，合計 ${tier[r].toFixed(2)}%</div><ul>${li}</ul>`}).join('');
 }
 renderBanner();
@@ -358,12 +359,11 @@ renderBanner();
 // ---------- roll ----------
 function pick(r){
   const b=B(),k=S.bn;let gs=b.pool.filter(g=>g.r===r);
-  if(r===5&&b.core){
+  const cs=gs.filter(isCore);
+  if(r===5&&cs.length&&cs.length<gs.length){
     S.cg=S.cg||{};const n=(S.cg[k]||0)+1,core=n>=S.cfg.corePity||Math.random()*100<S.cfg.coreP;
     S.cg[k]=core?0:n;
-    const cs=gs.filter(g=>b.core.includes(g.n));
-    if(core)return cs[Math.floor(Math.random()*cs.length)];
-    gs=gs.filter(g=>!b.core.includes(g.n));
+    gs=core?cs:gs.filter(g=>!isCore(g));
   }
   const w=gs.map(b.weight);let x=Math.random()*w.reduce((a,c)=>a+c);
   for(let i=0;i<w.length;i++){x-=w[i];if(x<0)return gs[i]}return gs[gs.length-1];
