@@ -88,9 +88,6 @@ nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:va
 .rates ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;font-variant-numeric:tabular-nums}
 .rates li{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:2px 0}
 .rates li.up{color:var(--gold)}
-.bn-core{font-family:var(--display);font-weight:700;font-size:max(10px,1.5cqw);color:#3a2606}
-.bn-core b{color:var(--vermilion)}
-.bn-core[hidden]{display:none}
 .bn-note{font-size:max(9px,1.2cqw);color:#4b3413}
 
 /* draw scene */
@@ -233,7 +230,6 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
             <button class="btn" id="b5" type="button">5次登用<small>990 小判</small></button>
           </div>
         </div>
-        <div class="bn-core" id="coreText" hidden></div>
         <div class="bn-note" id="bnNote"></div>
       </div>
     </section>
@@ -268,14 +264,12 @@ td.nm img{width:26px;height:34px;object-fit:cover;object-position:top;border-rad
         <label for="p5">5★ 機率（%）<input id="p5" type="number" step="0.1" min="0" max="100"></label>
         <label for="p4">4★ 機率（%）<input id="p4" type="number" step="0.1" min="0" max="100"></label>
         <label for="pity">5★ 保底次數<input id="pity" type="number" step="1" min="1" max="200"></label>
-        <label for="coreP">核心機率（每隻金將，%）<input id="coreP" type="number" step="1" min="0" max="100"></label>
-        <label for="corePity">核心保底（第幾隻金將）<input id="corePity" type="number" step="1" min="1" max="30"></label>
         <label class="ck" for="g5"><input id="g5" type="checkbox"> 每 5 次必得 4★ 以上（額外贈送）</label>
         <label class="ck" for="limMei"><input id="limMei" type="checkbox"> 名將登用也放入限定武將（遊戲內不會）</label>
         <label class="ck" for="opening"><input id="opening" type="checkbox"> 播放登用開場動畫</label>
         <label class="ck" for="skipAnim"><input id="skipAnim" type="checkbox"> 快速模式（不播動畫）</label>
       </div>
-      <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選，公告沒有的武將以同星級基準（5★ 0.16%、4★ 0.90%、3★ 3.44%）計算。<b>名將登用</b>放入資料庫裡所有非限定武將，之後新增的武將會自動加入。<b>劍心永繼</b>只放遊戲「武將一覽」列出的 37 名，沒有公告數字：核心（柳生宗嚴、上泉信綱）依玩家經驗「平均每 6 隻金將最後一隻是核心，少數 5 金就出」<b>推估</b>，每隻金將有 5% 是核心（約 3／4 的核心落在第 6 隻、平均約 5.6 隻金將出 1 隻），第 6 隻金將必定是核心，出核心後重新計算。</p>
+      <p class="note">預設值取自官方〈機率公告〉（2025-08-29）的 S1賽季初始大卡池：5★ 5.60%、4★ 36.00%、3★ 58.40%，同星級內依公告的個別武將機率抽選，公告沒有的武將以同星級基準（5★ 0.16%、4★ 0.90%、3★ 3.44%）計算。<b>名將登用</b>放入資料庫裡所有非限定武將，之後新增的武將會自動加入。<b>劍心永繼</b>只放遊戲「武將一覽」列出的 37 名，沒有公告數字，限定武將的機率為<b>推估</b>值。</p>
       <details class="rates" id="rates"><summary>目前卡池的個別武將機率</summary><div id="rateList"></div></details>
     </section>
   </div>
@@ -325,8 +319,8 @@ const KEN=['柳生宗嚴','上泉信綱','荒木村重','佐久間信盛','福�
 const KEN_UP=['柳生宗嚴','上泉信綱'];
 const BANNERS={
   ken:{tab:'劍心永繼',title:'劍心<span>永繼</span>',sub:'活動限定 <b>名將限時登場</b>',copy:'柳生宗嚴、上泉信綱為<b>活動限定</b>武將',
-      art:'img/bn_ken.webp',heroes:KEN_UP,tag:'新登場',note:'活動限定武將僅能於限時期間取得；核心機率為依玩家經驗的推估值',
-      core:KEN_UP,   // 核心（Joe 2026-10-31）：平均每 6 隻金將最後一隻是核心，少數 5 金就出；出核心後重新計算
+      art:'img/bn_ken.webp',heroes:KEN_UP,tag:'新登場',note:'活動限定武將僅能於限時期間取得；限定武將機率為推估值',
+      core:KEN_UP,
       pool:KEN.map(n=>POOL.find(g=>g.n===n)).filter(Boolean),weight:g=>g.s1??BASE[g.r],isUp:g=>KEN_UP.includes(g.n)},
   // 名將登用：所有非限定武將（data.json 新增的武將會自動加入）
   mei:{tab:'名將登用',title:'名將<span>登用</span>',sub:'常駐卡池 <b>全武將登場</b>',copy:'5星武將登用機率 <b>5.60%</b>',
@@ -353,18 +347,18 @@ function rateList(){
   $('#rateList').innerHTML=[5,4,3].map(r=>{
     const gs=b.pool.filter(g=>g.r===r),cp=r===5&&b.core?S.cfg.coreP/100:0,rest=gs.filter(g=>!(cp&&b.core.includes(g.n))),t=rest.reduce((a,g)=>a+b.weight(g),0);
     const li=gs.map(g=>[g,cp&&b.core.includes(g.n)?tier[r]*cp/b.core.length:tier[r]*(1-cp)*b.weight(g)/t]).sort((x,y)=>y[1]-x[1]).map(([g,v])=>`<li class="${b.isUp(g)?'up':''}"><span>${g.n}</span><span>${v.toFixed(2)}%</span></li>`).join('');
-    return `<div class="tier">${r}★ 共 ${gs.length} 名，合計 ${tier[r].toFixed(2)}%${cp?`（核心不含第 ${S.cfg.corePity} 隻金將保底）`:''}</div><ul>${li}</ul>`}).join('');
+    return `<div class="tier">${r}★ 共 ${gs.length} 名，合計 ${tier[r].toFixed(2)}%</div><ul>${li}</ul>`}).join('');
 }
 renderBanner();
 
 // ---------- settings ----------
-['p5','p4','pity','coreP','corePity'].forEach(k=>{const el=$('#'+k);el.value=S.cfg[k];el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){S.cfg[k]=v;save();refresh()}})});
+['p5','p4','pity'].forEach(k=>{const el=$('#'+k);el.value=S.cfg[k];el.addEventListener('input',()=>{const v=parseFloat(el.value);if(!isNaN(v)){S.cfg[k]=v;save();refresh()}})});
 ['g5','skipAnim','opening','limMei'].forEach(k=>{const el=$('#'+k);el.checked=S.cfg[k];el.addEventListener('change',()=>{S.cfg[k]=el.checked;save();refresh()})});
 
 // ---------- roll ----------
 function pick(r){
   const b=B(),k=S.bn;let gs=b.pool.filter(g=>g.r===r);
-  if(r===5&&b.core){   // 核心：第 corePity 隻金將保底，之前每隻金將 coreP% 機率；出核心後重新計算
+  if(r===5&&b.core){
     S.cg=S.cg||{};const n=(S.cg[k]||0)+1,core=n>=S.cfg.corePity||Math.random()*100<S.cfg.coreP;
     S.cg[k]=core?0:n;
     const cs=gs.filter(g=>b.core.includes(g.n));
@@ -606,7 +600,6 @@ function refresh(){
     :'<p class="empty" style="grid-column:1/-1;padding:12px">抽到的 5★ 名將會出現在這裡。</p>';
   $('#rTotal').textContent=tot;$('#rPity').textContent=`${S.pb[S.bn]}/${S.cfg.pity}`;rateList();$('#rCoin').textContent=(S.coin||0).toLocaleString();
   $("#pityText").textContent=`${S.cfg.pity}次內登用`;
-  {const b=B(),ct=$('#coreText');ct.hidden=!b.core;if(b.core){const n=(S.cg||{})[S.bn]||0;ct.innerHTML=`核心保底：已出 <b>${n}</b> 隻非核心金將，第 <b>${S.cfg.corePity}</b> 隻金將必定是核心（還差 ${Math.max(1,S.cfg.corePity-n)} 隻）`}}
   renderLog();
 }
 refresh();
