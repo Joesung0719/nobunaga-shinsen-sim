@@ -1,17 +1,17 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=14';
-import {chibi,SIDE_COL} from './chibi.js?v=14';
-import {isoTerrain,isoGeom} from './iso.js?v=14';
-import {leaves} from './fx.js?v=14';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=14';
-import {SCENARIOS} from './scenarios.js?v=14';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=14';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=15';
+import {chibi,SIDE_COL} from './chibi.js?v=15';
+import {isoTerrain,isoGeom} from './iso.js?v=15';
+import {leaves} from './fx.js?v=15';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=15';
+import {SCENARIOS} from './scenarios.js?v=15';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=15';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='14';
+const VER='15';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -70,7 +70,7 @@ setAudio(SET.audio||{});
 // 第一次載入這版時把舊存檔的選擇重設成新版（之前的預設是舊版）。
 if(!SET.v3){SET.v3=1;delete SET.engine;save()}
 {const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='classic'||e==='svg'){SET.engine=e==='phaser'?'phaser':'classic';save()}}
-const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=14').catch(e=>{console.error(e);return null}):null;
+const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=15').catch(e=>{console.error(e);return null}):null;
 let VIEW=null;
 const vid=u=>G.gid+':'+u.id;
 document.addEventListener('pointerdown',unlock);
@@ -541,6 +541,13 @@ async function playBattle(a,d,before,r){
         el('small',{class:'tv'},fmt(pre(u)[i])),el('i',{class:'hp big'},el('i',{class:'gh',style:`width:${pre(u)[i]/g.max*100}%`}),el('i',{class:'now',style:`width:${pre(u)[i]/g.max*100}%`}))));
     cards[u.side+'-'+i]=c;c._max=g.max;c._right=right;return c}));
   const banner=el('div',{class:'banner'}),rd=el('div',{class:'rd'},'戰鬥開始'),res=el('div',{class:'bres'});
+  let PV=null;   // 新版：中間的武將列是 Phaser 畫布（slg/board-phaser.js 的 createBattleStage）；舊版或載入失敗時用 HTML 列
+  const field=el('div',{class:'field'});
+  const fillDom=()=>field.replaceChildren(col(sides[0],false),el('div',{class:'mid'},banner,res),col(sides[1],true));
+  if(PB)field.classList.add('pfield');else fillDom();
+  const setBanner=(t,bg)=>{if(PV){PV.banner(t,bg);return}banner.textContent=t;if(bg)banner.style.background=bg};
+  const setRes=(t,cls)=>{if(PV){PV.result(t,cls);return}res.textContent=t;res.className='bres '+cls};
+  const closeDlg=()=>{PV?.destroy();PV=null;dlg.close()};
   const face=el('div',{class:'face'}),msg=el('div',{class:'msgtx'});
   // 戰法 cut-in：畫面變暗，斜帶從側面切入，帶武將卡圖與戰法名
   const cutWho=el('div',{class:'who'}),cutName=el('b',{}),cut=el('div',{class:'cutin'},el('div',{class:'dim'}),el('div',{class:'band'},el('div',{class:'lines'}),cutWho,el('div',{class:'csk'},el('small',{},'戰法發動'),cutName)));
@@ -553,11 +560,16 @@ async function playBattle(a,d,before,r){
   dlg.replaceChildren(el('div',{class:'bt'},
     stage=el('div',{class:'stage',html:BATTLE_BG},
       el('div',{class:'shd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),rd,el('b',{style:`color:${SIDE_COL[sides[1].side]}`},sides[1].team.name)),
-      el('div',{class:'field'},col(sides[0],false),el('div',{class:'mid'},banner,res),col(sides[1],true)),
+      field,
       el('div',{class:'msg'},face,msg),cut),
     el('div',{class:'row',style:'justify-content:space-between'},sp,el('div',{class:'row'},skipB,done)),
     statBox,el('details',{},el('summary',{},'戰報'),logBox)));
   dlg.showModal();
+  if(PB){
+    try{PV=await PB.createBattleStage(field,{faceSrc:n=>ART.has(n)?artSrc(ART.get(n)):null,
+      units:sides.flatMap((u,si)=>u.team.gens.map((g,i)=>({side:u.side,i,n:g.n,f:g.f,arm:u.team.arm,boss:i===0,max:g.max,troops:pre(u)[i],left:si===0})))})}
+    catch(e){console.error(e);PV=null;field.classList.remove('pfield');field.replaceChildren();fillDom()}
+  }
   play('battle');sfx('start');
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
   const gen=(s,i)=>(s===a.side?a:d).team.gens[i];
@@ -568,19 +580,20 @@ async function playBattle(a,d,before,r){
     const put=k=>{msg.replaceChildren(head?el('b',{},head):'',body.slice(0,k),el('span',{class:'cur'},'▼'))};
     if(skip||speed>1||REDUCE){put(body.length);return}
     let k=0;put(0);typing=setInterval(()=>{k+=2;put(k);if(k>=body.length)clearInterval(typing)},16)};
-  const slash=(side,i,mo)=>{const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;
+  const slash=(side,i,mo)=>{if(PV){if(!skip&&!REDUCE)PV.slash(side,i,mo);return}const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;
     const sv=el('div',{class:'slash',html:`<svg viewBox="0 0 84 84"><path d="M8 70 Q40 40 78 10" stroke="${mo?'#c79bff':'#ffe08a'}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M14 78 Q48 46 80 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`});
     c.append(sv);setTimeout(()=>sv.remove(),500);
     for(let k=0;k<7;k++){const p=el('i',{class:'spark'}),an=Math.random()*Math.PI*2,dd=22+Math.random()*24;p.style.setProperty('--dx',`${Math.cos(an)*dd}px`);p.style.setProperty('--dy',`${Math.sin(an)*dd}px`);c.append(p);setTimeout(()=>p.remove(),520)}};
   const cutin=async(side,i,name)=>{const g=gen(side,i);
+    if(PV){sfx('skill');await PV.cutin(side,i,name,speed>1?560:980);return}
     cut.className='cutin on '+(side===sides[0].side?'l':'r');cutWho.innerHTML=ART.has(g.n)?portrait(g.n,''):chibi({n:g.n,f:g.f},{arm:(side===a.side?a:d).team.arm,side,boss:i===0,flip:side!==sides[0].side});
     cutName.textContent=`【${name}】`;sfx('skill');await sleep(speed>1?560:980);cut.className='cutin'};
-  const healFx=(side,i)=>{const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;const fx=el('div',{class:'healfx',html:Array.from({length:8},(_,k)=>`<i style="left:${8+k*11}%;animation-delay:${k*40}ms"></i>`).join('')});c.append(fx);setTimeout(()=>fx.remove(),1100)};
-  const bigRound=n=>{if(REDUCE)return;const r=el('div',{class:'rbig'},el('span',{},`第 ${n} 回合`));stage.append(r);setTimeout(()=>r.remove(),1000)};
+  const healFx=(side,i)=>{if(PV){if(!skip&&!REDUCE)PV.heal(side,i);return}const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;const fx=el('div',{class:'healfx',html:Array.from({length:8},(_,k)=>`<i style="left:${8+k*11}%;animation-delay:${k*40}ms"></i>`).join('')});c.append(fx);setTimeout(()=>fx.remove(),1100)};
+  const bigRound=n=>{if(REDUCE)return;if(PV){PV.bigRound(n);return}const r=el('div',{class:'rbig'},el('span',{},`第 ${n} 回合`));stage.append(r);setTimeout(()=>r.remove(),1000)};
   speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);
-  const setT=(side,i,v)=>{const c=cards[side+'-'+i];if(!c)return;for(const b of c.querySelectorAll('.hp>i'))b.style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
-  const float=(side,i,txt,cls,sub)=>{const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},sub?el('small',{},sub):null,txt);c.append(f);setTimeout(()=>f.remove(),1000)};
-  const flash=(side,i,cls)=>{const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
+  const setT=(side,i,v)=>{if(PV){PV.setT(side,i,v);return}const c=cards[side+'-'+i];if(!c)return;for(const b of c.querySelectorAll('.hp>i'))b.style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
+  const float=(side,i,txt,cls,sub)=>{if(PV){if(!skip)PV.float(side,i,txt,cls,sub);return}const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},sub?el('small',{},sub):null,txt);c.append(f);setTimeout(()=>f.remove(),1000)};
+  const flash=(side,i,cls)=>{if(PV){if(!skip&&!REDUCE){if(cls==='shake')PV.shake(side,i);else PV.lunge(side,i)}return}const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
   const lg=s=>logBox.append(el('li',{},s));
   const ms=()=>SPEEDS.find(s=>+s[0]===speed)[2];
   for(const e of r.log){
@@ -588,12 +601,12 @@ async function playBattle(a,d,before,r){
     if(e.type==='end')break;
     const who=e.side!=null?nm(e.side,e.i):'';
     if(e.type==='stun'){float(e.side,e.i,e.why,'st');lg(`${who} ${e.why}，無法行動`);if(!skip){speak(e.side,e.i,`${who} ${e.why}，無法行動！`);sfx('stun')}}
-    if(e.type==='prep'){banner.textContent=`【${e.skill}】準備中`;banner.style.background='#555';lg(`${who} 準備【${e.skill}】`);if(!skip)speak(e.side,e.i,`${who} 正在準備【${e.skill}】……`)}
+    if(e.type==='prep'){setBanner(`【${e.skill}】準備中`,'#555555');lg(`${who} 準備【${e.skill}】`);if(!skip)speak(e.side,e.i,`${who} 正在準備【${e.skill}】……`)}
     if(e.type==='atk'||e.type==='skill'){
       flash(e.side,e.i,cards[e.side+'-'+e.i]?._right?'lunge-l':'lunge-r');
       if(e.type==='skill'&&!skip&&speed<4&&(e.kind==='主動'||e.kind==='突擊')&&e.tg.some(t=>t.v!=null||t.heal))await cutin(e.side,e.i,e.skill);
-      if(e.type==='skill'){banner.textContent=`【${e.skill}】${e.guess?'（推估）':''}`;banner.style.background=KCOL[e.kind]||'#666';banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop');if(!skip){stage.classList.remove('flashw');void stage.offsetWidth;stage.classList.add('flashw')}}
-      else banner.textContent='';
+      if(e.type==='skill'){setBanner(`【${e.skill}】${e.guess?'（推估）':''}`,KCOL[e.kind]||'#666666');if(!PV){banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop')}if(!skip){stage.classList.remove('flashw');void stage.offsetWidth;stage.classList.add('flashw')}}
+      else setBanner('');
       const parts=[];let snd=e.type==='skill'?'skill':'hit',rout=false;
       for(const t of e.tg){
         const tn=nm(t.side,t.i);
@@ -611,7 +624,7 @@ async function playBattle(a,d,before,r){
   // final troops (also covers 跳過)
   for(const u of[a,d])u.team.gens.forEach((g,i)=>setT(u.side,i,g.troops));
   const verdict={W:'勝利',D:'平局',L:'敗北'}[r.res];
-  res.textContent=`${a.team.name}${verdict}`;res.className='bres '+r.res;
+  const resText=`${a.team.name}${verdict}`;setRes(resText,r.res);
   lg(r.res==='D'?`8 回合結束，雙方大將都沒有潰敗：平局`:`${r.res==='W'?d.team.name:a.team.name} 大將潰敗：${a.team.name}${verdict}`);
   // per-general totals: damage dealt (兵刃／謀略), damage taken, healing — for comparing with real 戰報
   const tot={};const at=(s,i)=>tot[s+'-'+i]??={out:0,bing:0,mou:0,taken:0,heal:0,act:0};
@@ -625,9 +638,9 @@ async function playBattle(a,d,before,r){
   statBox.innerHTML=`<table><thead><tr><th>武將</th><th>兵刃</th><th>謀略</th><th>治療</th><th>承傷</th><th>戰法</th></tr></thead><tbody>${trs.join('')}</tbody></table>`;statBox.hidden=false;
   skipB.hidden=true;done.hidden=false;
   const mine=a.side===0?r.res:{W:'L',L:'W',D:'D'}[r.res];   // from the blue side's view
-  speak(a.side,0,res.textContent);
+  speak(a.side,0,resText);
   play(mine==='W'?'win':mine==='L'?'lose':null);
-  await new Promise(res=>{done.onclick=()=>{dlg.close();res()};dlg.oncancel=e=>{e.preventDefault();dlg.close();res()}});
+  await new Promise(fin=>{done.onclick=()=>{closeDlg();fin()};dlg.oncancel=e=>{e.preventDefault();closeDlg();fin()}});
   if(!G.over)play('map');
 }
 

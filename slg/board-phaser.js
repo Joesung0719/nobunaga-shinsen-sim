@@ -3,8 +3,8 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=14';
-import {chibi,SIDE_COL} from './chibi.js?v=14';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=15';
+import {chibi,SIDE_COL} from './chibi.js?v=15';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
@@ -27,6 +27,8 @@ function makeTextures(s){
   soft('spark',10,0xffffff);soft('smoke',24,0xd8d0c0);soft('cloud',90,0x0b1a10);soft('ember',5,0xffffff);
   g.clear();g.fillStyle(0xffffff,1);const pts=[];for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,r=k%2?4.4:10;pts.push({x:12+Math.cos(a)*r,y:12+Math.sin(a)*r})}
   g.fillPoints(pts,true);g.fillRect(11,18,2,6);g.generateTexture('leaf',24,26);
+  g.clear();for(let i=0;i<12;i++){g.lineStyle(14-i,0xffffff,.25+i*.06);g.beginPath();g.arc(70,70,44+i*1.4,-1.15+i*.04,1.15-i*.04);g.strokePath()}
+  g.generateTexture('slash',140,140);
   g.clear();g.fillStyle(0xcfe6ff,1);g.fillRect(0,0,2,22);g.generateTexture('drop',2,22);
   g.destroy();
 }
@@ -279,4 +281,156 @@ export function createPhaserBoard(box,{onTap}){
   })().catch(e=>{st.failed=e;console.error(e);
     box.replaceChildren(Object.assign(document.createElement('p'),{className:'phfail',textContent:'新版戰場載入失敗，請拿掉網址的 ?engine=phaser 改用舊版。'}))});
   return view;
+}
+
+// ======================= 戰鬥演出（第二批）=======================
+// 戰鬥視窗保留吞食天地式的版面（上方雙方名稱、下方說話框、速度與跳過按鈕都還是 HTML），
+// 中間那塊「藍方在左、紅方在右」的武將列換成一張 Phaser 畫布：武將、兵力條殘影、刀光、火花、閃白、
+// 彈出數字、回合大字、戰法 cut-in。畫的內容完全由 game.js 依 engine.battle() 的紀錄驅動，數字與舊版一致。
+const LW=400,LH=290,ROWS=[64,152,240];
+const fmtN=n=>Math.round(n).toLocaleString('en-US');
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
+const FLOAT={hit:['#ffffff','#7a1208'],mo:['#e3c9ff','#3b1a66'],heal:['#b9ffd0','#0f5a2e'],st:['#ffe9a8','#4a3206']};
+
+// units: [{side,i,n,f,arm,boss,max,troops,left}]；faceSrc(name) → 卡圖網址或 null
+export async function createBattleStage(host,{units,faceSrc}){
+  const Phaser=await loadPhaser();
+  await Promise.race([document.fonts?.load(`16px ${FONT}`),new Promise(r=>setTimeout(r,1500))]).catch(()=>{});
+  const k=Math.max(1,Math.min(2,(devicePixelRatio||1)*(host.clientWidth||340)/LW));
+  const imgs=Object.fromEntries(await Promise.all(units.map(async u=>[`${u.side}-${u.i}`,await svgImg(chibi({n:u.n,f:u.f},{arm:u.arm,side:u.side,boss:u.boss}).replace('<svg ',`<svg ${NS} width="${Math.round(64*k)}" height="${Math.round(82*k)}" `))])));
+  let created;const createdP=new Promise(r=>created=r);
+  const U={};
+  class Battle extends Phaser.Scene{
+    constructor(){super('battle')}
+    create(){
+      makeTextures(this);this.cameras.main.setZoom(k).centerOn(LW/2,LH/2);
+      const res=k*2;
+      for(const u of units){
+        const key=`${u.side}-${u.i}`,x0=u.left?34:LW-34,y=ROWS[u.i],tx=u.left?62:LW-62,al=u.left?0:1,bx=u.left?62:LW-62-112;
+        this.textures.addImage('g'+key,imgs[key]);
+        const spr=this.add.image(x0,y+30,'g'+key).setOrigin(.5,1).setScale(1/k*.95).setFlipX(!u.left).setDepth(5);
+        const sh=this.add.ellipse(x0,y+31,40,10,0x000000,.35).setDepth(4);
+        const name=this.add.text(tx,y-24,u.n,{fontFamily:FONT,fontStyle:'bold',fontSize:'14px',color:'#fff',stroke:'#000',strokeThickness:3}).setOrigin(al,0).setResolution(res).setDepth(6);
+        const tag=u.boss?this.add.text(u.left?tx+name.width+4:tx-name.width-4,y-22,'大將',{fontFamily:FONT,fontStyle:'bold',fontSize:'10px',color:'#2b1d0c',backgroundColor:'#e3b75a',padding:{x:3,y:1}}).setOrigin(al,0).setResolution(res).setDepth(6):null;
+        const bar=this.add.graphics().setDepth(6);
+        const tv=this.add.text(tx,y+14,fmtN(u.troops),{fontFamily:FONT,fontStyle:'bold',fontSize:'14px',color:'#fff3c4',stroke:'#000',strokeThickness:3}).setOrigin(al,0).setResolution(res).setDepth(6);
+        const o=U[key]={...u,key,spr,sh,name,tag,bar,tv,bx,y,x0,lag:Math.max(0,u.troops)/u.max,ratio:Math.max(0,u.troops)/u.max,out:false};
+        this.drawBar(o);
+        if(u.troops<=0)this.knockOut(o,true);
+        else if(!REDUCE())this.tweens.add({targets:spr,scaleY:spr.scaleY*1.03,duration:900+u.i*130,yoyo:true,repeat:-1,ease:'Sine.easeInOut',delay:u.i*200});
+      }
+      this.bannerBg=this.add.rectangle(LW/2,12,10,18,0x555555).setDepth(9).setVisible(false);
+      this.bannerTx=this.add.text(LW/2,12,'',{fontFamily:FONT,fontStyle:'bold',fontSize:'13px',color:'#fff'}).setOrigin(.5).setResolution(res).setDepth(10);
+      this.resTx=this.add.text(LW/2,LH/2,'',{fontFamily:FONT,fontStyle:'bold',fontSize:'26px',color:'#e3b75a',stroke:'#2a1204',strokeThickness:6}).setOrigin(.5).setResolution(res).setDepth(30).setVisible(false);
+      created(this);
+    }
+    drawBar(o){
+      const g=o.bar,w=112,h=9,x=o.bx,y=o.y+3;g.clear();
+      g.fillStyle(0x000000,.85).fillRect(x-1.5,y-1.5,w+3,h+3);g.lineStyle(1,0xc9a253,1).strokeRect(x-1.5,y-1.5,w+3,h+3);
+      const fill=(r,c1,c2)=>{const ww=w*r;if(ww<=0)return;const fx=o.left?x:x+w-ww;g.fillStyle(c1,1).fillRect(fx,y,ww,h);g.fillStyle(c2,.55).fillRect(fx,y,ww,h/2)};
+      fill(o.lag,0xffffff,0xffffff);
+      fill(o.ratio,o.left?0xf39c12:0x8e7cc3,o.left?0xffd27a:0xd3c6ff);
+      g.fillStyle(0x000000,.35);for(let i=7;i<w;i+=8)g.fillRect(x+i,y,1,h);
+    }
+    knockOut(o,instant){
+      if(o.out)return;o.out=true;o.tag?.setAlpha(.45);o.name.setAlpha(.45);o.tv.setAlpha(.45);
+      o.spr.setTint(0x777777);
+      if(instant||REDUCE()){o.spr.setAngle(o.left?-80:80).setAlpha(.35)}
+      else this.tweens.add({targets:o.spr,angle:o.left?-80:80,alpha:.35,x:o.x0+(o.left?-8:8),duration:420,ease:'Cubic.easeIn'});
+      o.sh.setAlpha(.15);
+    }
+    setT(side,i,v){
+      const o=U[side+'-'+i];if(!o)return;
+      o.ratio=Math.max(0,v)/o.max;o.tv.setText(fmtN(Math.max(0,v)));
+      if(o.ratio<o.lag&&!REDUCE()){o.lagT?.remove();o.lagT=this.tweens.addCounter({from:o.lag,to:o.ratio,delay:350,duration:450,onUpdate:t=>{o.lag=t.getValue();this.drawBar(o)}})}
+      else o.lag=Math.min(o.lag,o.ratio)||o.ratio;
+      this.drawBar(o);
+      if(v<=0)this.knockOut(o);
+    }
+    float(side,i,txt,cls,sub){
+      const o=U[side+'-'+i];if(!o)return;
+      const crit=/crit/.test(cls),[col,stk]=FLOAT[cls.split(' ')[0]]||FLOAT.hit,x=o.x0,y=o.y-6;
+      const t=this.add.text(x,y,txt,{fontFamily:FONT,fontStyle:'bold',fontSize:crit?'26px':'20px',color:crit?'#ffd34a':col,stroke:crit?'#5a1208':stk,strokeThickness:5}).setOrigin(.5).setResolution(this.cameras.main.zoom*2).setDepth(40).setScale(1.6);
+      this.tweens.add({targets:t,scale:1,duration:160,ease:'Back.easeOut'});
+      this.tweens.add({targets:t,y:y-34,alpha:0,delay:480,duration:520,ease:'Cubic.easeIn',onComplete:()=>t.destroy()});
+      if(sub){const s=this.add.text(x,y+16,sub,{fontFamily:FONT,fontSize:'11px',color:'#fff',backgroundColor:'#c8442c',padding:{x:3,y:1}}).setOrigin(.5).setResolution(this.cameras.main.zoom*2).setDepth(40);
+        this.tweens.add({targets:s,y:y+6,alpha:0,delay:450,duration:550,onComplete:()=>s.destroy()})}
+    }
+    lunge(side,i){const o=U[side+'-'+i];if(!o||o.out||REDUCE())return;this.tweens.add({targets:o.spr,x:o.x0+(o.left?22:-22),duration:110,yoyo:true,ease:'Back.easeIn'})}
+    shake(side,i){
+      const o=U[side+'-'+i];if(!o||o.out)return;
+      o.spr.setTintMode(Phaser.TintModes.FILL).setTint(0xffffff);this.time.delayedCall(70,()=>{o.spr.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff)});
+      if(!REDUCE())this.tweens.add({targets:o.spr,x:o.x0+(o.left?-7:7),duration:50,yoyo:true,repeat:2});
+    }
+    slash(side,i,mo){
+      const o=U[side+'-'+i];if(!o)return;const x=o.x0,y=o.y-14,dir=o.left?1:-1;
+      const sl=this.add.image(x,y,'slash').setBlendMode('ADD').setTint(mo?0xc79bff:0xffe08a).setRotation(dir>0?-.5:2.6).setScale(.18).setDepth(20);
+      this.tweens.add({targets:sl,scale:.6,alpha:0,duration:320,ease:'Cubic.easeOut',onComplete:()=>sl.destroy()});
+      const p=this.add.particles(0,0,'spark',{speed:{min:80,max:220},angle:{min:0,max:360},scale:{start:.5,end:0},lifespan:{min:200,max:450},tint:mo?[0xe3c9ff,0xa771f0]:[0xfff3c4,0xffb03a,0xffffff],blendMode:'ADD',emitting:false}).setDepth(21);
+      p.explode(14,x,y);this.time.delayedCall(600,()=>p.destroy());
+    }
+    heal(side,i){
+      const o=U[side+'-'+i];if(!o)return;
+      const p=this.add.particles(0,0,'spark',{speedY:{min:-70,max:-30},speedX:{min:-20,max:20},scale:{start:.35,end:0},lifespan:900,tint:[0xb9ffd0,0x6fe3a0],blendMode:'ADD',emitting:false}).setDepth(20);
+      p.explode(12,o.x0,o.y+8);this.time.delayedCall(1000,()=>p.destroy());
+    }
+    banner(text,col){
+      this.bannerTx.setText(text||'');this.bannerBg.setVisible(!!text);
+      if(!text)return;
+      this.bannerBg.setSize(this.bannerTx.width+20,20).setFillStyle(parseInt((col||'#555555').slice(1),16));
+      if(!REDUCE()){this.bannerTx.setScale(1.3);this.bannerBg.setScale(1.3);this.tweens.add({targets:[this.bannerTx,this.bannerBg],scale:1,duration:220,ease:'Back.easeOut'})}
+    }
+    result(text,cls){
+      const col={W:'#e3b75a',D:'#c9d1d9',L:'#d9604a'}[cls]||'#e3b75a';
+      this.bannerTx.setVisible(false);this.bannerBg.setVisible(false);
+      this.resTx.setText(text).setColor(col).setVisible(true).setY(20).setFontSize(22);
+      const bg=this.add.rectangle(LW/2,20,this.resTx.width+36,this.resTx.height+8,0x000000,.6).setDepth(29);
+      if(!REDUCE()){this.resTx.setScale(1.6).setAlpha(0);bg.setAlpha(0);this.tweens.add({targets:this.resTx,scale:1,alpha:1,duration:300,ease:'Back.easeOut'});this.tweens.add({targets:bg,alpha:.6,duration:300})}
+    }
+    bigRound(n){
+      const t=this.add.text(LW/2,LH/2,`第 ${n} 回合`,{fontFamily:FONT,fontStyle:'bold',fontSize:'34px',color:'#fff',stroke:'#1a0e06',strokeThickness:7}).setOrigin(.5).setResolution(this.cameras.main.zoom*2).setDepth(50).setAlpha(0).setScale(1.5);
+      this.tweens.add({targets:t,alpha:1,scale:1,duration:220,ease:'Back.easeOut'});
+      this.tweens.add({targets:t,alpha:0,delay:650,duration:300,onComplete:()=>t.destroy()});
+    }
+    quake(big){this.cameras.main.shake(big?260:160,big?.014:.008)}
+    whiteFlash(){this.cameras.main.flash(120,255,250,235)}
+    // 戰法 cut-in：畫面變暗，斜帶從發動方那一側切入，帶卡圖（沒有卡圖就用 Q版人物）與戰法名；回傳在動畫結束時解開
+    async cutin(side,i,name,ms){
+      const o=U[side+'-'+i];if(!o)return;
+      let fk=null;const src=faceSrc?.(o.n);
+      if(src){fk='f:'+o.n;if(!this.textures.exists(fk)){try{this.textures.addImage(fk,await loadImg(src))}catch{fk=null}}}
+      const left=o.left,cy=LH/2,c=this.add.container(left?-LW:LW,0).setDepth(100);
+      const dim=this.add.rectangle(LW/2,LH/2,LW,LH,0x000000,.55).setDepth(99).setAlpha(0);
+      const g=this.add.graphics();
+      g.fillStyle(0x000000,.5).fillPoints([{x:0,y:cy-52},{x:LW,y:cy-66},{x:LW,y:cy+52},{x:0,y:cy+66}],true);
+      g.fillStyle(left?0x1f52b8:0xb8362a,.96).fillPoints([{x:0,y:cy-44},{x:LW,y:cy-58},{x:LW,y:cy+44},{x:0,y:cy+58}],true);
+      g.lineStyle(3,0xf3d48a,1).strokePoints([{x:0,y:cy-44},{x:LW,y:cy-58}]).strokePoints([{x:0,y:cy+58},{x:LW,y:cy+44}]);
+      c.add(g);
+      const fx=left?78:LW-78;
+      if(fk){const f=this.textures.get(fk).getSourceImage(),w=f.width,s=92/w,ch=Math.min(f.height,w),im=this.add.image(fx,cy,fk).setOrigin(.5,.5).setCrop(0,0,w,ch).setScale(s);im.y=cy-(f.height-ch)*s/2;c.add(im)}
+      else c.add(this.add.image(fx,cy+44,'g'+o.key).setOrigin(.5,1).setScale(1/k*1.5).setFlipX(!left));
+      const tx=left?LW-28:28,al=left?1:0;
+      c.add([this.add.text(tx,cy-30,'戰法發動',{fontFamily:FONT,fontSize:'12px',color:'#fff3c4'}).setOrigin(al,0).setResolution(k*2),
+        this.add.text(tx,cy-10,`【${name}】`,{fontFamily:FONT,fontStyle:'bold',fontSize:Math.min(34,Math.floor(236/(name.length+2)))+'px',color:'#fff',stroke:'#2a0a04',strokeThickness:6}).setOrigin(al,0).setResolution(k*2)]);
+      const shine=this.add.rectangle(0,cy,40,160,0xffffff,.3).setAngle(12).setBlendMode('ADD');c.add(shine);
+      const inT=Math.round(ms*.22),hold=Math.round(ms*.55),outT=Math.round(ms*.2);
+      this.tweens.add({targets:dim,alpha:1,duration:inT});
+      await new Promise(r=>this.tweens.add({targets:c,x:0,duration:inT,ease:'Cubic.easeOut',onComplete:r}));
+      this.tweens.add({targets:shine,x:LW+40,duration:Math.round(hold*.8),ease:'Sine.easeInOut'});
+      await new Promise(r=>this.time.delayedCall(hold,r));
+      this.tweens.add({targets:dim,alpha:0,duration:outT});
+      await new Promise(r=>this.tweens.add({targets:c,x:left?LW:-LW,alpha:.2,duration:outT,ease:'Cubic.easeIn',onComplete:r}));
+      c.destroy();dim.destroy();
+    }
+  }
+  const game=new Phaser.Game({type:Phaser.WEBGL,parent:host,transparent:true,antialias:true,
+    scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:Math.round(LW*k),height:Math.round(LH*k)},
+    input:{touch:{capture:false}},scene:[Battle],banner:false});
+  const sc=await createdP;
+  const call=m=>(...a)=>sc[m](...a);
+  return{
+    setT:call('setT'),float:call('float'),lunge:call('lunge'),shake:call('shake'),slash:call('slash'),heal:call('heal'),
+    banner:call('banner'),result:call('result'),bigRound:call('bigRound'),quake:call('quake'),whiteFlash:call('whiteFlash'),cutin:call('cutin'),
+    destroy(){try{game.destroy(true)}catch(e){}},
+  };
 }
