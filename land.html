@@ -290,7 +290,7 @@ ul.note{padding-left:1.2em}
       <ul>
         <li>屬性是 Lv50 推算值：Lv1 屬性 + 成長率 × 49，再加上自由配點（未含裝備）。長條上，灰色是基礎值，青色是配點，金色是 % 加成。</li>
         <li>自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配。配點先加在屬性上，再套用 % 加成。立身出世（豐臣秀吉）解鎖後每 10 級再多 3 點；眾志成城這類「我軍全體某屬性提高」的特性會加到全隊。</li>
-        <li>兵學：5★ 最多 5 點、4★ 最多 3 點（3★ 以下沒有），四個方向（武略／陣立／機略／臨戰）只能選一個。每個方向「兵學・奇」三選一、「兵學・正」六項各 2 級。說明取自阿初的兵學畫面，目前假設每位武將的兵學樹都一樣；「奇」不花點、每級 1 點是推估，之後照遊戲修正。兵學效果在 Q版戰棋 的戰鬥中套用（機動的速度不會加在上面的長條裡）。</li>
+        <li>兵學：5★ 最多 5 點、4★ 最多 3 點（3★ 以下沒有），四個方向（武略／陣立／機略／臨戰）只能選一個。每個方向「兵學・奇」三選一、「兵學・正」六項各 2 級。每位武將的奇與正都不一樣，目前只收錄阿江，其他武將可以先選方向（只套用紅度加成）；「奇」不花點、每級 1 點是推估，之後照遊戲修正。兵學效果在 Q版戰棋 的戰鬥中套用（機動的速度不會加在上面的長條裡）。</li>
         <li>特性依紅度解鎖：第 1 個特性固有，第 2～4 個分別要 1、3、5 紅。已解鎖的武威／智慧／領兵／靈巧會加在該武將屬性上。</li>
         <li>兵種等級 = 兵種營 Lv + 隊中已解鎖的兵種特性（例如馬術III 騎兵 +3、鐵炮大將 鐵炮 +3），每級全屬性 +2%。等級上限 10，隊中每有一位該兵種的「兵種大將」上限再 +1。</li>
         <li>協力：三人同勢力時，依協力設施 Lv1–10 加 0.5%～7%。家門：三人同家門時每級加 1%，最高 3%。家門資料尚未收集，請自行勾選。所有加成相加後乘上屬性。</li>
@@ -356,7 +356,7 @@ ul.note{padding-left:1.2em}
 </div>
 
 <script type="module">
-import {DIRS,RULE,capOf,dirOf,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=9';
+import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=10';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -822,15 +822,15 @@ const bgOpen=new Set();
 function bingakuPanel(m,r){
   const cap=capOf(r);
   if(!cap)return null;
-  m.bg=cleanSel(m.bg,r);
-  const sel=m.bg,d=dirOf(sel?.d),left=cap-pointsUsed(sel),open=bgOpen.has(m.n);
+  m.bg=cleanSel(m.bg,r,m.n);
+  const sel=m.bg,d=dirOf(sel?.d,m.n),left=cap-pointsUsed(sel),open=bgOpen.has(m.n);
   const box=el('div',{class:'bgk',style:d?`--c:${d.col}`:''});
   const hd=el('button',{class:'hd',type:'button','aria-expanded':String(open)},el('b',{},'兵學'),
-    el('small',{},sel?bgSummary(sel,r):'未選方向'),el('span',{class:'pt',html:`剩 <b>${left}</b> / ${cap} 點`}),el('span',{class:'pt'},open?'▲':'▼'));
+    el('small',{},sel?bgSummary(sel,r,m.n):'未選方向'),el('span',{class:'pt',html:`剩 <b>${left}</b> / ${cap} 點`}),el('span',{class:'pt'},open?'▲':'▼'));
   hd.onclick=()=>{open?bgOpen.delete(m.n):bgOpen.add(m.n);renderBuilder()};
   box.append(hd);
   if(!open)return box;
-  const set=v=>{m.bg=cleanSel(v,r);save();renderBuilder()};
+  const set=v=>{m.bg=cleanSel(v,r,m.n);save();renderBuilder()};
   const tip=el('div',{class:'bgtip'});
   const dirs=el('div',{class:'bgdirs',role:'group','aria-label':'兵學方向'},...DIRS.map(x=>{
     const b=el('button',{type:'button',style:`--c:${x.col}`,'aria-pressed':String(sel?.d===x.id),title:x.sub},el('b',{},x.id),el('small',{},x.sub));
@@ -838,6 +838,7 @@ function bingakuPanel(m,r){
   box.append(dirs);
   if(!d){tip.textContent=`只能選一個方向。${BASE_TEXT}（選了方向才計算，${m.red||0} 紅 = 造成傷害及治療 +${RULE.perRed*(m.red||0)}%、受到傷害 −${RULE.perRed*(m.red||0)}%）`;box.append(tip);return box}
   const show=(name,txt,g2)=>{tip.replaceChildren(...[el('b',{},name),'：',txt,g2?el('span',{class:'g2'},'（第 2 級文字被截斷，數值推估）'):null].filter(x=>x!=null))};
+  if(!hasTree(m.n)){tip.textContent=`${m.n}的兵學「奇」與「正」還沒收錄（每位武將都不一樣），目前只套用紅度加成：造成傷害及治療 +${RULE.perRed*(m.red||0)}%、受到傷害 −${RULE.perRed*(m.red||0)}%。`;box.append(tip);return box}
   show(d.id,`${d.sub}。${BASE_TEXT}；目前 ${m.red||0} 紅 = 造成傷害及治療 +${RULE.perRed*(m.red||0)}%、受到傷害 −${RULE.perRed*(m.red||0)}%`);
   box.append(el('div',{class:'bglab'},`兵學・奇（三選一${RULE.qiCost?`，${RULE.qiCost} 點`:''}）`),
     el('div',{class:'bgq'},...d.qi.map(q=>{
