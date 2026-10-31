@@ -1,16 +1,16 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=8';
-import {chibi,SIDE_COL} from './chibi.js?v=8';
-import {isoTerrain,isoGeom} from './iso.js?v=8';
-import {BINGAKU} from './bingaku.js?v=8';
-import {SCENARIOS} from './scenarios.js?v=8';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=8';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=9';
+import {chibi,SIDE_COL} from './chibi.js?v=9';
+import {isoTerrain,isoGeom} from './iso.js?v=9';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=9';
+import {SCENARIOS} from './scenarios.js?v=9';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=9';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='8';
+const VER='9';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -52,13 +52,13 @@ function randomTeam(){
     const c=ns.reduce((a,n)=>a+costOf(n),0);
     if(c>20||c<16)continue;
     const sk=[];while(sk.length<6){const s=pick(GOOD);if(!sk.includes(s))sk.push(s)}
-    return{src:'random',arm:pick(['騎','弓','槍','鐵炮']),bingaku:null,gens:ns.map((n,i)=>({n,s:sk.slice(i*2,i*2+2),t:10000}))};
+    return{src:'random',arm:pick(['騎','弓','槍','鐵炮']),gens:ns.map((n,i)=>({n,s:sk.slice(i*2,i*2+2),t:10000}))};
   }
 }
 function builderTeam(){
   let S;try{S=JSON.parse(localStorage.getItem('shinsen-land-v1'))}catch{}
   if(!S?.my?.gens)return null;
-  return{src:'builder',arm:S.my.arm||'槍',bingaku:null,gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null}))};
+  return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
 }
 const SET=Object.assign({mode:'land',lv:6,foe:'ai',gar:'hold',mine:[],enemy:[]},load());
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
@@ -104,14 +104,15 @@ function genStats(g){
   return s;
 }
 function battleTeam(spec,side){
-  return{name:spec.gens[0].n+'隊',side,arm:spec.arm,bingaku:spec.bingaku,terrain:'平',
-    gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps)}))};
+  return{name:spec.gens[0].n+'隊',side,arm:spec.arm,terrain:'平',
+    gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps),
+      bg:bgCompile(g.bg,ROSTER.get(g.n)?.r,g.red||0),bgs:bgSummary(g.bg,ROSTER.get(g.n)?.r)}))};
 }
 const teamsAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv}[a-z]$`).test(k));
 function armOfGarrison(k){const r=D.reports.find(r=>r.t===k&&r.ty);return r?r.ty:pick(['騎','弓','槍','鐵炮'])}
 function garrisonTeam(k,lv){
   const L=D.levels[lv],t=D.teams[k];
-  return{name:t[2].n+'隊',side:1,arm:armOfGarrison(k),bingaku:null,terrain:'城',key:k,
+  return{name:t[2].n+'隊',side:1,arm:armOfGarrison(k),terrain:'城',key:k,
     gens:[t[2],t[0],t[1]].map(g=>({n:g.n,f:facOf(g.n),st:statsAt(D,g.n,L.glv,g.r),troops:L.per,max:L.per,skills:g.s.map(ps)}))};
 }
 
@@ -135,8 +136,9 @@ function teamCard(spec,side,i,list){
   const figs=el('div',{class:'figs'},...spec.gens.map((g,j)=>el('div',{class:'fig',html:chibi({n:g.n,f:facOf(g.n)},{arm:spec.arm,side,boss:j===0})+`<span>${g.n}</span>`})));
   const arms=el('div',{class:'row arms'});
   chips(arms,ARMS.map(([k,l])=>[k,l]),spec.arm,v=>{spec.arm=v;if(spec.my)spec.my.arm=v;save();renderSetup()});
-  const bg=el('select',{'aria-label':'兵學'},el('option',{value:''},BINGAKU.length?'兵學：未設定':'兵學：待補（資料之後提供）'),...BINGAKU.map(b=>el('option',{value:b.id},b.name)));
-  bg.value=spec.bingaku||'';bg.disabled=!BINGAKU.length;bg.onchange=()=>{spec.bingaku=bg.value||null;save()};
+  // 兵學是每位武將各自的配點，在打地頁組隊設定（按「編輯這隊」）
+  const bgl=spec.gens.map(g=>[g.n,bgSummary(g.bg,ROSTER.get(g.n)?.r)]).filter(x=>x[1]);
+  const bg=el('small',{class:'muted'},bgl.length?'兵學：'+bgl.map(x=>`${x[0]} ${x[1]}`).join('｜'):'兵學：未設定（按「編輯這隊」配點）');
   const ed=el('button',{type:'button',class:'btn'},'編輯這隊');
   ed.onclick=()=>{save();location.href=`land.html?slg=${list===SET.mine?'mine':'enemy'}-${i}`};
   const rnd=el('button',{type:'button',class:'btn ghost'},'隨機換一隊');rnd.onclick=()=>{list[i]=randomTeam();save();renderSetup()};
@@ -145,7 +147,7 @@ function teamCard(spec,side,i,list){
   const skills=el('div',{class:'sks'},...spec.gens.map(g=>el('div',{},el('b',{},g.n),' ',[innateOf(D,g.n),...g.s].filter(Boolean).map(s=>skillChip(s)).reduce((a,c)=>(a.append(c),a),el('span')))));
   return el('div',{class:'tcard',style:`--side:${SIDE_COL[side]}`},
     el('div',{class:'th'},el('b',{},`第 ${i+1} 隊 · ${spec.gens[0].n}隊`),el('small',{},`Cost ${cost} · ${fmt(spec.gens.reduce((a,g)=>a+g.t,0))} 兵 · ${spec.my?'自選':spec.src==='builder'?'組隊頁組隊':'隨機'}`)),
-    figs,arms,skills,el('div',{class:'row'},ed,rnd,imp,bg));
+    figs,arms,skills,bg,el('div',{class:'row'},ed,rnd,imp));
 }
 const MOD_LABEL={text:['依說明','t'],guess:['推估','g'],none:['未模擬','n']};
 function skillChip(n){
@@ -214,7 +216,7 @@ function startStory(){
   const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
   const T=sc.map.map(r=>[...r]);
   const units=sc.units.map(u=>({id:id++,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-    team:battleTeam({arm:u.arm,bingaku:null,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
+    team:battleTeam({arm:u.arm,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
   G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
     st:{killDay:0,killRain:false,finisher:null,routed:[],hitBy:{},said:new Set()}};play('map');
   $('setup').hidden=true;$('game').hidden=false;
@@ -339,11 +341,11 @@ function renderInfo(){
     el('div',{},el('div',{class:'gn'},el('b',{},g.n),i===0?el('span',{class:'tag'},'大將'):null,el('small',{},`${fmt(Math.max(0,g.troops))} / ${fmt(g.max)}`)),
       el('i',{class:'hp big'},el('i',{style:`width:${Math.max(0,g.troops)/g.max*100}%`})),
       el('div',{class:'st'},ST4.map(k=>`${k[0]} ${Math.round(g.st[k])}`).join('　')),
-      el('div',{class:'sks'},...g.skills.map(s=>skillChip(s.name))))));
+      el('div',{class:'sks'},...g.skills.map(s=>skillChip(s.name))),g.bgs?el('div',{class:'st'},'兵學 '+g.bgs):null)));
   const acts=[];
   if(u===G.sel&&!u.acted){const w=el('button',{type:'button',class:'btn ghost'},'待命（結束這隊行動）');w.onclick=()=>{u.acted=true;G.sel=null;renderBoard();autoEnd()};acts.push(w)}
   box.replaceChildren(el('div',{class:'ih'},el('b',{style:`color:${SIDE_COL[u.side]}`},t.name),
-    el('small',{},`${ARMS.find(a=>a[0]===t.arm)?.[1]||t.arm}・兵力 ${fmt(total(t))}・移動 ${mv(u)}・射程 ${rg(u)}・地形 ${G.T[u.y][u.x]}${u.garrison?'・守軍':''}${t.bingaku?'・兵學 '+t.bingaku:''}`)),...rows,el('div',{class:'row'},...acts));
+    el('small',{},`${ARMS.find(a=>a[0]===t.arm)?.[1]||t.arm}・兵力 ${fmt(total(t))}・移動 ${mv(u)}・射程 ${rg(u)}・地形 ${G.T[u.y][u.x]}${u.garrison?'・守軍':''}`)),...rows,el('div',{class:'row'},...acts));
 }
 
 // 目前操作的一方全部部隊都行動完，就自動結束這一方的行動（不用再按「結束這天」）
@@ -478,7 +480,7 @@ async function aiTurn(){
 // ---- battle playback ----
 const SPEEDS=[['1','普通',650],['2','快',300],['4','很快',120]];
 let speed=+(SET.speed||1);
-const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0'};
+const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0',兵學:'#3f7f86'};
 async function playBattle(a,d,before,r){
   // 吞食天地式的版面：藍方在左一列、紅方在右一列，下方是說話框（目前出手武將的頭像＋訊息）
   const dlg=$('bt');
@@ -530,11 +532,12 @@ async function playBattle(a,d,before,r){
       const parts=[];let snd=e.type==='skill'?'skill':'hit',rout=false;
       for(const t of e.tg){
         const tn=nm(t.side,t.i);
-        if(t.v!=null){setT(t.side,t.i,t.left);float(t.side,t.i,'-'+fmt(t.v),t.dtype==='謀略'?'mo':'hit');flash(t.side,t.i,'shake');parts.push(`${tn} -${fmt(t.v)}${t.rout?'（潰敗）':''}`);if(t.rout)rout=true;if(e.type==='atk'&&t.dtype==='謀略')snd='mou'}
+        if(t.evade){float(t.side,t.i,'規避','st');parts.push(`${tn} 規避`);continue}
+        if(t.v!=null){setT(t.side,t.i,t.left);float(t.side,t.i,'-'+fmt(t.v),t.dtype==='謀略'?'mo':'hit');flash(t.side,t.i,'shake');parts.push(`${tn} -${fmt(t.v)}${t.crit?'（'+(t.dtype==='謀略'?'奇謀':'會心')+'）':''}${t.rout?'（潰敗）':''}`);if(t.rout)rout=true;if(e.type==='atk'&&t.dtype==='謀略')snd='mou'}
         if(t.heal){setT(t.side,t.i,t.left);float(t.side,t.i,'+'+fmt(t.heal),'heal');parts.push(`${tn} +${fmt(t.heal)}`);if(e.type!=='skill')snd='heal'}
         if(t.status){float(t.side,t.i,t.status,'st');parts.push(`${tn} ${t.status}`)}
       }
-      const line=`${who}${e.type==='atk'?' 攻擊':`【${e.skill}】`}${parts.length?'：'+parts.join('、'):''}`;
+      const line=`${who}${e.type==='atk'?(e.combo?' 連擊':' 攻擊'):`【${e.skill}】`}${parts.length?'：'+parts.join('、'):''}`;
       lg(line);
       if(!skip){speak(e.side,e.i,line);sfx(snd,(e.side===a.side?a:d).team.arm);if(rout)setTimeout(()=>sfx('rout'),120)}
     }
@@ -548,7 +551,7 @@ async function playBattle(a,d,before,r){
   // per-general totals: damage dealt (兵刃／謀略), damage taken, healing — for comparing with real 戰報
   const tot={};const at=(s,i)=>tot[s+'-'+i]??={out:0,bing:0,mou:0,taken:0,heal:0,act:0};
   for(const e of r.log)if(e.type==='atk'||e.type==='skill'){
-    const me=at(e.side,e.i);if(e.type==='skill')me.act++;
+    const me=at(e.side,e.i);if(e.type==='skill'&&e.kind!=='兵學')me.act++;
     for(const t of e.tg){if(t.v!=null){me.out+=t.v;me[t.dtype==='謀略'?'mou':'bing']+=t.v;at(t.side,t.i).taken+=t.v}if(t.heal)me.heal+=t.heal}
   }
   const trs=[];

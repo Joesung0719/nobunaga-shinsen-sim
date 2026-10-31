@@ -161,6 +161,24 @@ td.n,th.n{text-align:right}
 .tri .tn{display:block;font-size:.62rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tri.lock{opacity:.4}
 .tri.lock::after{content:attr(data-red);position:absolute;top:1px;right:3px;font-size:.58rem;color:#e0533a}
+/* 兵學 */
+.bgk{border:1px solid var(--line);border-radius:6px;background:#1a1613;padding:6px 8px;display:flex;flex-direction:column;gap:6px}
+.bgk .hd{display:flex;align-items:center;gap:8px;cursor:pointer;background:none;border:0;color:var(--paper);font:inherit;padding:0;text-align:left;width:100%}
+.bgk .hd b{font-size:.8rem}.bgk .hd small{font-size:.72rem;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bgk .pt{font-size:.72rem;color:var(--muted);white-space:nowrap}.bgk .pt b{color:var(--gold)}
+.bgdirs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.bgdirs button{cursor:pointer;border:1px solid var(--line);border-radius:6px;background:#1f1a17;color:var(--paper);font:inherit;padding:4px 2px;line-height:1.15}
+.bgdirs button b{display:block;font-family:var(--display);font-size:.95rem}.bgdirs button small{display:block;font-size:.58rem;color:var(--muted)}
+.bgdirs button[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);background:color-mix(in srgb,var(--c) 22%,#1f1a17)}
+.bglab{font-size:.68rem;color:var(--muted);margin:2px 0 -2px}
+.bgq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.bgz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.bgn{cursor:pointer;border:1px solid var(--line);border-radius:6px;background:#1f1a17;color:var(--paper);font:inherit;font-size:.72rem;padding:4px 2px;text-align:center;position:relative}
+.bgn[aria-pressed="true"],.bgn.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 25%,#1f1a17)}
+.bgn .lv{display:block;font-size:.62rem;letter-spacing:2px;color:#4a3f37}.bgn .lv i{font-style:normal}.bgn .lv i.on{color:var(--c)}
+.bgn:disabled{opacity:.4;cursor:default}
+.bgtip{font-size:.72rem;color:var(--paper);line-height:1.5;background:#120f0d;border-radius:4px;padding:6px 8px}
+.bgtip .g2{color:var(--muted)}
 .tri.k0{border-color:#7a5c22} .tri.arm .ic{color:#a771f0} .tri.stat .ic{color:#e3b75a}
 .troopln{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted)}
 .troopln input{flex:1}
@@ -272,6 +290,7 @@ ul.note{padding-left:1.2em}
       <ul>
         <li>屬性是 Lv50 推算值：Lv1 屬性 + 成長率 × 49，再加上自由配點（未含裝備）。長條上，灰色是基礎值，青色是配點，金色是 % 加成。</li>
         <li>自由配點：Lv50 共 50 點（每 10 級 10 點），每 1 紅再加 10 點，可任意分配。配點先加在屬性上，再套用 % 加成。立身出世（豐臣秀吉）解鎖後每 10 級再多 3 點；眾志成城這類「我軍全體某屬性提高」的特性會加到全隊。</li>
+        <li>兵學：5★ 最多 5 點、4★ 最多 3 點（3★ 以下沒有），四個方向（武略／陣立／機略／臨戰）只能選一個。每個方向「兵學・奇」三選一、「兵學・正」六項各 2 級。說明取自阿初的兵學畫面，目前假設每位武將的兵學樹都一樣；「奇」不花點、每級 1 點是推估，之後照遊戲修正。兵學效果在 Q版戰棋 的戰鬥中套用（機動的速度不會加在上面的長條裡）。</li>
         <li>特性依紅度解鎖：第 1 個特性固有，第 2～4 個分別要 1、3、5 紅。已解鎖的武威／智慧／領兵／靈巧會加在該武將屬性上。</li>
         <li>兵種等級 = 兵種營 Lv + 隊中已解鎖的兵種特性（例如馬術III 騎兵 +3、鐵炮大將 鐵炮 +3），每級全屬性 +2%。等級上限 10，隊中每有一位該兵種的「兵種大將」上限再 +1。</li>
         <li>協力：三人同勢力時，依協力設施 Lv1–10 加 0.5%～7%。家門：三人同家門時每級加 1%，最高 3%。家門資料尚未收集，請自行勾選。所有加成相加後乘上屬性。</li>
@@ -337,6 +356,7 @@ ul.note{padding-left:1.2em}
 </div>
 
 <script type="module">
+import {DIRS,RULE,capOf,dirOf,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=9';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -705,7 +725,7 @@ function pickGeneral(i){
           el('div',{class:'c'},String(g.c??'?')),x?.season?el('div',{class:'s'},x.season):g.garrison?el('div',{class:'s'},'守將'):null,
           el('div',{class:'n'},g.n));
         if(taken.has(g.n)&&g.n!==m.n)b.disabled=true;
-        b.onclick=()=>{m.n=g.n;m.s=m.s.map(s=>s===innateOf(m.n)?'':s);save();dlg.close();renderBuilder()};
+        b.onclick=()=>{if(m.n!==g.n)m.bg=null;m.n=g.n;m.s=m.s.map(s=>s===innateOf(m.n)?'':s);save();dlg.close();renderBuilder()};
         grid.append(b);
       }
       body.replaceChildren(list.length?grid:el('div',{class:'empty'},'沒有符合的武將'));
@@ -797,6 +817,45 @@ function statBars(m,pct){
     el('div',{class:'legend'},el('span',{},el('i',{style:'background:#8c7a5c'}),'Lv50'),el('span',{},el('i',{style:'background:#4fb7c8'}),'配點'),el('span',{},el('i',{style:'background:#e3b75a'}),'加成'),
       el('span',{class:'left',html:`配點剩 <b>${left}</b> / ${pool}`})));
 }
+// 兵學：5★ 5 點、4★ 3 點，只能選 1 個方向（Joe，2026-10-31）。樹的內容在 slg/bingaku.js。
+const bgOpen=new Set();
+function bingakuPanel(m,r){
+  const cap=capOf(r);
+  if(!cap)return null;
+  m.bg=cleanSel(m.bg,r);
+  const sel=m.bg,d=dirOf(sel?.d),left=cap-pointsUsed(sel),open=bgOpen.has(m.n);
+  const box=el('div',{class:'bgk',style:d?`--c:${d.col}`:''});
+  const hd=el('button',{class:'hd',type:'button','aria-expanded':String(open)},el('b',{},'兵學'),
+    el('small',{},sel?bgSummary(sel,r):'未選方向'),el('span',{class:'pt',html:`剩 <b>${left}</b> / ${cap} 點`}),el('span',{class:'pt'},open?'▲':'▼'));
+  hd.onclick=()=>{open?bgOpen.delete(m.n):bgOpen.add(m.n);renderBuilder()};
+  box.append(hd);
+  if(!open)return box;
+  const set=v=>{m.bg=cleanSel(v,r);save();renderBuilder()};
+  const tip=el('div',{class:'bgtip'});
+  const dirs=el('div',{class:'bgdirs',role:'group','aria-label':'兵學方向'},...DIRS.map(x=>{
+    const b=el('button',{type:'button',style:`--c:${x.col}`,'aria-pressed':String(sel?.d===x.id),title:x.sub},el('b',{},x.id),el('small',{},x.sub));
+    b.onclick=()=>set(sel?.d===x.id?null:{d:x.id,q:null,z:{}});return b}));
+  box.append(dirs);
+  if(!d){tip.textContent=`只能選一個方向。${BASE_TEXT}（選了方向才計算，${m.red||0} 紅 = 造成傷害及治療 +${RULE.perRed*(m.red||0)}%、受到傷害 −${RULE.perRed*(m.red||0)}%）`;box.append(tip);return box}
+  const show=(name,txt,g2)=>{tip.replaceChildren(...[el('b',{},name),'：',txt,g2?el('span',{class:'g2'},'（第 2 級文字被截斷，數值推估）'):null].filter(x=>x!=null))};
+  show(d.id,`${d.sub}。${BASE_TEXT}；目前 ${m.red||0} 紅 = 造成傷害及治療 +${RULE.perRed*(m.red||0)}%、受到傷害 −${RULE.perRed*(m.red||0)}%`);
+  box.append(el('div',{class:'bglab'},`兵學・奇（三選一${RULE.qiCost?`，${RULE.qiCost} 點`:''}）`),
+    el('div',{class:'bgq'},...d.qi.map(q=>{
+      const on=sel.q===q.n,b=el('button',{class:'bgn',type:'button','aria-pressed':String(on),title:q.t},q.n);
+      if(!on&&RULE.qiCost>left+(sel.q?RULE.qiCost:0))b.disabled=true;
+      b.onclick=()=>{set({...sel,q:on?null:q.n});show(q.n,q.t)};
+      b.onmouseenter=b.onfocus=()=>show(q.n,q.t);return b})),
+    el('div',{class:'bglab'},`兵學・正（每項 ${RULE.zMax} 級，每級 1 點；點一下加 1 級，滿級再點歸零）`),
+    el('div',{class:'bgz'},...d.zheng.map(x=>{
+      const lv=sel.z[x.n]||0,b=el('button',{class:'bgn'+(lv?' on':''),type:'button',title:x.t[Math.max(0,lv-1)]},x.n,
+        el('span',{class:'lv'},...Array.from({length:RULE.zMax},(_,k)=>el('i',{class:k<lv?'on':''},'◆'))));
+      if(!lv&&!left)b.disabled=true;
+      const txt=()=>lv?`Lv${lv}：${x.t[lv-1]}${lv<RULE.zMax?`；下一級：${x.t[lv]}`:''}`:`Lv1：${x.t[0]}；Lv2：${x.t[1]}`;
+      b.onclick=()=>{const nv=lv>=RULE.zMax||!left?0:lv+1;set({...sel,z:{...sel.z,[x.n]:nv}})};
+      b.onmouseenter=b.onfocus=()=>show(x.n,txt(),x.g2);return b})),
+    tip);
+  return box;
+}
 function renderBuilder(){
   const box=$('slots');box.replaceChildren();
   const bonus=teamBonus();
@@ -825,7 +884,7 @@ function renderBuilder(){
     tr.oninput=()=>{tv.textContent=fmt(+tr.value)};
     tr.onchange=()=>{m.t=+tr.value;save();renderBuilder()};
     box.append(el('div',{class:'slot'+(i===0?' boss':'')},hero,el('div',{class:'body'},
-      reds,statBars(m,bonus.pct),skills,traitTiles(m),el('label',{class:'troopln'},'兵力',tr,tv))));
+      reds,statBars(m,bonus.pct),skills,traitTiles(m),bingakuPanel(m,g.r),el('label',{class:'troopln'},'兵力',tr,tv))));
   });
   renderTeamBar(bonus);
 }
@@ -863,14 +922,13 @@ if(SLG){   // bar to send the team back to the Q版戰棋 slot
   const ok=el('button',{class:'sbtn',type:'button'},`完成，帶回戰棋${who}`),no=el('button',{class:'chip',type:'button'},'取消');
   ok.onclick=()=>{
     save();
-    const old=slgSet[SLG[1]]?.[+SLG[2]]||{};
-    (slgSet[SLG[1]]??=[])[+SLG[2]]={src:'builder',arm:S.my.arm,bingaku:old.bingaku||null,my:S.my,
-      gens:S.my.gens.map((m,i)=>({n:m.n,s:m.s.filter(Boolean),t:m.t,st:S.my.calc?.[i]||null}))};
+        (slgSet[SLG[1]]??=[])[+SLG[2]]={src:'builder',arm:S.my.arm,my:S.my,
+      gens:S.my.gens.map((m,i)=>({n:m.n,s:m.s.filter(Boolean),t:m.t,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
     try{localStorage.setItem(SLG_KEY,JSON.stringify(slgSet))}catch{}
     location.href='slg.html';
   };
   no.onclick=()=>{location.href='slg.html'};
-  document.body.append(el('div',{class:'slgbar'},el('span',{},`正在編輯 Q版戰棋 ${who}：選好武將、戰法、紅度、配點、兵種後按完成`),el('div',{class:'row'},no,ok)));
+  document.body.append(el('div',{class:'slgbar'},el('span',{},`正在編輯 Q版戰棋 ${who}：選好武將、戰法、紅度、配點、兵學、兵種後按完成`),el('div',{class:'row'},no,ok)));
   document.body.style.paddingBottom='120px';
   $('slots').closest('.panel').scrollIntoView({block:'start'});
 }
