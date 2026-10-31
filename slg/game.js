@@ -1,16 +1,16 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=7';
-import {chibi,SIDE_COL} from './chibi.js?v=7';
-import {isoTerrain,isoGeom} from './iso.js?v=7';
-import {BINGAKU} from './bingaku.js?v=7';
-import {SCENARIOS} from './scenarios.js?v=7';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=7';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=8';
+import {chibi,SIDE_COL} from './chibi.js?v=8';
+import {isoTerrain,isoGeom} from './iso.js?v=8';
+import {BINGAKU} from './bingaku.js?v=8';
+import {SCENARIOS} from './scenarios.js?v=8';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=8';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='7';
+const VER='8';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -116,7 +116,17 @@ function garrisonTeam(k,lv){
 }
 
 // ---- setup UI ----
-const MODES=[['land','打地'],['pvp','打人'],['story','劇本']];
+const MODES=[['pvp','打人'],['land','打地'],['story','劇本']];
+// 模式由頁首的子分頁（site-nav.js）切換：網址 ?m=pvp|land|story 可直接開到該模式
+{const m=new URLSearchParams(location.search).get('m');if(MODES.some(([k])=>k===m))SET.mode=m}
+function setMode(v){
+  if(!MODES.some(([k])=>k===v))return;
+  if(G&&!G.over&&v!==G.mode&&!confirm('放棄這場，切換模式？'))return document.dispatchEvent(new CustomEvent('slg:mode',{detail:SET.mode}));
+  SET.mode=v;save();
+  if(G){G=null;play('title');$('game').hidden=true;$('over').hidden=true;$('setup').hidden=false}
+  renderSetup();
+}
+document.addEventListener('slg:setmode',e=>setMode(e.detail));
 function chips(box,opts,cur,on){
   box.replaceChildren(...opts.map(([v,l])=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(cur===v)},l);b.onclick=()=>on(v);return b}));
 }
@@ -130,11 +140,11 @@ function teamCard(spec,side,i,list){
   const ed=el('button',{type:'button',class:'btn'},'編輯這隊');
   ed.onclick=()=>{save();location.href=`land.html?slg=${list===SET.mine?'mine':'enemy'}-${i}`};
   const rnd=el('button',{type:'button',class:'btn ghost'},'隨機換一隊');rnd.onclick=()=>{list[i]=randomTeam();save();renderSetup()};
-  const imp=el('button',{type:'button',class:'btn ghost'},'帶入打地頁的組隊');
-  imp.onclick=()=>{const t=builderTeam();if(!t){alert('還沒有組隊資料：請先到「打地模擬」頁面的「我方組隊」選好武將。');return}list[i]=t;save();renderSetup()};
+  const imp=el('button',{type:'button',class:'btn ghost'},'帶入組隊頁的隊伍');
+  imp.onclick=()=>{const t=builderTeam();if(!t){alert('還沒有組隊資料：請先到「組隊・戰報估算」頁面的「我方組隊」選好武將。');return}list[i]=t;save();renderSetup()};
   const skills=el('div',{class:'sks'},...spec.gens.map(g=>el('div',{},el('b',{},g.n),' ',[innateOf(D,g.n),...g.s].filter(Boolean).map(s=>skillChip(s)).reduce((a,c)=>(a.append(c),a),el('span')))));
   return el('div',{class:'tcard',style:`--side:${SIDE_COL[side]}`},
-    el('div',{class:'th'},el('b',{},`第 ${i+1} 隊 · ${spec.gens[0].n}隊`),el('small',{},`Cost ${cost} · ${fmt(spec.gens.reduce((a,g)=>a+g.t,0))} 兵 · ${spec.my?'自選':spec.src==='builder'?'打地頁組隊':'隨機'}`)),
+    el('div',{class:'th'},el('b',{},`第 ${i+1} 隊 · ${spec.gens[0].n}隊`),el('small',{},`Cost ${cost} · ${fmt(spec.gens.reduce((a,g)=>a+g.t,0))} 兵 · ${spec.my?'自選':spec.src==='builder'?'組隊頁組隊':'隨機'}`)),
     figs,arms,skills,el('div',{class:'row'},ed,rnd,imp,bg));
 }
 const MOD_LABEL={text:['依說明','t'],guess:['推估','g'],none:['未模擬','n']};
@@ -160,7 +170,9 @@ function showSkill(n){
   $('skDlg').showModal();
 }
 function renderSetup(){
-  chips($('modeChips'),MODES,SET.mode,v=>{SET.mode=v;save();renderSetup()});
+  chips($('modeChips'),MODES,SET.mode,setMode);
+  {const u=new URL(location.href);if(u.searchParams.get('m')!==SET.mode){u.searchParams.set('m',SET.mode);history.replaceState(history.state,'',u)}}
+  document.dispatchEvent(new CustomEvent('slg:mode',{detail:SET.mode}));
   $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
   chips($('garChips'),[['hold','固守（同遊戲）'],['guard','出擊（練習用）']],SET.gar,v=>{SET.gar=v;save();renderSetup()});
   chips($('lvChips'),[3,4,5,6,7,8,9,10].map(v=>[v,`Lv${v}`]),SET.lv,v=>{SET.lv=v;save();renderSetup()});
@@ -560,3 +572,4 @@ $('toSetup').onclick=()=>{$('over').hidden=true;G=null;play('title');$('game').h
 $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
 $('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；地形不影響傷害。`;
 renderSetup();
+document.documentElement.dataset.slgReady='1';
