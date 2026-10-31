@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>天下布武 真戰傳｜Q版戰棋</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&family=LXGW+WenKai+TC:wght@400;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'10';
+:root{--slg-ver:'11';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -242,6 +242,116 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 .msgtx{font-size:.95rem}
 .stage::before{content:"";order:9;height:18px;margin:0 -8px -8px;background:linear-gradient(#000 0 3px,transparent 3px),repeating-linear-gradient(90deg,#7ec8d8 0 20px,#3a7f95 20px 22px);border-top:2px solid #fff}
 @media (max-width:520px){.bline .bn .tag{display:none}}
+
+/* ===== 美感提升第一批：地圖光影與季節、戰鬥演出（全部程式繪製，不使用遊戲素材） ===== */
+:root{--brush:"LXGW WenKai TC","Noto Serif TC",serif}
+#board{border:1px solid #6b5636;box-shadow:0 0 0 3px #1a1410,0 0 0 4px #8a6a3a,0 12px 30px #000a;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 480' preserveAspectRatio='none'%3E%3Ccircle cx='130' cy='70' r='44' fill='%23fff1c8' opacity='.85'/%3E%3Ccircle cx='130' cy='70' r='90' fill='%23ffe2a8' opacity='.25'/%3E%3Cpath d='M0 150 L80 95 L150 130 L240 70 L330 125 L420 80 L520 135 L610 90 L700 130 L800 100 V480 H0Z' fill='%237d93b4' opacity='.7'/%3E%3Cpath d='M0 190 L110 140 L200 175 L300 125 L390 170 L500 135 L600 180 L800 140 V480 H0Z' fill='%235b7396' opacity='.8'/%3E%3Cpath d='M0 240 Q120 200 240 230 T480 220 T800 225 V480 H0Z' fill='%233f5a7a'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat,
+  linear-gradient(#f3c48a 0%,#e9a873 18%,#8fb3cf 46%,#4d7aa0 70%,#2a4560 100%)}
+#board .cloudsh{position:absolute;inset:0;pointer-events:none;z-index:1;mix-blend-mode:multiply;opacity:.5;
+  background:radial-gradient(closest-side,#3b4a5a,transparent) 0 0/38% 26% no-repeat,radial-gradient(closest-side,#3b4a5a,transparent) 0 0/30% 20% no-repeat;animation:clouds 30s linear infinite}
+@keyframes clouds{from{background-position:-40% 30%,-80% 70%}to{background-position:140% 50%,160% 85%}}
+#board .vig{position:absolute;inset:0;pointer-events:none;z-index:40;box-shadow:inset 0 0 80px 10px #000a;background:radial-gradient(ellipse at 18% 0%,#ffd9a033,transparent 55%)}
+#board canvas.leaves{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
+#board .wave{animation:wave 3.2s ease-in-out infinite}#board .wave.b{animation-delay:-1.6s}
+@keyframes wave{50%{transform:translateX(6px);opacity:.35}}
+#board .glint{animation:glint 2.4s ease-in-out infinite}
+@keyframes glint{0%,100%{opacity:0}50%{opacity:.9}}
+#board .selring{animation:selp 1.4s ease-in-out infinite}
+@keyframes selp{50%{opacity:.45}}
+#board .fire{transform-box:fill-box;transform-origin:50% 100%;animation:fire .5s ease-in-out infinite alternate}
+@keyframes fire{to{transform:translate(-20px,20px) scale(1.12,.9)}}
+#board .hl.mv{fill:rgba(127,196,255,.38);stroke:#e8f6ff;animation:mvp 1.6s ease-in-out infinite}
+@keyframes mvp{50%{fill-opacity:.45}}
+#board .hl.sel{fill:none;stroke:none}
+.unit svg{animation:idle 1.8s ease-in-out infinite;animation-delay:var(--d,0s);transform-origin:50% 92%}
+@keyframes idle{50%{transform:scaleY(1.035) translateY(-1.5%)}}
+.unit.done svg{animation:none}
+.unit.on svg{animation:bob .55s ease-in-out infinite alternate}
+.unit .nm{position:absolute;left:50%;bottom:-6%;transform:translateX(-50%);font-family:var(--brush);font-weight:700;font-size:15cqw;line-height:1.25;white-space:nowrap;color:#fff;
+  padding:0 5cqw;border-radius:3px;background:linear-gradient(var(--side),color-mix(in srgb,var(--side) 55%,#000));box-shadow:0 0 0 1px #f3d48a,0 2px 4px #000a;text-shadow:0 1px 0 #0008;z-index:2}
+.unit .hp{bottom:-15%;left:16%;right:16%;box-shadow:0 0 0 1px #f3d48a99,0 1px 2px #000}
+.unit .hp>i{background:linear-gradient(#a8f0c8,#3fae74 55%,#2b7e52)}
+.unit[style*="d24a3a"] .hp>i{background:linear-gradient(#ffc0a8,#d65a3e 55%,#9b3524)}
+.unit .arm{border-radius:50%;width:24cqw;height:24cqw;display:grid;place-items:center;padding:0;color:#2b1d0c;border:0;font-weight:700;
+  background:radial-gradient(circle at 35% 30%,#fff3c4,#e3b75a 60%,#a5772a);box-shadow:0 1px 3px #000b;font-family:var(--brush)}
+
+/* 戰鬥視窗：保留吞食天地式左右兩列＋說話框，換成戰場背景與金框 */
+.stage{font-family:var(--body);border:0;outline:0;margin:4px;border-radius:6px;overflow:hidden;background:#141c30;
+  box-shadow:0 0 0 2px #0b0806,0 0 0 4px #c9a253,0 0 0 6px #0b0806,0 14px 30px #000c}
+.stage::before{content:none}
+.stage>*{position:relative;z-index:1}
+.stage>svg.bbg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.shd b{font-family:var(--brush);font-size:1rem;letter-spacing:.06em;text-shadow:0 1px 3px #000;filter:brightness(1.35)}
+.rd{color:#fff2c8;text-shadow:0 0 6px #000}
+.bline .bi{padding:3px 7px 5px;border-radius:4px;background:linear-gradient(90deg,#0a0d16f2,#0a0d16c8);box-shadow:inset 0 0 0 1px #f3d48a55}
+.bcol.r .bline .bi{background:linear-gradient(270deg,#160a0af2,#160a0ac8)}
+.bline .bn b{font-family:var(--brush);font-weight:700;color:#fff}
+.bline .bn .tag{color:#2b1d0c;background:linear-gradient(#ffe9a8,#d6a443)}
+.bline .tv{color:#fff3c4;text-shadow:0 1px 0 #000}
+.bline .fig svg{filter:drop-shadow(0 3px 0 #0007)}
+.bline i.hp{position:relative;height:9px;background:#120c0a;border-radius:2px;box-shadow:0 0 0 1px #000,0 0 0 2px #c9a25399;overflow:hidden}
+.bline i.hp>i{position:absolute;top:0;bottom:0;left:0;margin:0}
+.bcol.r .bline i.hp>i{left:auto;right:0;margin:0}
+.bline i.hp>i.gh{background:#fff;transition:width .6s ease .35s}
+.bline i.hp>i.now{background:linear-gradient(#ffd27a,#f39c12 50%,#b4650c);transition:width .18s ease-out}
+.bcol.r .bline i.hp>i.now{background:linear-gradient(#d3c6ff,#8e7cc3 50%,#5b4a96)}
+.bline i.hp::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 7px,#0006 7px 8px)}
+.lunge-r .fig{animation:lr .38s cubic-bezier(.3,1.6,.5,1)}.lunge-l .fig{animation:ll .38s cubic-bezier(.3,1.6,.5,1)}
+@keyframes lr{40%{transform:translateX(26px) scale(1.12)}}
+@keyframes ll{40%{transform:translateX(-26px) scale(1.12)}}
+.shake .fig svg{animation:hitf .3s steps(2) 2}
+@keyframes hitf{50%{filter:brightness(4) saturate(0)}}
+.slash{position:absolute;left:-8px;bottom:-8px;width:70px;height:70px;pointer-events:none;z-index:4}
+.bcol.r .slash{left:auto;right:-8px}
+.slash svg{width:100%;height:100%}
+.slash path{stroke-dasharray:140;stroke-dashoffset:140;animation:sl .28s ease-out forwards}
+.slash path+path{animation-delay:.07s}
+@keyframes sl{to{stroke-dashoffset:0;opacity:0}}
+.spark{position:absolute;left:22px;bottom:22px;width:5px;height:5px;border-radius:50%;background:#fff6c8;box-shadow:0 0 6px #ffcf5a;pointer-events:none;z-index:4;animation:spk .5s ease-out forwards}
+.bcol.r .spark{left:auto;right:22px}
+@keyframes spk{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.fl{top:-6px;font-family:"DotGothic16",monospace;font-weight:400;font-size:1.35rem;color:#fff;-webkit-text-stroke:4px #8a1d0e;paint-order:stroke fill;text-shadow:none;animation:fl2 1s cubic-bezier(.2,1.8,.4,1) forwards;z-index:5}
+.fl.mo{color:#fff;-webkit-text-stroke-color:#4b2a8a}.fl.heal{color:#e8ffe8;-webkit-text-stroke-color:#1d6a3d}.fl.st{color:#ffd76a;-webkit-text-stroke:3px #000;font-size:.95rem;font-family:var(--brush)}
+.fl.crit{font-size:1.75rem;color:#fff2a8}
+.fl small{display:block;font-family:var(--brush);font-size:.6em;-webkit-text-stroke:3px #000;color:#ffd45a;text-align:center}
+@keyframes fl2{0%{transform:translateX(-50%) scale(.3);opacity:0}25%{transform:translateX(-50%) scale(1.2);opacity:1}45%{transform:translateX(-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-12px)}100%{opacity:0;transform:translate(-50%,-22px)}}
+.healfx{position:absolute;inset:-6px;pointer-events:none;z-index:4}
+.healfx i{position:absolute;bottom:0;width:4px;height:12px;border-radius:2px;background:linear-gradient(#d9ffe6,#4fd08a00);animation:hup 1s ease-out both}
+@keyframes hup{from{transform:translateY(0);opacity:1}to{transform:translateY(-56px);opacity:0}}
+.stage.quake{animation:quake .35s}
+@keyframes quake{25%{transform:translate(-4px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,1px)}}
+.rbig{position:absolute!important;inset:0;display:grid;place-items:center;z-index:6!important;pointer-events:none}
+.rbig span{font-family:var(--brush);font-weight:700;font-size:clamp(1.8rem,8vw,2.5rem);color:#fff;letter-spacing:.15em;-webkit-text-stroke:6px #1a0e06;paint-order:stroke fill;
+  padding:0 40px;background:radial-gradient(ellipse,#000a,#0000 70%);animation:rbig 1s ease forwards}
+@keyframes rbig{0%{opacity:0;transform:scale(2.2);filter:blur(6px)}20%{opacity:1;transform:scale(1);filter:none}75%{opacity:1}100%{opacity:0;transform:scale(.9)}}
+.cutin{position:absolute!important;inset:0;z-index:7!important;pointer-events:none;display:none;overflow:hidden}
+.cutin.on{display:block}
+.cutin .dim{position:absolute;inset:0;background:#000;animation:dim 1s forwards}
+@keyframes dim{0%{opacity:0}12%,80%{opacity:.55}100%{opacity:0}}
+.cutin .band{position:absolute;left:-10%;right:-10%;top:30%;height:36%;transform:skewY(-8deg);overflow:hidden;
+  background:linear-gradient(90deg,#3a0d08,#b8321f 40%,#e3b75a 50%,#b8321f 60%,#3a0d08);box-shadow:0 0 0 3px #f3d48a,0 0 30px #ff7a3a;animation:band 1s cubic-bezier(.2,.9,.2,1) forwards}
+.cutin.l .band{background:linear-gradient(90deg,#08183a,#1f52b8 40%,#9fd0ff 50%,#1f52b8 60%,#08183a);box-shadow:0 0 0 3px #f3d48a,0 0 30px #3a8aff}
+@keyframes band{0%{transform:skewY(-8deg) scaleY(0)}10%{transform:skewY(-8deg) scaleY(1.1)}16%,82%{transform:skewY(-8deg) scaleY(1)}100%{transform:skewY(-8deg) scaleY(0)}}
+.cutin .lines{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 40px,#fff4 40px 42px,transparent 42px 90px,#fff2 90px 91px);background-size:200px 100%;animation:lines .25s linear infinite}
+@keyframes lines{to{background-position:-200px 0}}
+.cutin .who{position:absolute;top:-10%;height:120%;aspect-ratio:1;left:12%;overflow:hidden;transform:skewY(8deg);animation:who 1s ease-out forwards}
+.cutin.r .who{left:auto;right:12%}
+.cutin .who img.pt{transform:none;object-position:50% 12%;-webkit-mask:linear-gradient(90deg,#000 70%,#0000);mask:linear-gradient(90deg,#000 70%,#0000)}
+.cutin.r .who img.pt{-webkit-mask:linear-gradient(270deg,#000 70%,#0000);mask:linear-gradient(270deg,#000 70%,#0000)}
+.cutin .who svg{width:100%;height:auto;margin-top:8%}
+@keyframes who{0%{transform:skewY(8deg) translateX(-60%);opacity:0}15%{transform:skewY(8deg);opacity:1}85%{transform:skewY(8deg) translateX(8%);opacity:1}100%{opacity:0}}
+.cutin .csk{position:absolute;right:16%;top:50%;transform:translateY(-50%) skewY(8deg);text-align:right;animation:skn 1s ease-out forwards}
+.cutin.r .csk{right:auto;left:16%;text-align:left}
+.cutin .csk small{display:block;font-size:.75rem;color:#fff3c4;letter-spacing:.3em;text-shadow:0 1px 2px #000}
+.cutin .csk b{font-family:var(--brush);font-weight:700;font-size:clamp(1.5rem,7vw,2.3rem);color:#fff;letter-spacing:.06em;-webkit-text-stroke:5px #2a0a04;paint-order:stroke fill;filter:drop-shadow(0 0 8px #ffb04a);white-space:nowrap}
+@keyframes skn{0%{opacity:0;transform:translateY(-50%) skewY(8deg) scale(1.6)}18%{opacity:1;transform:translateY(-50%) skewY(8deg) scale(1)}85%{opacity:1}100%{opacity:0}}
+.msg{border:0;border-radius:4px;background:linear-gradient(#141c30f2,#0a0f1cf2);box-shadow:inset 0 0 0 1px #fff3,0 0 0 2px #c9a253,0 0 0 3px #000;margin:2px}
+.face{border:0;border-radius:3px;box-shadow:0 0 0 2px #f3d48a,0 0 0 3px #000}
+.msgtx b{font-family:var(--brush);color:#ffd27a;font-weight:700}
+.msgtx .cur{display:inline-block;margin-left:4px;color:#f3d48a;animation:cur .8s steps(2) infinite}
+@keyframes cur{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){#board .cloudsh,#board .wave,#board .glint,#board .fire,.unit svg,.cutin *,.rbig span{animation:none!important}}
 </style>
 </head>
 <body>
@@ -314,7 +424,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>
-<script type="module" src="slg/game.js?v=10"></script>
+<script type="module" src="slg/game.js?v=11"></script>
 <script src="site-nav.js?v=1" data-page="slg"></script>
 </body>
 </html>
