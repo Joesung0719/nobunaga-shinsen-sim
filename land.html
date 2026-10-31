@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>真戰打地模擬器</title>
+<title>真戰組隊・戰報估算｜Q版戰棋</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
@@ -250,10 +250,10 @@ ul.note{padding-left:1.2em}
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>真戰打地模擬器</h1>
+      <h1>組隊・戰報估算</h1>
       <p>自由組隊 · Lv3–Lv10 土地守軍 · 依先鋒服實戰戰報抽樣估算戰損 · 連戰兵力延續</p>
     </div>
-    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="land.html" aria-current="page">打地模擬</a><a href="slg.html">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
+    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="slg.html" aria-current="page">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
   </header>
 
   <section class="panel">
@@ -356,7 +356,7 @@ ul.note{padding-left:1.2em}
 </div>
 
 <script type="module">
-import {DIRS,RULE,capOf,dirOf,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=8';
+import {DIRS,RULE,capOf,dirOf,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=9';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -703,7 +703,7 @@ const UI=Object.assign({season:'',fac:'',kind:''},S.ui);
 function pickGeneral(i){
   const m=S.my.gens[i],taken=new Set(S.my.gens.map(g=>g.n));
   openPicker(`選擇${i===0?'大將':'副將'}`,({q,filters,body})=>{
-    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['4','4★'],['3','3★'],['2','2★↓']];
+    const seasons=[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['限定','限定'],['4','4★'],['3','3★'],['2','2★↓']];
     const fs=[['','全勢力'],...FACTIONS.map(f=>[f,f])];
     const r1=el('div',{class:'row'}),r2=el('div',{class:'row'});filters.append(r1,r2);
     const gs=chipGroup(r1,seasons,UI.season,draw),gf=chipGroup(r2,fs,UI.fac,draw);
@@ -933,5 +933,6 @@ if(SLG){   // bar to send the team back to the Q版戰棋 slot
   $('slots').closest('.panel').scrollIntoView({block:'start'});
 }
 </script>
+<script src="site-nav.js?v=1" data-page="land"></script>
 </body>
 </html>
