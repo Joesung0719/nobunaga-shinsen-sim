@@ -3,7 +3,7 @@
 作者：Kenney Vleugels（https://kenney.nl）
 授權：**Creative Commons Zero（CC0 1.0）**，https://creativecommons.org/publicdomain/zero/1.0/
 可商用、可修改、可再散布，不必標示作者（我們仍然標示）。每個資料夾裡都附上原包的 `License.txt`，內文都寫明 CC0。
-下載日期：2026-10-31，從 kenney.nl 各素材頁下載；下載時每一包頁面上的授權欄都寫 Creative Commons CC0。
+下載日期：2026-10-31，Joe 從 kenney.nl 各素材頁以瀏覽器手動下載；下載時每一包頁面上的授權欄都寫 Creative Commons CC0。
 
 目前**還沒有接進遊戲程式**，只是先放進 repo 備用。
 
