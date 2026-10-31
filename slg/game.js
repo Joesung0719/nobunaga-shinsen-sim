@@ -1,17 +1,17 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=13';
-import {chibi,SIDE_COL} from './chibi.js?v=13';
-import {isoTerrain,isoGeom} from './iso.js?v=13';
-import {leaves} from './fx.js?v=13';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=13';
-import {SCENARIOS} from './scenarios.js?v=13';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=13';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=14';
+import {chibi,SIDE_COL} from './chibi.js?v=14';
+import {isoTerrain,isoGeom} from './iso.js?v=14';
+import {leaves} from './fx.js?v=14';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=14';
+import {SCENARIOS} from './scenarios.js?v=14';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=14';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='13';
+const VER='14';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -66,9 +66,11 @@ const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},
 if(!SET.v2){SET.v2=1;SET.foe='2p';save()}
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
 setAudio(SET.audio||{});
-// 戰場畫面：舊版 SVG（預設）或新版 Phaser（網址加 ?engine=phaser，或在出陣設定切換）。網址參數優先，並記住選擇。
-{const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='svg'){SET.engine=e;save()}}
-const PB=SET.engine==='phaser'?await import('./board-phaser.js?v=13').catch(e=>{console.error(e);return null}):null;
+// 戰場畫面：新版 Phaser 是預設（Joe 2026-10-31）；舊版 SVG 用網址 ?engine=classic 或出陣設定切回。網址參數優先，並記住選擇。
+// 第一次載入這版時把舊存檔的選擇重設成新版（之前的預設是舊版）。
+if(!SET.v3){SET.v3=1;delete SET.engine;save()}
+{const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='classic'||e==='svg'){SET.engine=e==='phaser'?'phaser':'classic';save()}}
+const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=14').catch(e=>{console.error(e);return null}):null;
 let VIEW=null;
 const vid=u=>G.gid+':'+u.id;
 document.addEventListener('pointerdown',unlock);
@@ -181,10 +183,10 @@ function showSkill(n){
 }
 function renderSetup(){
   chips($('modeChips'),MODES,SET.mode,setMode);
-  {const u=new URL(location.href),e=PB?'phaser':null;
+  {const u=new URL(location.href),e=SET.engine==='classic'?'classic':null;   // 新版是預設，網址不帶參數
    if(u.searchParams.get('m')!==SET.mode||u.searchParams.get('engine')!==e){u.searchParams.set('m',SET.mode);if(e)u.searchParams.set('engine',e);else u.searchParams.delete('engine');history.replaceState(history.state,'',u)}}
-  chips($('engChips'),[['svg','舊版'],['phaser','新版 Phaser（測試中）']],PB?'phaser':'svg',v=>{
-    if(v===(PB?'phaser':'svg'))return;
+  chips($('engChips'),[['phaser','新版 Phaser'],['classic','舊版']],SET.engine==='classic'?'classic':'phaser',v=>{
+    if(v===(SET.engine==='classic'?'classic':'phaser'))return;
     SET.engine=v;save();const u=new URL(location.href);u.searchParams.set('engine',v);location.href=u});
   document.dispatchEvent(new CustomEvent('slg:mode',{detail:SET.mode}));
   $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';

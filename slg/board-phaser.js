@@ -3,8 +3,8 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=13';
-import {chibi,SIDE_COL} from './chibi.js?v=13';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=14';
+import {chibi,SIDE_COL} from './chibi.js?v=14';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
