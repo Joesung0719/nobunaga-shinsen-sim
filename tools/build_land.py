@@ -313,8 +313,9 @@ for n, t in det['skills'].items():   # the skill's own 戰法 screen beats grade
 PK = {'長野業正', '龍造寺隆信', '伊達政宗', '佐竹義重', '石川數正', '島津義久', '三好實休', '堀直政',
       '大久保長安', '相良義陽', '藤林正保', '種子島時堯', '浦上宗景', '吉岡妙林'}
 S3 = {'真田昌幸', '柿崎景家', '立花誾千代', '阿松', '鈴木佐大夫', '安宅冬康', '伊達輝宗', '加藤嘉明'}
+LIM = {n for n, c in cards.items() if c.get('lim')}   # 限定 cards (data.json "lim"): 劍心永繼 etc., not in 名將登用
 for n, x in stats.items():
-    x['season'] = ('PK' if n in PK else 'S1') if n in cards or x.get('r', 5) < 4 else ('S3' if n in S3 else 'S2')   # 3★ and lower outside data.json (2★/1★, 真田大助) are base-game, not S2/S3 shop cards
+    x['season'] = ('限定' if n in LIM else 'PK' if n in PK else 'S1') if n in cards or x.get('r', 5) < 4 else ('S3' if n in S3 else 'S2')   # 3★ and lower outside data.json (2★/1★, 真田大助) are base-game, not S2/S3 shop cards
 # ---- skill category (指揮/主動/突擊/被動/兵種/內政): from skill text, else the innate kind on the general's stat screen ----
 KIND = {'主': '主動', '突': '突擊', '指': '指揮', '被': '被動'}
 kind = {x['inn']: KIND[x['kind']] for x in stats.values() if x['kind'] in KIND}
