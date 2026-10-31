@@ -1,17 +1,17 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=10';
-import {chibi,SIDE_COL} from './chibi.js?v=10';
-import {isoTerrain,isoGeom} from './iso.js?v=11';
-import {leaves} from './fx.js?v=11';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=10';
-import {SCENARIOS} from './scenarios.js?v=10';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=10';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=13';
+import {chibi,SIDE_COL} from './chibi.js?v=13';
+import {isoTerrain,isoGeom} from './iso.js?v=13';
+import {leaves} from './fx.js?v=13';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=13';
+import {SCENARIOS} from './scenarios.js?v=13';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=13';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='10';
+const VER='13';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -66,6 +66,11 @@ const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},
 if(!SET.v2){SET.v2=1;SET.foe='2p';save()}
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
 setAudio(SET.audio||{});
+// 戰場畫面：舊版 SVG（預設）或新版 Phaser（網址加 ?engine=phaser，或在出陣設定切換）。網址參數優先，並記住選擇。
+{const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='svg'){SET.engine=e;save()}}
+const PB=SET.engine==='phaser'?await import('./board-phaser.js?v=13').catch(e=>{console.error(e);return null}):null;
+let VIEW=null;
+const vid=u=>G.gid+':'+u.id;
 document.addEventListener('pointerdown',unlock);
 function renderSound(){
   const A=audioSettings(),box=$('snd');
@@ -176,7 +181,11 @@ function showSkill(n){
 }
 function renderSetup(){
   chips($('modeChips'),MODES,SET.mode,setMode);
-  {const u=new URL(location.href);if(u.searchParams.get('m')!==SET.mode){u.searchParams.set('m',SET.mode);history.replaceState(history.state,'',u)}}
+  {const u=new URL(location.href),e=PB?'phaser':null;
+   if(u.searchParams.get('m')!==SET.mode||u.searchParams.get('engine')!==e){u.searchParams.set('m',SET.mode);if(e)u.searchParams.set('engine',e);else u.searchParams.delete('engine');history.replaceState(history.state,'',u)}}
+  chips($('engChips'),[['svg','舊版'],['phaser','新版 Phaser（測試中）']],PB?'phaser':'svg',v=>{
+    if(v===(PB?'phaser':'svg'))return;
+    SET.engine=v;save();const u=new URL(location.href);u.searchParams.set('engine',v);location.href=u});
   document.dispatchEvent(new CustomEvent('slg:mode',{detail:SET.mode}));
   $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
   chips($('garChips'),[['hold','固守（同遊戲）'],['guard','出擊（練習用）']],SET.gar,v=>{SET.gar=v;save();renderSetup()});
@@ -229,7 +238,7 @@ function startStory(){
   const units=sc.units.map(u=>({id:id++,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
     team:battleTeam({arm:u.arm,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
   G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
-    st:{killDay:0,killRain:false,finisher:null,routed:[],hitBy:{},said:new Set()}};play('map');
+    st:{killDay:0,killRain:false,finisher:null,routed:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(`劇本「${sc.name}」：${sc.brief}`);
   renderObj();renderBoard();
@@ -272,7 +281,7 @@ function startGame(){
     keys.forEach((k,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:garrisonTeam(k,SET.lv),garrison:true,
       ...(SET.gar==='guard'?{ai:'advance'}:{})}));
   }else SET.enemy.slice(0,1).forEach((s,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:battleTeam(s,1)}));
-  G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,garAi:SET.mode==='land'&&SET.gar==='guard',over:null,busy:false,log:[]};play('map');
+  G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,garAi:SET.mode==='land'&&SET.gar==='guard',over:null,busy:false,log:[],gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'對戰模擬：一隊對一隊，擊潰對方部隊獲勝。');
   renderObj();renderBoard();
@@ -315,6 +324,21 @@ function renderBoard(){
   if(sel)mark.set(sel.x+','+sel.y,'sel');
   const g=isoGeom(W,H);
   box.style.setProperty('--ar',`${g.vw}/${g.vh}`);
+  if(PB){
+    // 新版：盤面交給 Phaser 畫（slg/board-phaser.js），規則與點擊處理照舊
+    VIEW??=PB.createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});
+    VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
+      return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
+        cnt:u.team.gens.filter(g=>g.troops>0).length,done:!!u.acted,on:u===sel,tgt:!!u.target,lord:!!u.lord,draw:dn?u.drawUntil-G.day+1:0}})});
+  }else renderSvgBoard(box,g,sel,mark);
+  const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
+  const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
+  $('turn').innerHTML=`第 <b>${G.day}</b> 天${lim?` / ${lim}`:''}${raining()?'・<span class="wx">豪雨</span>':''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
+  $('endTurn').disabled=G.busy||!!G.over;
+  renderInfo();
+}
+// 舊版戰場：地形一張 SVG，部隊是疊在上面的 HTML
+function renderSvgBoard(box,g,sel,mark){
   // keep the unit elements between renders so a move slides instead of jumping
   const old=new Map([...box.querySelectorAll('.unit')].map(e=>[e.dataset.id,e]));
   const svg=`<svg class="iso" viewBox="0 0 ${g.vw} ${g.vh}" xmlns="http://www.w3.org/2000/svg">${isoTerrain(G.T,mark)}</svg>`;
@@ -338,12 +362,7 @@ function renderBoard(){
     (prev||n).onclick=n.onclick;
   }
   for(const e of old.values())e.remove();
-  const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
-  const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
   box.classList.toggle('rain',raining());
-  $('turn').innerHTML=`第 <b>${G.day}</b> 天${lim?` / ${lim}`:''}${raining()?'・<span class="wx">豪雨</span>':''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
-  $('endTurn').disabled=G.busy||!!G.over;
-  renderInfo();
 }
 function renderInfo(){
   const u=G.sel||G.peek;const box=$('info');
@@ -397,6 +416,7 @@ async function fight(a,d){
     if(lord&&alive(lord)&&total(lord.team)<=totalMax(lord.team)/2&&!st.said.has('lordLow')){st.said.add('lordLow');lines.push(...(G.sc.talk.lordLow||[]))}
   }
   a.acted=true;a.moved=true;
+  if(VIEW)await VIEW.focus(vid(a),vid(d));
   await playBattle(a,d,before,r);
   const res={W:'勝利',D:'平局',L:'敗北'}[r.res];
   const lost=(i,u)=>{const v=before[i].reduce((s,x)=>s+x,0)-total(u.team);return v<0?`回復 ${fmt(-v)}`:`損失 ${fmt(v)}`};
@@ -409,6 +429,7 @@ async function fight(a,d){
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   checkOver();renderBoard();
+  if(VIEW)await VIEW.unfocus();
   if(!G.over&&lines.length)await talk(lines);
   G.busy=was;renderBoard();
 }

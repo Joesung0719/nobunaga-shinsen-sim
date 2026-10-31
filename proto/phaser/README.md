@@ -24,7 +24,7 @@
 
 ## 分批遷移（每批一個 PR，Joe 看過再進下一批）
 
-1. **戰場換成 Phaser 畫布**：`slg.html` 的 `#board`（現在是 SVG）改成 Phaser；設定頁、資訊欄、戰況、對話框維持 HTML。規則、AI、存檔都不動。先用網址參數 `?engine=phaser` 切換新舊版，兩版並存，Joe 確認後才變預設。主要改 `slg/game.js` 的 `renderBoard` 與點擊處理。
+1. ✅（`slg/board-phaser.js`）**戰場換成 Phaser 畫布**：`slg.html` 的 `#board`（現在是 SVG）改成 Phaser；設定頁、資訊欄、戰況、對話框維持 HTML。規則、AI、存檔都不動。先用網址參數 `?engine=phaser` 切換新舊版，兩版並存，Joe 確認後才變預設。主要改 `slg/game.js` 的 `renderBoard` 與點擊處理。
 2. **戰鬥視窗演出**：把 `#bt` 戰鬥對話框換成 Phaser 戰鬥場景，用 `engine.battle()` 產生的 8 回合紀錄逐回合播動畫（cut-in、數字、兵力條），數字與現在完全一致。
 3. **換素材**：拿到 CC0 素材後，替換粒子、介面框、音效；每一項記到 `/CREDITS.md`。
 4. **收尾**：移除舊 SVG 戰場的程式碼、調手機效能（低階手機自動關濾鏡）。

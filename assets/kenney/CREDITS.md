@@ -18,4 +18,4 @@
 | `interface-sounds/` | Interface Sounds (1.0) | https://kenney.nl/assets/interface-sounds | 全部 OGG：點擊、開關、確認、錯誤 | 介面按鈕音 |
 
 注意：Kenney 沒有和風建築、武士或太鼓類素材；這些仍要另找 CC0 來源或自繪／自合成。
-PR #42 合併後，請把上表併入根目錄 `CREDITS.md` 的「已使用」。
+根目錄 `CREDITS.md` 的「已使用」已列入這批素材並連到本檔。

@@ -11,13 +11,15 @@
 | Phaser 4.2.1（網頁遊戲引擎） | `vendor/phaser/phaser-4.2.1.min.js` | Phaser Studio Inc.／npm 套件 `phaser@4.2.1`（https://phaser.io） | MIT，全文見 `vendor/phaser/LICENSE.md` |
 | 地圖地塊、山、森林、軍營、橋 | `slg/iso.js` | 本專案自繪（程式畫的 SVG） | 本專案 |
 | Q版武將、家紋 | `slg/chibi.js` | 本專案自繪（程式畫的 SVG，家紋為簡化重繪） | 本專案 |
-| 紅葉、火花、刀光、雨、煙、雲影 | `slg/fx.js`、`proto/phaser/main.js` | 本專案自繪（Canvas／Phaser Graphics 產生） | 本專案 |
+| 紅葉、火花、刀光、雨、煙、雲影 | `slg/fx.js`、`slg/board-phaser.js`、`proto/phaser/main.js` | 本專案自繪（Canvas／Phaser Graphics 產生） | 本專案 |
 | 和風音樂與音效 | `slg/audio.js` | 本專案原創（WebAudio 即時合成，五聲音階自己寫的旋律） | 本專案 |
 | 字型 Noto Serif TC、Noto Sans TC、DotGothic16、霞鶩文楷 TC | 由 Google Fonts 載入，不放在 repo | Google／Fontworks／LXGW | SIL Open Font License 1.1 |
 
+| Kenney 素材 7 包（粒子、煙、UI 框、打擊／RPG／介面音效） | `assets/kenney/`（逐包明細見 `assets/kenney/CREDITS.md`） | Kenney Vleugels（https://kenney.nl），2026-10-31 Joe 以瀏覽器手動下載 | CC0 1.0；各資料夾附原包 `License.txt`。已放進 repo，尚未接進遊戲 |
+
 ## 候選素材（尚未下載）
 
-2026-10-31 實測：這個雲端環境的網路政策擋下 kenney.nl、opengameart.org、itch.io、freesound.org、incompetech.com，所以下面還沒有任何一項真的下載進來。
+2026-10-31 更新：Kenney 7 包已由 Joe 手動下載並放進 `assets/kenney/`（見上表）；其餘來源還沒有下載。日後素材由 Joe 在瀏覽器手動下載，不用程式繞過網站的機器人檢查。
 授權欄是各站的一般規則；**每一包下載時都要在該頁面再確認一次授權**，確認後才移到上面的「已使用」。
 
 | 來源 | 適合拿來做什麼 | 授權 | 注意 |
