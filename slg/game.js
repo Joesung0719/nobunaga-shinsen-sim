@@ -61,7 +61,9 @@ function builderTeam(){
   if(!S?.my?.gens)return null;
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
 }
-const SET=Object.assign({mode:'land',lv:6,foe:'ai',gar:'hold',mine:[],enemy:[]},load());
+const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
+// 對戰模擬平時是對人（Joe 2026-10-31）：舊存檔的「對電腦」改回對人一次
+if(!SET.v2){SET.v2=1;SET.foe='2p';save()}
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
 setAudio(SET.audio||{});
 document.addEventListener('pointerdown',unlock);
@@ -118,7 +120,7 @@ function garrisonTeam(k,lv){
 }
 
 // ---- setup UI ----
-const MODES=[['pvp','打人'],['land','打地'],['story','劇本']];
+const MODES=[['pvp','對戰模擬'],['land','打地'],['story','劇本']];
 // 模式由頁首的子分頁（site-nav.js）切換：網址 ?m=pvp|land|story 可直接開到該模式
 {const m=new URLSearchParams(location.search).get('m');if(MODES.some(([k])=>k===m))SET.mode=m}
 function setMode(v){
@@ -179,7 +181,10 @@ function renderSetup(){
   $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
   chips($('garChips'),[['hold','固守（同遊戲）'],['guard','出擊（練習用）']],SET.gar,v=>{SET.gar=v;save();renderSetup()});
   chips($('lvChips'),[3,4,5,6,7,8,9,10].map(v=>[v,`Lv${v}`]),SET.lv,v=>{SET.lv=v;save();renderSetup()});
-  chips($('foeChips'),[['ai','對電腦'],['2p','雙人輪流（同一支手機）']],SET.foe,v=>{SET.foe=v;save();renderSetup()});
+  // 平時對人（同一支手機輪流）；一個按鈕切換成對 NPC
+  {const b=el('b',{class:'foeNow'},SET.foe==='ai'?'對 NPC（電腦操作紅方）':'對人（同一支手機輪流）');
+   const t=el('button',{type:'button',class:'btn ghost'},SET.foe==='ai'?'切換為對人':'切換為對 NPC');
+   t.onclick=()=>{SET.foe=SET.foe==='ai'?'2p':'ai';save();renderSetup()};$('foeChips').replaceChildren(b,t)}
   const L=D.levels[SET.lv];
   $('lvNote').textContent=SET.mode==='land'?`守將 Lv${L.glv}・每人 ${fmt(L.per)} 兵・${L.waves||1} 隊守軍・${L.note}`:'';
   $('storyRow').hidden=SET.mode!=='story';$('mineWrap').hidden=SET.mode==='story';$('mineNote').hidden=SET.mode==='story';
@@ -189,9 +194,14 @@ function renderSetup(){
       el('b',{},sc.name),el('small',{},sc.year),el('p',{},sc.brief),
       el('div',{class:'figs'},...sc.units.filter(u=>u.side===0).map(u=>el('div',{class:'fig',html:chibi({n:u.gens[0],f:facOf(u.gens[0])},{arm:u.arm,side:0,boss:true})+`<span>${u.gens[0]}</span>`}))));
     b.onclick=()=>{SET.sc=sc.id;save();renderSetup()};return b}));
-  $('mine').replaceChildren(...SET.mine.map((t,i)=>teamCard(t,0,i,SET.mine)));
+  // 對戰模擬是一隊對一隊；打地仍可帶 3 隊
+  const n=SET.mode==='pvp'?1:3;
+  $('setup').classList.toggle('duel',SET.mode==='pvp');
+  $('mineTitle').textContent=SET.mode==='pvp'?'藍方部隊':'我方部隊（藍）';
+  $('mine').replaceChildren(...SET.mine.slice(0,n).map((t,i)=>teamCard(t,0,i,SET.mine)));
   $('enemyWrap').hidden=SET.mode!=='pvp';
-  $('enemy').replaceChildren(...SET.enemy.map((t,i)=>teamCard(t,1,i,SET.enemy)));
+  $('enemyTitle').textContent=SET.foe==='ai'?'紅方部隊（NPC）':'紅方部隊';
+  $('enemy').replaceChildren(...SET.enemy.slice(0,n).map((t,i)=>teamCard(t,1,i,SET.enemy)));
 }
 
 // ---- map ----
@@ -203,10 +213,10 @@ function genMap(mode){
     const T=Array.from({length:H},()=>Array(W).fill('平'));
     for(const y of[1,2,3,4,5,6,7])for(let x=0;x<W;x++){const r=Math.random();T[y][x]=r<.17?'林':r<.25?'山':'平'}
     if(mode==='land')for(const[x,y]of[[2,0],[3,0],[4,0],[2,1],[3,1],[4,1]])T[y][x]='城';
-    const spawn0=[[1,8],[3,8],[5,8]],spawn1=mode==='land'?[[3,1],[2,0],[4,0]]:[[1,0],[3,0],[5,0]];
+    const spawn0=mode==='pvp'?[[3,7]]:[[1,8],[3,8],[5,8]],spawn1=mode==='land'?[[3,1],[2,0],[4,0]]:[[3,1]];
     for(const[x,y]of[...spawn0,...spawn1])if(T[y][x]==='山'||T[y][x]==='林')T[y][x]='平';
     // every spawn must reach the other side
-    const seen=new Set(['3,8']),q=[[3,8]];
+    const s0=spawn0[0],seen=new Set([s0.join(',')]),q=[s0];
     while(q.length){const[x,y]=q.shift();for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,k=nx+','+ny;if(nx<0||ny<0||nx>=W||ny>=H||seen.has(k)||TER[T[ny][nx]].c>9)continue;seen.add(k);q.push([nx,ny])}}
     if([...spawn0,...spawn1].every(([x,y])=>seen.has(x+','+y)))return{T,spawn0,spawn1};
   }
@@ -255,16 +265,16 @@ function startGame(){
   if(SET.mode==='story')return startStory();
   const m=genMap(SET.mode);let id=0;
   const units=[];
-  SET.mine.forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
+  SET.mine.slice(0,SET.mode==='pvp'?1:3).forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
   if(SET.mode==='land'){
     const keys=[...teamsAt(SET.lv)].sort(()=>Math.random()-.5).slice(0,D.levels[SET.lv].waves||1);
     // 遊戲裡的守軍不會離開土地；「出擊」是練習用：守軍會主動前進攻擊
     keys.forEach((k,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:garrisonTeam(k,SET.lv),garrison:true,
       ...(SET.gar==='guard'?{ai:'advance'}:{})}));
-  }else SET.enemy.forEach((s,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:battleTeam(s,1)}));
+  }else SET.enemy.slice(0,1).forEach((s,i)=>units.push({id:id++,side:1,x:m.spawn1[i][0],y:m.spawn1[i][1],team:battleTeam(s,1)}));
   G={T:m.T,units,day:1,phase:0,sel:null,mode:SET.mode,foe:SET.foe,garAi:SET.mode==='land'&&SET.gar==='guard',over:null,busy:false,log:[]};play('map');
   $('setup').hidden=true;$('game').hidden=false;
-  addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'打人：擊潰對方全部部隊獲勝。');
+  addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'對戰模擬：一隊對一隊，擊潰對方部隊獲勝。');
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
 }

@@ -5,7 +5,7 @@
 (()=>{
   const page=document.currentScript?.dataset.page||'';
   const TABS=[['gacha','./','登用模擬'],['slg','slg.html','Q版戰棋'],['generals','generals.html','武將資料庫']];
-  const SUB=[['pvp','打人'],['land','打地'],['story','劇本']];
+  const SUB=[['pvp','對戰模擬'],['land','打地'],['story','劇本']];
   const inSlg=page==='slg'||page==='land';
 
   const css=`
