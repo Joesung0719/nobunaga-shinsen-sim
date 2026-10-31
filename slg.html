@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&family=LXGW+WenKai+TC:wght@400;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'11';
+:root{--slg-ver:'13';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -70,6 +70,9 @@ select{background:var(--ink);color:var(--paper);border:1px solid var(--line);bor
 #board{position:relative;width:100%;margin:0 auto;aspect-ratio:var(--ar,768/464);background:radial-gradient(ellipse at 50% 30%,#2a3a4c,#1a1612 75%);
   border:2px solid #4a3d2c;border-radius:6px;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 #board svg.iso{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 新版戰場（?engine=phaser）：整塊是一張 Phaser 畫布，slg/board-phaser.js */
+#board.ph canvas{display:block}
+#board.ph .phfail{position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;color:var(--paper)}
 #board .tl{cursor:pointer}
 #board .hl.mv{fill:rgba(90,160,255,.45);stroke:#cfe3ff;stroke-width:1.5}
 #board .hl.atk{fill:rgba(235,70,50,.5);stroke:#ffb09c;stroke-width:2;animation:pulse 1s ease-in-out infinite alternate}
@@ -392,6 +395,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
     <div class="row" id="garRow" style="margin-top:8px"><span class="lbl">守軍</span><div class="row" id="garChips"></div></div>
     <p class="muted" id="lvNote"></p>
     <div class="row" id="foeRow" style="margin-top:8px"><span class="lbl">對手</span><div class="row" id="foeChips"></div></div>
+    <div class="row" id="engRow" style="margin-top:8px"><span class="lbl">戰場畫面</span><div class="row" id="engChips"></div></div>
     <div id="storyRow" style="margin-top:12px"><div class="teams" id="storyList"></div></div>
     <div id="mineWrap"><h2 style="margin-top:14px" id="mineTitle">我方部隊（藍）</h2>
     <div class="teams" id="mine"></div></div>
@@ -426,7 +430,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>
-<script type="module" src="slg/game.js?v=12"></script>
+<script type="module" src="slg/game.js?v=13"></script>
 <script src="site-nav.js?v=2" data-page="slg"></script>
 </body>
 </html>
