@@ -1,11 +1,11 @@
-// 全站共用導覽：三個主分頁（登用模擬／Q版戰棋／武將資料庫），Q版戰棋底下再分打人／打地／劇本／組隊。
+// 全站共用導覽：三個主分頁（登用模擬／Q版戰棋／武將資料庫），Q版戰棋底下再分對戰模擬／打地／戰役。
 // 每頁在 <nav class="site"> 裡留著同樣三個連結當備援（這支沒載入也能切頁），這裡統一重畫並加上子分頁。
 // 用法：<script src="site-nav.js?v=1" data-page="gacha|slg|land|generals"></script>（放在 </body> 前）。
 // 改動這支要把各頁 script 網址的 ?v= 一起加 1，避免瀏覽器拿到快取裡的舊版。
 (()=>{
   const page=document.currentScript?.dataset.page||'';
   const TABS=[['gacha','./','登用模擬'],['slg','slg.html','Q版戰棋'],['generals','generals.html','武將資料庫']];
-  const SUB=[['pvp','對戰模擬'],['land','打地'],['story','劇本'],['camp','戰役']];
+  const SUB=[['pvp','對戰模擬'],['land','打地'],['camp','戰役']];
   const inSlg=page==='slg'||page==='land';
 
   const css=`
