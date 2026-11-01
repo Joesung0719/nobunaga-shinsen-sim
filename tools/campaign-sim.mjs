@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm} from '../slg/engine.js';
 import * as C from '../slg/campaign.js';
 import {SCENARIOS} from '../slg/scenarios.js';
+import {FAVS,farCorner} from '../slg/favor.js';
 
 const D=JSON.parse(fs.readFileSync(new URL('../land.json',import.meta.url)));
 const CARDS=JSON.parse(fs.readFileSync(new URL('../data.json',import.meta.url)));
@@ -19,7 +20,7 @@ const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x
 const PSK=new Map();const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));return PSK.get(n)};
 const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
 const fixedSkills=n=>{const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]};
-const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2},W=7,H=9;
+const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2};let W=7,H=9;
 const RANKV={S:4,A:3,B:2,C:1};
 
 const team=(arm,gens,side)=>({name:gens[0].n+'隊',side,arm,terrain:'平',
@@ -36,7 +37,7 @@ function compStats(n,h){
   const st=D.stats[n]?fullRedStats(D,n,[n],h.arm,h.lv):statsAt(D,n,h.lv,r);
   return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,v*(m[k]||1)]));
 }
-const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:team(h.arm,[
+const mkHero=(h,id,x,y,lord)=>({id,side:0,key:'hero',hero:true,lord:!!lord,x,y,team:team(h.arm,[
   {n:h.name,s:fixedSkills(h.name),t:C.heroTroops(h),st:C.heroStats(h)},
   ...h.party.slice(0,C.PARTY_MAX).map(n=>({n,s:fixedSkills(n),t:Math.round(C.heroTroops(h)*.8),st:compStats(n,h)}))],0)});
 
@@ -47,14 +48,15 @@ const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 const clone=t=>({...t,gens:t.gens.map(g=>({...g,st:{...g.st}}))});
 
 function play(sc,ctx,carries,ai={}){
-  const bold=ai.bold;
+  const bold=ai.bold;H=sc.map.length;W=sc.map[0].length;
   let id=0;
   const units=sc.units.map(u=>{let t=u.t;for(const c of carries)if(c.troops&&u.side===c.troops.side&&(!c.troops.keys||c.troops.keys.includes(u.key)))t=Math.round(t*(1+c.troops.pct));return mkUnit({...u,t},id++,ctx)});
   {const base=units.find(u=>u.side===0&&u.lord)||units.find(u=>u.side===0);
    const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!units.some(o=>o.x===x&&o.y===y);
    const spot=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[2,0],[-2,0],[0,2]].map(([a,b])=>[base.x+a,base.y+b]).find(([a,b])=>free(a,b))||[base.x,base.y];
-   units.push(mkHero(ctx.h,id++,spot[0],spot[1]))}
-  const G={units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},over:null,heroBattles:0};
+   units.push(mkHero(ctx.h,id++,spot[0],spot[1],sc.heroLord))}
+  const T=sc.map.map(r=>[...r]);
+  const G={ret:null,rescued:false,units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},over:null,heroBattles:0};
   const unitAt=(x,y)=>G.units.find(u=>u.x===x&&u.y===y&&alive(u));
   const raining=()=>sc.rain&&G.day>=sc.rain[0]&&G.day<=sc.rain[1];
   const mv=u=>MOVE[u.team.arm]||2,rg=u=>RANGE[u.team.arm]||1;
@@ -79,6 +81,7 @@ function play(sc,ctx,carries,ai={}){
         G.units.push(mkUnit({...d,x,y},Math.max(...G.units.map(u=>u.id))+1,ctx))}
       for(const[k,v]of Object.entries(ev.ai||{}))for(const u of G.units)if(u.key===k&&alive(u)){Object.assign(u,v);if(u.ai==='guard'&&!u.anchor)u.anchor=[u.x,u.y]}
       if(ev.buff)G.buffs.push(ev.buff);
+      for(const k of ev.kill||[])for(const u of G.units)if(u.key===k)u.team.gens.forEach(g=>g.troops=0);
       if(ev.heal)for(const u of G.units)if(u.side===ev.heal.side&&alive(u))for(const g of u.team.gens)if(g.troops>0)g.troops=Math.min(g.max,g.troops+Math.round(g.max*ev.heal.pct));
     }
   }
@@ -94,14 +97,23 @@ function play(sc,ctx,carries,ai={}){
       if(u.side===0&&u.key&&!st.routed.includes(u.key))st.routed.push(u.key);
       if(u.side===1&&u.key&&!st.foeRouted.includes(u.key))st.foeRouted.push(u.key);
     }
-    a.acted=true;check();
+    a.acted=true;rescue();check();
     if(!G.over)for(const u of[a,d])if(!alive(u)&&u.key)runEvents('rout:'+u.key);
+  }
+  // 打輸才拿的隱藏武將：總大將兵力三成以下時現身斷後（ai.rescue 為 true 時才模擬，代表還沒拿到這位武將）
+  function rescue(){
+    const fv=FAVS[sc.id];if(!ai.rescue||G.rescued||!fv||fv.how!=='lose')return;
+    const lord=G.units.find(u=>u.side===0&&u.lord);if(!lord||total(lord.team)>totalMax(lord.team)*.3)return;
+    G.rescued=true;for(const g of lord.team.gens)g.troops=Math.max(g.troops,Math.round(g.max*.5));G.buffs.push({side:1,dmg:.7,days:[G.day,99]});
+    const c=[[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1]].map(([a,b])=>[lord.x+a,lord.y+b]).find(([x,y])=>x>=0&&y>=0&&x<W&&y<H&&!unitAt(x,y));
+    if(c)G.units.push({...mkUnit({side:0,key:'rescue',x:c[0],y:c[1],arm:'槍',t:Math.round(lord.team.gens[0].max*.8),gens:[fv.n,'槍足輕','弓足輕']},999,ctx),acted:true});
+    G.ret={...farCorner(T,G.units,lord),from:G.day,rescue:true};
   }
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
   function check(){
     if(G.over)return;
     const lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
-    const fled=sc.retreat&&G.day>=sc.retreat.from&&G.units.some(u=>u.lord&&alive(u)&&u.x===sc.retreat.x&&u.y===sc.retreat.y);
+    const fled=G.ret&&G.day>=G.ret.from&&G.units.some(u=>u.side===0&&u.lord&&alive(u)&&u.x===G.ret.x&&u.y===G.ret.y);
     const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0)||fled;
     const lose=!win&&(lordDown||!left(0)||timeUp);
     if(win&&!G.st.killDay)G.st.killDay=sc.survive&&timeUp?sc.days:G.day;
@@ -138,13 +150,13 @@ function play(sc,ctx,carries,ai={}){
         if(o.ai==='guard')return dist({x,y},{x:o.anchor[0],y:o.anchor[1]})<=o.r+rg(o);return dist({x,y},o)<=mv(o)+rg(o)}).length;
       let bk=null;
       for(const k of R.keys()){const[x,y]=k.split(',').map(Number);let d;
-        const ret=sc.retreat;
+        const ret=G.ret;
         if(u.lord&&ret)d=threat(x,y)*(G.day>=ret.from?20:100)+dist({x,y},ret)*(G.day>=ret.from?10:1);
         else if(u.lord&&!bold)d=threat(x,y)*100+(sc.survive?-Math.min(...foes.map(o=>dist({x,y},o))):dist({x,y},goal));
         else if(sc.survive&&lordU){const near=[...foes].sort((a,b)=>dist(a,lordU)-dist(b,lordU))[0];d=dist({x,y},near)+dist({x,y},lordU)*.5}
         else d=dist({x,y},goal);
         if(!bk||d<bk.d)bk={x,y,d}}
-      u.x=bk.x;u.y=bk.y;u.acted=true;if(u.lord&&sc.retreat)check();
+      u.x=bk.x;u.y=bk.y;u.acted=true;if(u.lord&&G.ret)check();
     }
   }
   function aiTurn(){
@@ -163,6 +175,7 @@ function play(sc,ctx,carries,ai={}){
       u.x=bk.x;u.y=bk.y;
     }
   }
+  if(sc.retreat){const lu=G.units.find(u=>u.side===0&&u.lord);G.ret={...sc.retreat,...(sc.retreat.auto?farCorner(T,G.units,lu):{})}}
   runEvents('day');
   while(!G.over){
     for(const u of G.units)u.acted=false;
@@ -175,10 +188,10 @@ function play(sc,ctx,carries,ai={}){
   }
   const win=G.over==='W';
   let rank=null;
-  if(win){const n=(sc.hidden||[]).filter(h=>h.test(G.st)).length;rank=(sc.rank||[]).find(r=>n>=r.n)?.rank||'C'}
+  if(win){const n=(sc.hidden||[]).filter(h=>h.test(G.st)).length;rank=G.rescued?'C':(sc.rank||[]).find(r=>n>=r.n)?.rank||'C'}
   const foes=G.units.filter(u=>u.side===1&&!alive(u)).length;
   const hero=G.units.find(u=>u.hero);
-  return{win,why:G.over,rank,day:G.day,foes,heroAlive:alive(hero),heroBattles:G.heroBattles};
+  return{win,rescued:G.rescued,why:G.over,rank,day:G.day,foes,heroAlive:alive(hero),heroBattles:G.heroBattles};
 }
 
 const SCN=Object.fromEntries(SCENARIOS.map(s=>[s.id,s]));
@@ -203,7 +216,8 @@ export function runCampaign({policy='gear',arm='騎',lean='武',party=['織田�
     let r,tries=0;
     // 開場對話先加點（pre），勝利後才有 post；這裡簡化成第一次出陣時一起加
     h.pts[lean]+=choicePts(id,lean);
-    do{tries++;r=play(sc,{h,lvA:h.lv,lvB:C.enemyLv(i)},carries,{bold:tries%2===0});
+    do{tries++;r=play(sc,{h,lvA:h.lv,lvB:C.enemyLv(i)},carries,{bold:tries%2===0,rescue:FAVS[id]?.how==='lose'&&!h.roster.includes(FAVS[id].n)});
+      if(r.win&&r.rescued&&!h.roster.includes(FAVS[id].n))h.roster.push(FAVS[id].n);
       if(!r.win)log.push({i,id,lv:h.lv,try:tries,lose:r.why})}while(!r.win&&tries<maxTry);
     if(!r.win){log.push({i,id,stuck:true,lv:h.lv});return{h,log,stuck:i}}
     camp[id]=camp[id]&&RANKV[camp[id]]>=RANKV[r.rank]?camp[id]:r.rank;
@@ -238,7 +252,7 @@ export function stageWin(i,lv,n=40,{arm='騎',lean='武',party=['織田信雄','
   for(const k in h.shop)h.shop[k]=Math.min(k==='supply'?10:5,shopLv);
   const id=C.CHAIN[i].ids[0],sc=SCN[id];let best=null;
   for(const bold of[false,true]){let w=0;const why={},ranks={};
-    for(let k=0;k<n;k++){const r=play(sc,{h,lvA:lv,lvB:lvB??C.enemyLv(i)},[],{bold});if(r.win){w++;ranks[r.rank]=(ranks[r.rank]||0)+1}else why[r.why]=(why[r.why]||0)+1}
+    for(let k=0;k<n;k++){const r=play(sc,{h,lvA:lv,lvB:lvB??C.enemyLv(i)},[],{bold,rescue:!!process.env.RESCUE});if(r.win){w++;ranks[r.rank]=(ranks[r.rank]||0)+1}else why[r.why]=(why[r.why]||0)+1}
     if(!best||w>best.w)best={w,why,ranks,bold}}
   return{id,name:sc.name,lv,lvB:lvB??C.enemyLv(i),win:best.w/n,why:best.why,ranks:best.ranks,bold:best.bold};
 }

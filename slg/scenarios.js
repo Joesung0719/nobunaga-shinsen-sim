@@ -1,5 +1,5 @@
 // 劇本模式的關卡。每個劇本：
-//   map    9 列 × 7 字的地形（平 林 山 水 橋 城；地形目前只是裝飾）
+//   map    9 列 × 7 字的地形（載入時自動放大成 11 列 × 9 字，見檔案最後的 grow）（平 林 山 水 橋 城；地形目前只是裝飾）
 //   units  部隊：side 0 我方／1 敵方；gens 第一位是大將；ai = hold（原地，射程內才攻擊）／guard（守在 anchor 附近 r 格內）／advance（主動進攻）
 //          s: 指定傳承戰法 {武將:[戰法,戰法]}（沒指定的依名字固定挑選）
 //          lord: 我方總大將，潰走即敗北；target: 擊破即勝利
@@ -12,7 +12,9 @@
 //          st.killDay 擊破目標的天、st.killRain 是否在豪雨中、st.finisher 最後一擊的部隊 key、
 //          st.routed 我方潰走部隊 key 的陣列、st.hitBy[key] 我方攻擊過該敵方部隊的次數
 //   rank   依達成的隱藏條件數評價（由高到低，n 是最少條件數），ending 是對應的結局對話
-//   retreat:{x,y,from,name} 撤退點：第 from 天起總大將走到這格即勝利（地圖畫旗子）
+//   retreat:{x,y,from,name} 撤退點：第 from 天起總大將走到這格即勝利（地圖畫旗子）；{auto:true} 表示開場時放在離敵軍最遠的地圖角落
+//   heroLord:true 主角隊就是總大將（潰走即敗北）
+//   foeMul    敵軍（含增援）兵力倍率：平衡用，太簡單的關卡調高
 //   lordName 總大將潰走時敗北訊息用的名字；survive:true 撐過 days 天（總大將沒潰走）就勝利；annihilate:true 全滅敵軍也算勝利
 //   carry 戰役串連：[{from:前一關id, min:最低評價, text, buff|troops:{side,pct,keys?}}]，之前打過該關且評價夠高才啟用
 //   events 劇情事件（見 game.js runEvents）：{day|on:'rout:部隊代號', say, log, spawn:[部隊], ai:{代號:{ai,r}}, buff:{side,dmg,days:[起,迄],arm?}, heal:{side,pct}}
@@ -83,7 +85,7 @@ const ALL=[{
     {id:'own',name:'信長親征',hint:'大將的首級，該由誰來取？',desc:'由織田信長隊給今川義元隊最後一擊',test:st=>st.finisher==='nobunaga'},
     {id:'safe',name:'全軍生還',hint:'以少擊眾，一兵一卒都很珍貴。',desc:'我方三隊都沒有潰走',test:st=>!st.routed.length},
     {id:'ieyasu',name:'不戰三河',hint:'今天的敵人，明天未必是敵人。',desc:'我方沒有主動攻擊德川家康隊',test:st=>!st.hitBy.ieyasu},
-    {id:'fast',name:'迅雷不及掩耳',hint:'越快越好。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+    {id:'fast',name:'迅雷不及掩耳',hint:'越快越好。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
   ],
   rank:[
     {n:5,rank:'S',title:'天下布武',ending:[
@@ -100,11 +102,11 @@ const ALL=[{
       {who:'織田信長',text:'……贏是贏了，可這樣的打法，下一次就不會這麼幸運。'}]},
   ],
 },{
-  id:'kanegasaki',lordName:'豐臣秀吉',name:'金崎撤退戰',year:'元龜元年（1570）',
+  id:'kanegasaki',foeMul:1.5,lordName:'豐臣秀吉',name:'金崎撤退戰',year:'元龜元年（1570）',
   brief:'信長進攻越前，卻傳來妻舅淺井長政背叛的消息。你是殿軍（斷後）：撐到本隊撤出京都。',
-  win:['撐過 4 天，且豐臣秀吉隊沒有潰走','或第 3 天起豐臣秀吉隊撤到朽木谷（旗子）'],
+  win:['撐過 4 天，且豐臣秀吉隊沒有潰走','或第 4 天起豐臣秀吉隊撤到朽木谷（旗子）'],
   lose:['豐臣秀吉隊潰走','我方全軍潰走'],
-  days:4,survive:true,retreat:{x:3,y:8,from:3,name:'朽木谷'},
+  days:4,survive:true,retreat:{auto:true,from:4,name:'朽木谷'},
   map:[
     '林林山山林平林',
     '林平林平平林山',
@@ -126,7 +128,7 @@ const ALL=[{
     {side:1,key:'asakura3',x:1,y:2,arm:'弓',t:8000,ai:'guard',anchor:[1,2],r:3,gens:['岩城親隆','新發田重家','色部長實']},
   ],
   events:[
-    {day:2,log:'淺井長政倒戈，從東側殺來！',spawn:[{side:1,key:'asai',x:6,y:3,arm:'騎',t:10000,ai:'advance',gens:['淺井長政','磯野員昌','保科正俊']}],
+    {day:2,log:'淺井長政倒戈，從背後（東南）殺來，截斷退路！',spawn:[{side:1,key:'asai',x:6,y:7,arm:'騎',t:10000,ai:'advance',gens:['淺井長政','磯野員昌','保科正俊']}],
       say:[{who:'淺井長政',text:'對不起了，信長殿。為了淺井家，只能在這裡斷你的歸路。'},
            {who:'豐臣秀吉',text:'長政也反了……前有朝倉，後有淺井。可是我們只要撐住，主公就能平安回到京都。'}]},
     {day:3,log:'殿軍士氣大振：我方造成的傷害 ×1.2（第 3–4 天）',buff:{side:0,dmg:1.2,days:[3,4]},
@@ -223,7 +225,7 @@ const ALL=[{
   hidden:[
     {id:'ieyasu',name:'三河武士的面子',hint:'右翼的朝倉軍，該由誰來接？',desc:'擊潰真柄直隆隊，且德川家康隊沒有潰走',test:st=>st.foeRouted.includes('magara')&&!st.routed.includes('ieyasu')},
     {id:'isono',name:'十一段崩破',hint:'最猛烈的衝鋒，也有力竭的時候。',desc:'擊潰磯野員昌隊',test:st=>st.foeRouted.includes('isono')},
-    {id:'fast',name:'一戰定勝負',hint:'長政不是拖得起的對手。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
+    {id:'fast',name:'一戰定勝負',hint:'長政不是拖得起的對手。',desc:'第 6 天以內取勝',test:st=>st.killDay<=6},
     {id:'safe',name:'本隊無傷',hint:'有人守住戰線，就沒有人掉隊。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
   ],
   rank:[
@@ -289,7 +291,7 @@ const ALL=[{
     {from:'anegawa',min:'A',text:'姊川的默契：德川隊兵力 +20%',troops:{side:0,pct:.2,keys:['ieyasu']}},
   ],
   hidden:[
-    {id:'sakai',name:'鳶之巢山奇襲成功',hint:'今天的敵人，不只在眼前。',desc:'第 3 天以內取勝',test:st=>st.killDay<=3},
+    {id:'sakai',name:'鳶之巢山奇襲成功',hint:'今天的敵人，不只在眼前。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
     {id:'safe',name:'柵欄不破',hint:'每一隊，都要站在原地。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'yamagata',name:'四天王之首',hint:'最先衝來的人，最先倒下。',desc:'先擊潰山縣昌景隊，再擊潰其他武田隊',test:st=>st.foeRouted[0]==='yamagata'},
   ],
@@ -301,74 +303,70 @@ const ALL=[{
     {n:0,rank:'B',title:'慘勝',ending:[{who:'織田信長',text:'柵欄壞了好幾處……這一仗，贏得不漂亮。'}]},
   ],
 },{
-  id:'honnoji',lordName:'明智光秀',name:'本能寺之變',year:'天正十年（1582）',
-  brief:'六月二日黎明，你是明智光秀。一萬三千人的軍隊，原本說好「西進中國」，卻調頭朝向京都。',
-  win:['擊破織田信長隊（本能寺）'],
-  lose:['明智光秀隊潰走','我方全軍潰走','4 天內沒有擊破織田信長隊'],
-  days:4,
+  id:'honnoji',foeMul:1.7,lordName:'主角',name:'本能寺之變',year:'天正十年（1582）',heroLord:true,
+  brief:'六月二日黎明，京都本能寺。你是信長身邊的客將，一萬三千明智軍已經圍住寺院。信長公命你殺出重圍，把消息帶出去。',
+  win:['第 4 天起，主角隊突圍到地圖角落的撤退點（旗子）'],
+  lose:['主角隊潰走','6 天內沒有突圍'],
+  days:6,retreat:{x:0,y:0,from:4,name:'鞍馬口'},
   map:[
     '林林平平平林林',
-    '林平平寺平平林',
+    '林平平林平平林',
     '平平林平林平平',
+    '平平平寺平平平',
+    '平林平平平林平',
     '水水平平平水水',
     '平平林平平平平',
-    '平平平平林平平',
-    '林平平平平平林',
-    '平平林平平林平',
-    '林平平平平平林',
+    '林平平平林平平',
+    '平平平平平平林',
   ],
   units:[
-    {side:0,key:'mitsuhide',x:3,y:8,arm:'槍',t:11000,lord:true,gens:['明智光秀','明智秀滿','杉浦玄任'],s:{明智光秀:['奇策縱橫','運籌決勝']}},
-    {side:0,key:'toshimitsu',x:1,y:7,arm:'騎',t:10000,gens:['齋藤利三','多田三八郎','中村一氏']},
-    {side:0,key:'tsutsui',x:5,y:7,arm:'鐵炮',t:10000,gens:['荒木村重','金森長近','鈴木重朝']},
-    {side:1,key:'nobunaga',x:3,y:1,arm:'弓',t:1500,ai:'hold',target:true,gens:['織田信長','弓足輕','槍足輕']},
-    {side:1,key:'kosho',x:2,y:2,arm:'槍',t:1500,ai:'hold',gens:['太田牛一','下方貞清','坂井政尚']},
-    {side:1,key:'kosho2',x:4,y:2,arm:'槍',t:1500,ai:'hold',gens:['槍足輕','鐵炮足輕','偵察騎兵']},
+    {side:0,key:'nobunaga',x:3,y:3,arm:'弓',t:2500,gens:['織田信長','森蘭丸','弓足輕'],s:{織田信長:['奇策縱橫','運籌決勝']}},
+    {side:0,key:'kosho',x:2,y:4,arm:'槍',t:2500,gens:['菅屋長賴','福富秀勝','槍足輕']},
+    {side:1,key:'toshimitsu',x:1,y:6,arm:'騎',t:9000,ai:'guard',r:2,gens:['齋藤利三','多田三八郎','中村一氏']},
+    {side:1,key:'hidemitsu',x:5,y:6,arm:'槍',t:9000,ai:'guard',r:2,gens:['明智秀滿','杉浦玄任','荒木村重']},
+    {side:1,key:'mitsuhide',x:3,y:7,arm:'槍',t:11000,ai:'guard',r:2,gens:['明智光秀','金森長近','鈴木重朝'],s:{明智光秀:['奇策縱橫','運籌決勝']}},
+    {side:1,key:'west',x:0,y:3,arm:'弓',t:7000,ai:'guard',r:2,gens:['伊勢貞興','弓足輕','槍足輕']},
+    {side:1,key:'east',x:6,y:2,arm:'鐵炮',t:7000,ai:'guard',r:2,gens:['藤田行政','鐵炮足輕','偵察騎兵']},
   ],
   events:[
-    {day:2,log:'二條新御所的織田信忠聽說了變故，派兵趕來增援。',
-      spawn:[{side:1,key:'ninokyo',x:5,y:4,arm:'槍',t:5000,ai:'advance',gens:['池田恆興','池田輝政','林秀貞']}],
-      say:[{who:'齋藤利三',text:'殿，二條城方向出現旗幟，是信忠的人馬！'},
-           {who:'明智光秀',text:'不要分兵。本能寺那邊才是關鍵，先把主力集中過去。'}]},
-    {day:3,log:'京都所司代的兵力正在集結。再不動手，就沒有機會了。',
-      say:[{who:'明智秀滿',text:'叔父大人，天已經大亮，再拖下去，京都的守軍就聚集起來了！'}]},
+    {day:2,log:'明智軍的鐵炮隊攻進寺內，正殿起火。齋藤利三、明智秀滿開始猛攻。',buff:{side:1,dmg:1.15,days:[2,3]},ai:{toshimitsu:{ai:'advance'},hidemitsu:{ai:'advance'}},
+      say:[{who:'森蘭丸',text:'殿下，正殿已經燒起來了！明智的鐵炮隊攻進來了！'},
+           {who:'織田信長',text:'……是光秀嗎。是非に及ばず。（沒有辦法，那就這樣吧。）'}]},
+    {day:3,id:'fire',log:'織田信長退入火中的正殿。主角必須突圍，把消息帶出京都！',kill:['nobunaga'],
+      say:[{who:'織田信長',text:'{名}，你不是織田家的人，不必陪本殿死在這裡。走，把今天的事，帶給還活著的人。'},
+           {who:'森蘭丸',text:'蘭丸會守住正殿的門。{名}大人，往北邊的鞍馬口走！'},
+           {who:'旁白',text:'火光吞沒了本能寺的屋頂。你回頭看了最後一眼，然後轉身衝進煙霧。'}]},
+    {day:4,log:'京都所司代村井貞勝帶殘兵從二條方向趕來接應：我方回復 20% 兵力',heal:{side:0,pct:.2},
+      say:[{who:'旁白',text:'二條方向傳來喊聲，是所司代的殘兵在接應突圍的人。'}]},
   ],
   talk:{
     start:[
-      {who:'明智光秀',text:'……敵は、本能寺にあり。（敵人，在本能寺。）'},
-      {who:'齋藤利三',text:'殿，已經沒有回頭路了。在桂川渡河的那一刻，我們就已經是叛軍。'},
-      {who:'明智光秀',text:'我清楚。這一刀不斬下去，下一個被斬的，就是明智家。全軍，渡河，圍住本能寺！'},
-      {who:'織田信長',text:'什麼聲音？是誰在吵鬧？……是光秀的軍旗？'},
+      {who:'織田信長',text:'什麼聲音？是誰在吵鬧？……那是桔梗的旗。是光秀。'},
+      {who:'森蘭丸',text:'殿下，寺外全是明智的軍隊！人數……數不清。'},
+      {who:'織田信長',text:'{名}，本殿這裡只有百來個人。撐到天亮，你就帶人殺出去，往北，鞍馬口。'},
     ],
-    rout_kosho:[{who:'太田牛一',text:'（本能寺）……警衛被衝散了，殿下，請快撤到內殿！'}],
-    rout_kosho2:[{who:'織田信長',text:'小姓眾還在抵抗。但，人數太少了。'}],
-    rout_ninokyo:[{who:'織田信長',text:'（遠處，二條城）……信忠的兵潰了嗎。'}],
-    rout_nobunaga:[
-      {who:'織田信長',text:'是非に及ばず。（沒有辦法，那就這樣吧。）'},
-      {who:'明智光秀',text:'……主公。光秀，終於做到了。可是，為什麼我的手，一直在發抖。'}],
-    rout_toshimitsu:[{who:'明智光秀',text:'利三的隊伍被擊潰了？這是我最信任的部下……'}],
-    lordLow:[{who:'明智秀滿',text:'叔父大人，兵力折損過半，請不要再親自上陣！'},{who:'明智光秀',text:'這一戰不能輸，輸了，就沒有明天。'}],
+    rout_kosho:[{who:'菅屋長賴',text:'小姓眾……到此為止了。{名}大人，請一定要出去！'}],
+    rout_toshimitsu:[{who:'齋藤利三',text:'可惡，竟然被一個客將衝散了！'}],
     win:[
-      {who:'明智光秀',text:'信長公……已經不在了。傳令，封鎖京都，通知各地大名。'},
-      {who:'齋藤利三',text:'殿，下一步要快。羽柴秀吉在備中，他很快就會知道。'}],
-    lose:[{who:'織田信長',text:'光秀，你的刀，不夠快。'}],
-    loseLord:[{who:'織田信長',text:'光秀的首級，就在這裡嗎。可悲。'}],
-    loseTime:[{who:'織田信長',text:'援軍到了。光秀，這一次，你輸了。'}],
+      {who:'旁白',text:'你衝出鞍馬口時，身後的本能寺已經是一片火海。'},
+      {who:'旁白',text:'天亮後，京都的街上傳開了一句話：信長公，不在了。'}],
+    lose:[{who:'明智光秀',text:'本能寺裡的人，一個也不許放走。'}],
+    loseLord:[{who:'明智光秀',text:'那個客將，也倒在這裡了嗎。可惜。'}],
+    loseTime:[{who:'明智光秀',text:'京都已經封鎖。這座城裡，再也沒有信長的人了。'}],
   },
   hidden:[
-    {id:'fast',name:'疾風迅雷',hint:'黎明之前，一切都要結束。',desc:'第 1 天取勝',test:st=>st.killDay<=1},
-    {id:'safe',name:'兵不血刃',hint:'叛軍，未必需要流太多血。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
-    {id:'ninokyo',name:'不被牽制',hint:'真正的目標只有一個。',desc:'沒有攻擊增援的二條新御所部隊',test:st=>!st.hitBy.ninokyo},
+    {id:'fast',name:'疾風突圍',hint:'火勢蔓延之前，越快越好。',desc:'第 5 天以內突圍',test:st=>st.killDay>0&&st.killDay<=5},
+    {id:'safe',name:'帶著他們一起走',hint:'不要丟下任何人。',desc:'小姓眾沒有潰走',test:st=>!st.routed.includes('kosho')},
+    {id:'toshimitsu',name:'斷其追兵',hint:'追得最快的人，最先倒下。',desc:'擊潰齋藤利三隊',test:st=>st.foeRouted.includes('toshimitsu')},
   ],
   rank:[
-    {n:3,rank:'S',title:'三日天下之始',ending:[
-      {who:'明智光秀',text:'時機、速度、兵力，全都準備好了。可是，天下，真的是靠一把刀就能握住的嗎？'},
-      {who:'齋藤利三',text:'殿，備中的羽柴軍正在回頭……比預想的，快太多了。'}]},
-    {n:1,rank:'A',title:'本能寺炎上',ending:[{who:'明智光秀',text:'（看著火焰）這一夜之後，就再也沒有回頭路。'}]},
-    {n:0,rank:'B',title:'倉促的政變',ending:[{who:'齋藤利三',text:'殿，準備不夠周全……但已經開始了。只能走下去。'}]},
+    {n:3,rank:'S',title:'火中突圍',ending:[
+      {who:'旁白',text:'你帶著小姓眾的殘兵，在天亮前離開了京都。往西的路上，你聽說羽柴秀吉正從備中趕回來。'}]},
+    {n:1,rank:'A',title:'鞍馬口脫出',ending:[{who:'旁白',text:'回頭望去，京都的天空被染成了紅色。'}]},
+    {n:0,rank:'B',title:'九死一生',ending:[{who:'旁白',text:'你不知道自己是怎麼逃出來的。只記得火，還有信長最後那一句話。'}]},
   ],
 },{
-  id:'yamazaki',lordName:'豐臣秀吉',name:'山崎之戰',year:'天正十年（1582）',
+  id:'yamazaki',foeMul:1.7,lordName:'豐臣秀吉',name:'山崎之戰',year:'天正十年（1582）',
   brief:'聽到信長死訊的秀吉，只用十天就從備中趕回京畿。你是秀吉：搶下天王山，擊潰明智光秀。',
   win:['擊破明智光秀隊'],
   lose:['豐臣秀吉隊潰走','我方全軍潰走','6 天內沒有擊破明智光秀隊'],
@@ -426,7 +424,7 @@ const ALL=[{
     {from:'kanegasaki',min:'A',text:'金崎殿軍的功績：羽柴軍兵力 +15%',troops:{side:0,pct:.15}},
   ],
   hidden:[
-    {id:'fast',name:'中國大返し',hint:'越快，越能讓人心動搖。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+    {id:'fast',name:'中國大返し',hint:'越快，越能讓人心動搖。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
     {id:'safe',name:'一人不缺',hint:'要用最少的代價，贏得最多。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'toshimitsu',name:'斬其右臂',hint:'光秀身邊，有最信任的人。',desc:'擊潰齋藤利三隊',test:st=>st.foeRouted.includes('toshimitsu')},
     {id:'hide',name:'親手報仇',hint:'最後一擊，由誰給？',desc:'由豐臣秀吉隊給明智光秀隊最後一擊',test:st=>st.finisher==='hideyoshi'},
@@ -478,7 +476,7 @@ const ALL=[{
     loseTime:[{who:'武田信玄',text:'別動隊到了，這一仗，是我們贏了。'}],
   },
   hidden:[
-    {id:'fast',name:'一騎討之前',hint:'霧散之前，一切都應該結束。',desc:'第 2 天以內取勝',test:st=>st.killDay<=2},
+    {id:'fast',name:'一騎討之前',hint:'霧散之前，一切都應該結束。',desc:'第 3 天以內取勝',test:st=>st.killDay<=3},
     {id:'kitsu',name:'識破啄木鳥',hint:'背後的人，比眼前的更危險。',desc:'擊潰山本勘助的別動隊',test:st=>st.foeRouted.includes('kitsutsuki')},
     {id:'safe',name:'毘沙門天的庇護',hint:'每一面旗，都要留到最後。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
   ],
@@ -522,7 +520,7 @@ const ALL=[{
     loseTime:[{who:'上杉謙信',text:'別動隊也沒有用。今日，是我們贏。'}],
   },
   hidden:[
-    {id:'kitsu',name:'啄木鳥奏效',hint:'一個敲，一個啄。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+    {id:'kitsu',name:'啄木鳥奏效',hint:'一個敲，一個啄。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
     {id:'safe',name:'本陣無傷',hint:'旗，不能倒。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.includes('shingen')&&!st.routed.includes('baba')},
     {id:'finisher',name:'別動隊的一擊',hint:'誰才是最後出手的人？',desc:'由山本勘助的別動隊給上杉謙信隊最後一擊',test:st=>st.finisher==='kitsutsuki'},
   ],
@@ -536,15 +534,15 @@ const ALL=[{
   brief:'武田信玄的大軍無視濱松城，直接進軍西上。你是德川家康：出城追擊，被打得慘敗，要活著撤回濱松城（地圖下方的旗子）。',
   win:['撐過 5 天，且德川家康隊沒有潰走','或第 4 天起德川家康隊撤回濱松城（旗子）'],
   lose:['德川家康隊潰走','我方全軍潰走'],
-  days:5,survive:true,retreat:{x:3,y:8,from:4,name:'濱松城'},
+  days:5,survive:true,retreat:{auto:true,from:4,name:'濱松城'},
   map:['林平平平平林林','平林平平林平平','平平平林平平林','林平平平平林平','平平林平平平平','平林平平林平林','林平平平平平平','平平平林平平平','平平林城平平平'],
   units:[
     {side:0,key:'ieyasu',x:3,y:4,arm:'槍',t:10000,lord:true,gens:['德川家康','本多忠勝','榊原康政']},
     {side:0,key:'sakai',x:2,y:4,arm:'槍',t:9000,gens:['酒井忠次','石川數正','鳥居元忠']},
     {side:0,key:'sakuma',x:4,y:4,arm:'鐵炮',t:8000,gens:['佐久間信盛','林秀貞','河尻秀隆']},
-    {side:1,key:'yamagata',x:2,y:2,arm:'騎',t:13000,ai:'advance',gens:['山縣昌景','內藤昌豐','馬場信春']},
-    {side:1,key:'shingen',x:3,y:0,arm:'騎',t:13000,ai:'guard',r:3,gens:['武田信玄','原虎胤','飯富虎昌']},
-    {side:1,key:'oyamada',x:5,y:2,arm:'槍',t:11000,ai:'advance',gens:['小山田信茂','三枝昌貞','保科正俊']},
+    {side:1,key:'yamagata',x:2,y:2,arm:'騎',t:11000,ai:'advance',gens:['山縣昌景','內藤昌豐','馬場信春']},
+    {side:1,key:'shingen',x:3,y:0,arm:'騎',t:12000,ai:'guard',r:3,gens:['武田信玄','原虎胤','飯富虎昌']},
+    {side:1,key:'oyamada',x:5,y:2,arm:'槍',t:10000,ai:'advance',gens:['小山田信茂','三枝昌貞','保科正俊']},
   ],
   events:[
     {day:2,log:'夏目吉信替身殿後：我方恢復 25% 兵力',heal:{side:0,pct:.25},
@@ -622,7 +620,7 @@ const ALL=[{
     {from:'kawanaka_u',min:'A',text:'川中島的經驗：上杉軍全程造成的傷害 ×1.1',buff:{side:0,dmg:1.1,days:[1,99]}},
   ],
   hidden:[
-    {id:'fast',name:'夜戰追擊',hint:'天黑之前，要看見成果。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+    {id:'fast',name:'夜戰追擊',hint:'天黑之前，要看見成果。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
     {id:'safe',name:'無傷追擊',hint:'上杉的旗，一面也不能倒。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'shibata',name:'斬其首將',hint:'先擊潰最前面的人。',desc:'最先擊潰柴田勝家隊',test:st=>st.foeRouted[0]==='shibata'},
   ],
@@ -670,7 +668,7 @@ const ALL=[{
     loseTime:[{who:'柴田勝家',text:'羽柴軍沒有成功。賤岳，是我們的。'}],
   },
   hidden:[
-    {id:'fast',name:'大返し之速',hint:'比敵人更快。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
+    {id:'fast',name:'大返し之速',hint:'比敵人更快。',desc:'第 6 天以內取勝',test:st=>st.killDay<=6},
     {id:'sakuma',name:'斬其先鋒',hint:'冒進的人，總是先倒下。',desc:'擊潰佐久間盛政隊',test:st=>st.foeRouted.includes('sakuma')},
     {id:'safe',name:'七本槍無傷',hint:'年輕的槍手們，不能折。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'fin',name:'七本槍之功',hint:'最後一擊，由誰來給？',desc:'由七本槍隊給柴田勝家隊最後一擊',test:st=>st.finisher==='nanahon'},
@@ -684,7 +682,7 @@ const ALL=[{
     {from:'yamazaki',min:'A',text:'山崎大捷的聲勢：秀吉軍全程造成的傷害 ×1.1',buff:{side:0,dmg:1.1,days:[1,99]}},
   ],
 },{
-  id:'komaki',lordName:'德川家康',name:'小牧長久手之戰',year:'天正十二年（1584）',
+  id:'komaki',foeMul:1.3,lordName:'德川家康',name:'小牧長久手之戰',year:'天正十二年（1584）',
   brief:'秀吉的先鋒池田恆興想繞過家康，奇襲三河。你是家康：在長久手截住他們，讓天下看見德川的實力。',
   win:['擊破池田恆興隊'],
   lose:['德川家康隊潰走','我方全軍潰走','5 天內沒有擊破池田恆興隊'],
@@ -694,9 +692,9 @@ const ALL=[{
     {side:0,key:'ieyasu',x:3,y:7,arm:'槍',t:10000,lord:true,gens:['德川家康','酒井忠次','榊原康政']},
     {side:0,key:'honda',x:1,y:6,arm:'槍',t:9000,gens:['本多忠勝','石川數正','鳥居元忠']},
     {side:0,key:'nobukatsu',x:5,y:6,arm:'鐵炮',t:8000,gens:['織田信雄','大久保忠世','內藤信成']},
-    {side:1,key:'ikeda',x:3,y:1,arm:'弓',t:9000,ai:'guard',anchor:[3,1],r:2,target:true,gens:['池田恆興','池田輝政','林秀貞']},
+    {side:1,key:'ikeda',x:3,y:1,arm:'弓',t:18000,ai:'guard',anchor:[3,1],r:2,target:true,gens:['池田恆興','池田輝政','林秀貞']},
     {side:1,key:'hideyoshi',x:1,y:2,arm:'槍',t:11000,ai:'hold',gens:['豐臣秀吉','黑田官兵衛','蜂須賀小六']},
-    {side:1,key:'hori',x:5,y:2,arm:'槍',t:9000,ai:'guard',anchor:[5,2],r:2,gens:['堀直政','稻葉一鐵','安藤守就']},
+    {side:1,key:'hori',x:5,y:2,arm:'槍',t:9000,ai:'advance',gens:['堀直政','稻葉一鐵','安藤守就']},
   ],
   events:[
     {day:2,log:'三河中入：池田隊偷偷繞過德川軍，被我方斥候發現',ai:{ikeda:{ai:'advance'}},
@@ -723,7 +721,7 @@ const ALL=[{
     loseTime:[{who:'池田恆興',text:'三河，已經是我們的了。'}],
   },
   hidden:[
-    {id:'fast',name:'迅速截擊',hint:'敵人行軍疲憊的時候，最脆弱。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
+    {id:'fast',name:'迅速截擊',hint:'敵人行軍疲憊的時候，最脆弱。',desc:'第 5 天以內取勝',test:st=>st.killDay<=5},
     {id:'safe',name:'三河無傷',hint:'要守住的，不只是岡崎。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'hori',name:'先斷後援',hint:'前鋒之後，還有人。',desc:'擊潰堀直政隊',test:st=>st.foeRouted.includes('hori')},
   ],
@@ -736,7 +734,7 @@ const ALL=[{
     {from:'mikatagahara',min:'A',text:'三方原的教訓：德川軍全程造成的傷害 ×1.1',buff:{side:0,dmg:1.1,days:[1,99]}},
   ],
 },{
-  id:'sekigahara',lordName:'德川家康',name:'關原之戰',year:'慶長五年（1600）',
+  id:'sekigahara',foeMul:1.2,lordName:'德川家康',name:'關原之戰',year:'慶長五年（1600）',
   brief:'天下分為東西兩軍，大霧籠罩關原。你是家康的東軍：撐到小早川秀秋倒戈，擊破石田三成的本陣。',
   win:['擊破石田三成隊（西軍本陣）'],
   lose:['德川家康隊潰走','我方全軍潰走','6 天內沒有擊破石田三成隊'],
@@ -778,7 +776,7 @@ const ALL=[{
     loseTime:[{who:'石田三成',text:'東軍沒能在時間內擊破本陣。豐臣的天下，保住了。'}],
   },
   hidden:[
-    {id:'fast',name:'半日定天下',hint:'據說，這一戰只打了半天。',desc:'第 3 天以內取勝',test:st=>st.killDay<=3},
+    {id:'fast',name:'半日定天下',hint:'據說，這一戰只打了半天。',desc:'第 4 天以內取勝',test:st=>st.killDay<=4},
     {id:'safe',name:'東軍無一退卻',hint:'今天，沒有人可以先倒下。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
     {id:'otani',name:'送別大谷吉繼',hint:'有人，等的就是這一天。',desc:'擊潰大谷吉繼隊',test:st=>st.foeRouted.includes('otani')},
     {id:'shimazu',name:'島津之退口',hint:'最不要命的人，最後出現。',desc:'擊潰島津義弘隊',test:st=>st.foeRouted.includes('shimazu')},
@@ -794,4 +792,23 @@ const ALL=[{
 }];
 // 依年代排序（劇本選單的順序）
 const ORDER=['okehazama','kawanaka_u','kawanaka_t','kanegasaki','anegawa','mikatagahara','nagashino','tedorigawa','honnoji','yamazaki','shizugatake','komaki','sekigahara'];
-export const SCENARIOS=ORDER.map(id=>ALL.find(x=>x.id===id));
+// 地圖放大（Joe 2026-11-01：地圖太小、天數太少，時間太趕）：上面的劇本仍以 7×9 撰寫，這裡統一放大成 9×11。
+// 原本的格子對到新座標（中間插入兩欄、兩列），插入的格子沿用兩旁相同的地形（河流、柵欄保持連續），部隊間距拉開約 1.25 倍；
+// 天數 ×1.25（無條件進位），豪雨多一天，延續到最後一天的事件加成也延到新的最後一天。
+const GX=[0,1,3,4,5,7,8],GY=[0,1,3,4,5,6,8,9,10];
+function gapTile(a,b){if(a===b&&a!=='寺')return a;if(a==='林'||b==='林')return '林';return '平'}
+function grow(sc){
+  const old=sc.map.map(r=>[...r]),W0=old[0].length,H0=old.length;
+  if(W0!==7||H0!==9)return sc;
+  const cols=old.map(r=>{const o=[];for(let x=0;x<W0;x++){o[GX[x]]=r[x];if(x<W0-1&&GX[x+1]-GX[x]>1)o[GX[x]+1]=gapTile(r[x],r[x+1])}return o});
+  const T=[];for(let y=0;y<H0;y++){T[GY[y]]=cols[y];if(y<H0-1&&GY[y+1]-GY[y]>1)T[GY[y]+1]=cols[y].map((a,x)=>gapTile(a,cols[y+1][x]))}
+  const fm=sc.foeMul||1,pos=o=>o&&{...o,...(o.side===1&&fm!==1?{t:Math.round(o.t*fm/100)*100}:{}),x:GX[o.x],y:GY[o.y],...(o.anchor?{anchor:[GX[o.anchor[0]],GY[o.anchor[1]]]}:{}),...(o.r?{r:Math.round(o.r*1.25)}:{})};
+  const days=Math.ceil(sc.days*1.25),lastDay=d=>d>=sc.days&&d<99?days:d;
+  const buff=b=>b&&{...b,days:[b.days[0],lastDay(b.days[1])]};
+  const txt=t=>t.replace(new RegExp(`(^|[^0-9])${sc.days} 天`),`$1${days} 天`);
+  return{...sc,map:T.map(r=>r.join('')),days,win:sc.win.map(txt),lose:sc.lose.map(txt),rain:sc.rain&&[sc.rain[0],sc.rain[1]+1],units:sc.units.map(pos),
+    retreat:sc.retreat&&(sc.retreat.auto?sc.retreat:{...sc.retreat,x:GX[sc.retreat.x],y:GY[sc.retreat.y]}),
+    events:(sc.events||[]).map(ev=>({...ev,spawn:ev.spawn?.map(pos),buff:buff(ev.buff)})),
+    carry:(sc.carry||[]).map(c=>({...c,buff:buff(c.buff)}))};
+}
+export const SCENARIOS=ORDER.map(id=>grow(ALL.find(x=>x.id===id)));
