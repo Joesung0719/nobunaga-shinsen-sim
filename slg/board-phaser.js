@@ -3,8 +3,8 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=33';
-import {chibi,SIDE_COL} from './chibi.js?v=33';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=34';
+import {chibi,SIDE_COL} from './chibi.js?v=34';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
@@ -41,6 +41,8 @@ const KFILES={   // key → [路徑, 輸出邊長, 轉角度]
   dirt:['particle-pack/png/dirt_02.png',32],
   panel:['ui-pack-rpg-expansion/png/panel_brown.png',0],   // 介面框：0 表示維持原尺寸（9 宮格用）
 };
+// Chrome 同時只允許約 16 個 WebGL context；Phaser destroy 不會主動釋放，打多場戰鬥後戰場畫布就會變白框。先主動 loseContext 再 destroy。
+const killGame=g=>{try{g.renderer?.gl?.getExtension('WEBGL_lose_context')?.loseContext()}catch(e){}try{g.destroy(true)}catch(e){}};
 let kenP=null;
 function loadKenney(){
   return kenP??=Promise.all(Object.entries(KFILES).map(async([key,[path,size,rot]])=>{
@@ -70,7 +72,7 @@ export function createPhaserBoard(box,{onTap}){
   const st={latest:null,running:false,dirty:false,scene:null,game:null,failed:null};
   const view={
     ready:null,
-    destroy(){try{st.game?.destroy(true)}catch(e){}st.game=st.scene=null;box.replaceChildren();box.classList.remove('ph')},
+    destroy(){if(st.game)killGame(st.game);st.game=st.scene=null;box.replaceChildren();box.classList.remove('ph')},
     render(s){st.latest=s;if(!st.scene)return;
       // 從設定頁回到戰場時容器大小可能變了（隱藏時是 0），重新量一次
       if(box.clientWidth!==st.w){st.w=box.clientWidth;st.game.scale.refresh()}
@@ -311,6 +313,7 @@ export function createPhaserBoard(box,{onTap}){
     // 戰場捲出畫面或切回設定頁時暫停繪圖，省電
     if('IntersectionObserver'in window)new IntersectionObserver(es=>{const v=es[es.length-1].isIntersecting;if(v)st.game.loop.wake();else st.game.loop.sleep()}).observe(box);
     window.__slgPhaser=st.game;
+    st.game.canvas?.addEventListener('webglcontextlost',e=>{e.preventDefault();view.lost?.()});
     if(st.latest)apply();
   })().catch(e=>{st.failed=e;console.error(e);
     box.replaceChildren(Object.assign(document.createElement('p'),{className:'phfail',textContent:'戰場畫面載入失敗：這個瀏覽器可能不支援 WebGL，請更新瀏覽器或換一個瀏覽器再試。'}))});
@@ -469,6 +472,6 @@ export async function createBattleStage(host,{units,faceSrc}){
   return{
     setT:call('setT'),float:call('float'),lunge:call('lunge'),shake:call('shake'),slash:call('slash'),heal:call('heal'),
     banner:call('banner'),result:call('result'),bigRound:call('bigRound'),quake:call('quake'),whiteFlash:call('whiteFlash'),cutin:call('cutin'),
-    destroy(){try{game.destroy(true)}catch(e){}},
+    destroy(){killGame(game)},
   };
 }
