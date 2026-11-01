@@ -5,7 +5,7 @@ import {isoGeom} from './iso.js?v=18';
 import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=18';
 import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=18';
 import {SCENARIOS} from './scenarios.js?v=18';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=18';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=19';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -76,7 +76,7 @@ function renderSound(){
   const tg=(k,l)=>{const b=el('button',{type:'button',class:'chip','aria-pressed':String(A[k])},l);b.onclick=()=>{setAudio({[k]:!A[k]});SET.audio={...audioSettings()};save();renderSound()};return b};
   const v=el('input',{type:'range',min:'0',max:'1',step:'0.05',value:String(A.vol),'aria-label':'音量'});
   v.oninput=()=>{setAudio({vol:+v.value});SET.audio={...audioSettings()};save()};
-  box.replaceChildren(tg('music','音樂'),tg('sfx','音效'),el('label',{class:'vol'},'音量',v));
+  box.replaceChildren(tg('music','音樂'),tg('rec','錄音配樂'),tg('sfx','音效'),el('label',{class:'vol'},'音量',v));
 }
 renderSound();
 

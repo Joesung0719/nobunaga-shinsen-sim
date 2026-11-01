@@ -56,13 +56,31 @@ function sample(group,vol=.8,t=ctx.currentTime){
   const s=ctx.createBufferSource(),g=ctx.createGain();s.buffer=b[Math.floor(Math.random()*b.length)];s.playbackRate.value=.94+Math.random()*.12;
   g.gain.value=vol;s.connect(g);g.connect(sfxBus);s.start(t);return true;
 }
-const S={music:true,sfx:true,vol:.6};
+// ---- 錄音配樂（CC0，OpenGameArt，見 assets/bgm 與 CREDITS.md）----
+// 標題／地圖／戰鬥用錄音循環，載入失敗或關掉「錄音配樂」就用下面的合成曲。勝負短曲仍是合成。
+const TRACKS={title:'title.mp3',map:'map.mp3',battle:'battle.mp3'};
+const TB={};let tNode=null,tName=null;
+function loadTrack(n){
+  if(TB[n]!==undefined)return;TB[n]=null;
+  fetch(new URL('../assets/bgm/'+TRACKS[n],import.meta.url).href).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(b=>new Promise((res,rej)=>ctx.decodeAudioData(b,res,rej)))
+    .then(buf=>{TB[n]=buf;if(cur===n&&S.rec)play(n,true)}).catch(()=>{});
+}
+function stopTrack(){
+  if(!tNode)return;const{s,g}=tNode,t=ctx.currentTime;tNode=null;tName=null;
+  g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+.8);try{s.stop(t+.85)}catch(e){}
+}
+function startTrack(n){
+  const s=ctx.createBufferSource(),g=ctx.createGain(),t=ctx.currentTime;s.buffer=TB[n];s.loop=true;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+1.2);s.connect(g);g.connect(musicBus);s.start(t);tNode={s,g};tName=n;
+}
+const S={music:true,sfx:true,vol:.6,rec:true};
 let cur=null,timer=null;
 export function audioSettings(){return S}
 export function setAudio(o){
   Object.assign(S,o);delete S.voice;
   if(master)master.gain.value=S.vol;
   if(musicBus)musicBus.gain.value=S.music?.4:0;
+  if(ctx&&cur&&'rec' in o)play(cur,true);
   if(sfxBus)sfxBus.gain.value=S.sfx?.55:0;
 }
 // browsers only allow audio after a tap; call this from any click handler
@@ -72,7 +90,7 @@ export function unlock(){
   ctx=new AC();master=ctx.createGain();master.connect(ctx.destination);
   musicBus=ctx.createGain();musicBus.connect(master);sfxBus=ctx.createGain();sfxBus.connect(master);
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.6,ctx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-  setAudio({});loadSamples();
+  setAudio({});loadSamples();for(const k in TRACKS)loadTrack(k);
   if(cur){const n=cur;cur=null;play(n)}
 }
 function tone(bus,type,f,t,dur,vol,slide){
@@ -110,9 +128,17 @@ function horagai(bus,t,dur=1.6,f=233){
   o.connect(lp);lp.connect(g);g.connect(bus);o.start(t);lfo.start(t);o.stop(t+dur+.05);lfo.stop(t+dur+.05);
 }
 // ---- music: schedule a little ahead of time ----
-export function play(name){
-  if(cur===name)return;cur=name;clearInterval(timer);timer=null;
-  if(!ctx||!name)return;
+export function play(name,force){
+  if(cur===name&&!force)return;
+  const keep=cur===name&&tName===name&&S.rec&&TB[name];if(keep&&force)return;   // 設定改動時不重播同一首
+  cur=name;clearInterval(timer);timer=null;
+  if(!ctx||!name){if(ctx)stopTrack();return}
+  if(TRACKS[name]&&S.rec){
+    loadTrack(name);
+    if(TB[name]){if(tName!==name){stopTrack();startTrack(name)}return}   // 錄音可用
+  }
+  stopTrack();
+  if(!SONGS[name])return;
   const sg=SONGS[name],e8=60/sg.bpm/2;
   const tracks=['lead','bass'].map(k=>({k,notes:sg[k],i:0,t:ctx.currentTime+.08}));
   const len=sg.lead.reduce((a,n)=>a+n[1],0);

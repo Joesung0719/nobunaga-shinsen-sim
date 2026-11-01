@@ -17,6 +17,8 @@
 
 | Kenney 素材 7 包（粒子、煙、UI 框、打擊／RPG／介面音效） | `assets/kenney/`（逐包明細見 `assets/kenney/CREDITS.md`） | Kenney Vleugels（https://kenney.nl），2026-10-31 Joe 以瀏覽器手動下載 | CC0 1.0；各資料夾附原包 `License.txt`。已接進遊戲：`particle-pack`（星芒火花 star_06、煙 smoke_06、刀光 slash_03、火焰 flame_05、碎土 dirt_02，載入時縮小）、`ui-pack-rpg-expansion`（panel_brown 名牌框）、`impact-sounds` 與 `rpg-audio`（斬擊、受擊、腳步）、`interface-sounds`（點擊、確認）；其餘仍備用。程式在 `slg/board-phaser.js`、`slg/audio.js` |
 
+| 錄音配樂三首（標題、地圖、戰鬥），已轉成 mp3、音量正規化到約 -20 LUFS | `assets/bgm/title.mp3`、`map.mp3`、`battle.mp3`（程式在 `slg/audio.js`，可在設定關掉「錄音配樂」改回合成曲） | 標題：Tozan〈Asianoriental1〉https://opengameart.org/content/asianoriental1；地圖：Kistol〈Hot Springs Town〉https://opengameart.org/content/hot-springs-town；戰鬥：G_P〈Boss_Koto〉https://opengameart.org/content/bosskoto。2026-11-01 下載 | 三頁授權欄皆為 CC0（下載當天確認）。CC0 不需標示，這裡仍列出作者表達感謝 |
+
 ## 候選素材（尚未下載）
 
 2026-10-31 更新：Kenney 7 包已由 Joe 手動下載並放進 `assets/kenney/`（見上表）；其餘來源還沒有下載。日後素材由 Joe 在瀏覽器手動下載，不用程式繞過網站的機器人檢查。
