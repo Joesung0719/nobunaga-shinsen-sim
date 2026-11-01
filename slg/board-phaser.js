@@ -269,7 +269,7 @@ export function createPhaserBoard(box,{onTap}){
         const key=JSON.stringify(pins);if(key===this.pinKey)return;this.pinKey=key;
         for(const o of this.pinObjs||[])o.destroy();this.pinObjs=[];
         for(const p of pins){
-          const[cx,cy]=this.at(p.x,p.y),c=this.add.container(cx,cy+4).setDepth(cy+8),g=this.add.graphics();
+          const[cx,cy]=this.at(p.x,p.y),c=this.add.container(cx,cy+4).setDepth(cy+12).setScale(1.3),g=this.add.graphics();
           if(p.kind==='house'){
             g.fillStyle(0x000000,.3).fillEllipse(0,2,40,12);
             g.fillStyle(0xd9c39a,1).fillRect(-13,-18,26,18).lineStyle(1.5,0x4a3520,1).strokeRect(-13,-18,26,18);
@@ -281,8 +281,8 @@ export function createPhaserBoard(box,{onTap}){
             g.lineStyle(2.5,0x3a2a1a,1).lineBetween(-6,0,-6,-40);
             g.fillStyle(0xe3b75a,1).fillTriangle(-5,-40,18,-33,-5,-26).lineStyle(1.2,0x6a4a10,1).strokeTriangle(-5,-40,18,-33,-5,-26);
           }
-          const t=this.add.text(0,6,p.label||'',{fontFamily:FONT,fontStyle:'bold',fontSize:'10px',color:'#2b1d0c',backgroundColor:'#f2e3b0e6',padding:{x:3,y:1}}).setOrigin(.5,0).setResolution(this.k*2);
-          c.add([g,t]);
+          const t=this.add.text(0,p.kind==='house'?-50:-56,p.label||'',{fontFamily:FONT,fontStyle:'bold',fontSize:'10px',color:'#2b1d0c',backgroundColor:'#f2e3b0e6',padding:{x:3,y:1}}).setOrigin(.5,0).setResolution(this.k*2);
+          t.setOrigin(.5,1);c.add([g,t]);
           if(!REDUCE())this.tweens.add({targets:g,y:{from:0,to:-3},duration:900,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
           this.pinObjs.push(c);
         }

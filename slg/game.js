@@ -443,6 +443,7 @@ function startStory(scId,bandit){
   }else if(want&&fv.how==='win'){G.favHint=`${fv.hint}（${fv.text}）`;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。聽說只要${fv.text}，那個人就會來找您。`})}
   else if(want&&fv.how==='lose'){G.favHint=fv.hint;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}……不過，還是請您平安回來。`})}
   if(G.favHint)renderObj();
+  if(G.spot)renderBoard();
   if(G.ret)addLog(`撤退點：${G.ret.name}（地圖角落的旗子）。第 ${G.ret.from} 天起，${lordNm()}隊走到這裡就算撤退成功。`);
   talk([...(scene?.pre||[]),...(want&&fv.how==='talk'?fv.pre:[]),...rumor,...(sc.talk.start||[])]).then(()=>runEvents('day')).then(()=>autoPlay());
 }
