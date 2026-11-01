@@ -3,8 +3,8 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=17';
-import {chibi,SIDE_COL} from './chibi.js?v=17';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=18';
+import {chibi,SIDE_COL} from './chibi.js?v=18';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
@@ -13,7 +13,16 @@ const REDUCE=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 const hex=c=>parseInt(c.slice(1),16);
 const svgImg=svg=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
 
-// Phaser 本體只在選了新版戰場時才載入（約 1.4 MB）
+// ---- 效能：自動偵測手機等低階裝置，用「省電」模式（降解析度與幀率、關濾鏡與裝飾粒子）----
+// 模式由出陣設定的「畫面效果」決定：auto 自動、full 完整、light 省電（game.js 呼叫 setPerf）。
+let perf='auto';
+export function setPerf(m){perf=m==='full'||m==='light'?m:'auto'}
+const lowEnd=()=>{const n=navigator;return matchMedia('(pointer:coarse)').matches&&((n.deviceMemory&&n.deviceMemory<=4)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||Math.min(screen.width,screen.height)<=420)};
+export const isLight=()=>perf==='light'||(perf==='auto'&&lowEnd());
+const gameCfg=(light,extra)=>({type:Phaser_.AUTO,transparent:true,antialias:!light,input:{touch:{capture:false}},banner:false,...(light?{fps:{target:30}}:{}),...extra});
+let Phaser_=null;
+
+// Phaser 本體在第一次開戰場時才載入（約 1.4 MB）
 let phaserP=null;
 function loadPhaser(){
   if(window.Phaser)return Promise.resolve(window.Phaser);
@@ -61,6 +70,7 @@ export function createPhaserBoard(box,{onTap}){
   const st={latest:null,running:false,dirty:false,scene:null,game:null,failed:null};
   const view={
     ready:null,
+    destroy(){try{st.game?.destroy(true)}catch(e){}st.game=st.scene=null;box.replaceChildren();box.classList.remove('ph')},
     render(s){st.latest=s;if(!st.scene)return;
       // 從設定頁回到戰場時容器大小可能變了（隱藏時是 0），重新量一次
       if(box.clientWidth!==st.w){st.w=box.clientWidth;st.game.scale.refresh()}
@@ -77,12 +87,13 @@ export function createPhaserBoard(box,{onTap}){
     finally{st.running=false}
   }
   view.ready=(async()=>{
-    const Phaser=await loadPhaser();
+    const Phaser=Phaser_=await loadPhaser();
+    const light=isLight();
     const ken=await loadKenney();
     await Promise.race([document.fonts?.load(`16px ${FONT}`),new Promise(r=>setTimeout(r,2000))]).catch(()=>{});
     const geo0=isoGeom(st.latest?.T[0].length||7,st.latest?.T.length||9);
     // 畫布解析度：依螢幕像素密度放大（最多 2 倍），手機上字和線條才清楚
-    const k=Math.max(1,Math.min(2,(devicePixelRatio||1)*(box.clientWidth||640)/geo0.vw));
+    const k=Math.max(1,Math.min(light?1.25:2,(devicePixelRatio||1)*(box.clientWidth||640)/geo0.vw));
     let created;const createdP=new Promise(r=>created=r);
     class Board extends Phaser.Scene{
       constructor(){super('board')}
@@ -90,12 +101,12 @@ export function createPhaserBoard(box,{onTap}){
         makeTextures(this,ken);
         this.k=k;this.units=new Map();this.mapKey=null;this.focusing=null;
         this.cameras.main.setZoom(k);
-        try{this.cameras.main.filters.external.addVignette(.5,.5,.95,.25)}catch(e){}
+        if(!light)try{this.cameras.main.filters.external.addVignette(.5,.5,.95,.25)}catch(e){}
         this.hl=this.add.graphics().setDepth(1);
         this.tweens.add({targets:this.hl,alpha:{from:1,to:.55},duration:700,yoyo:true,repeat:-1});
         this.amb=[];
         // 紅葉（整個戰場）、豪雨
-        if(!REDUCE()){
+        if(!REDUCE()&&!light){
           this.leafZone=new Phaser.Geom.Rectangle(-40,-20,900,4);
           this.leaves=this.add.particles(0,0,'leaf',{emitZone:{type:'random',source:this.leafZone},speedY:{min:20,max:42},speedX:{min:-6,max:26},rotate:{start:0,end:540},
             scale:{min:.35,max:.6},lifespan:{min:12000,max:18000},frequency:900,tint:[0xd4462c,0xe48a2a,0xc2361f,0xf0b03c],alpha:.9}).setDepth(9000);
@@ -103,7 +114,7 @@ export function createPhaserBoard(box,{onTap}){
         this.rainShade=this.add.rectangle(0,0,10,10,0x0c1830,.3).setOrigin(0).setDepth(9001).setVisible(false);
         this.rainZone=new Phaser.Geom.Rectangle(-100,-40,1000,4);
         this.rainFx=this.add.particles(0,0,'drop',{emitZone:{type:'random',source:this.rainZone},speedY:{min:700,max:900},speedX:-120,rotate:8,
-          lifespan:1000,quantity:3,frequency:16,alpha:{start:.55,end:.2},emitting:false}).setDepth(9002);
+          lifespan:1000,quantity:light?1:3,frequency:light?24:16,alpha:{start:.55,end:.2},emitting:false}).setDepth(9002);
         // 手機上一次點擊會先送觸控、再補送一次滑鼠事件，只算第一次；手指滑動（捲頁面）不算點擊
         let down=null,lastUp=0;
         this.input.on('pointerdown',p=>{down={x:p.x,y:p.y}});
@@ -131,13 +142,13 @@ export function createPhaserBoard(box,{onTap}){
         this.mapImg=this.add.image(0,0,key).setOrigin(0).setScale(1/this.k).setDepth(0);
         const cam=this.cameras.main;cam.centerOn(geo.vw/2,geo.vh/2);this.home={x:geo.vw/2,y:geo.vh/2};
         this.rainShade.setSize(geo.vw,geo.vh);this.rainZone.width=geo.vw+200;if(this.leafZone)this.leafZone.width=geo.vw+80;
-        if(!REDUCE())this.ambient();
+        if(!REDUCE())this.ambient(light);
       }
       at(x,y){return this.geo.at(x,y,this.T)}
       // 雲影、本陣篝火、水面閃光
-      ambient(){
+      ambient(light){
         const{T,W,H,geo}=this;
-        for(let i=0;i<2;i++){const c=this.add.image(0,geo.vh*(.3+i*.35),'cloud').setScale(3,1.5).setAlpha(.14).setDepth(2);
+        for(let i=0;i<(light?0:2);i++){const c=this.add.image(0,geo.vh*(.3+i*.35),'cloud').setScale(3,1.5).setAlpha(.14).setDepth(2);
           this.tweens.add({targets:c,x:{from:-260,to:geo.vw+260},duration:56000,delay:-i*26000,repeat:-1});this.amb.push(c)}
         const isC=(x,y)=>T[y]?.[x]==='城',seen=new Set();
         for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(!isC(x,y)||seen.has(x+','+y))continue;
@@ -145,9 +156,9 @@ export function createPhaserBoard(box,{onTap}){
           while(q.length){const[a,b]=q.pop();grp.push([a,b]);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const kk=(a+dx)+','+(b+dy);if(isC(a+dx,b+dy)&&!seen.has(kk)){seen.add(kk);q.push([a+dx,b+dy])}}}
           grp.sort((p,q2)=>(p[0]+p[1])-(q2[0]+q2[1])||Math.abs(p[0]-p[1])-Math.abs(q2[0]-q2[1]));
           const[kx,ky]=grp[Math.min(grp.length-1,grp.length>2?1:0)],[cx,cy]=this.at(kx,ky);
-          this.amb.push(this.add.particles(cx-20,cy+12,this.textures.exists('flame')?'flame':'ember',{speedY:{min:-40,max:-18},speedX:{min:-6,max:6},scale:this.textures.exists('flame')?{start:.3,end:0}:{start:.8,end:0},lifespan:{min:500,max:900},frequency:90,
+          this.amb.push(this.add.particles(cx-20,cy+12,this.textures.exists('flame')?'flame':'ember',{speedY:{min:-40,max:-18},speedX:{min:-6,max:6},scale:this.textures.exists('flame')?{start:.3,end:0}:{start:.8,end:0},lifespan:{min:500,max:900},frequency:light?170:90,
             tint:[0xffd34a,0xff8a2a,0xffb03a],blendMode:'ADD'}).setDepth(cy+40))}
-        for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(T[y][x]==='水'||T[y][x]==='橋'){const[cx,cy]=this.at(x,y);
+        if(!light)for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(T[y][x]==='水'||T[y][x]==='橋'){const[cx,cy]=this.at(x,y);
           const s=this.add.image(cx+Phaser.Math.Between(-18,18),cy+Phaser.Math.Between(-6,6),'spark').setScale(.35).setBlendMode('ADD').setDepth(2).setAlpha(0);
           this.tweens.add({targets:s,alpha:{from:0,to:.9},duration:600,yoyo:true,repeat:-1,repeatDelay:Phaser.Math.Between(800,2400),delay:Phaser.Math.Between(0,2000)});this.amb.push(s)}
       }
@@ -209,7 +220,7 @@ export function createPhaserBoard(box,{onTap}){
       }
       setSel(o,on){
         if(o.on===on)return;o.on=on;
-        if(on){try{o.spr.enableFilters();o.glow=o.spr.filters.internal.addGlow(0xffe9a8,3,0,1)}catch(e){}
+        if(on){if(!light)try{o.spr.enableFilters();o.glow=o.spr.filters.internal.addGlow(0xffe9a8,3,0,1)}catch(e){}
           if(!REDUCE())o.bob=this.tweens.add({targets:o.spr,y:{from:0,to:-4},duration:300,yoyo:true,repeat:-1,ease:'Sine.easeInOut'})}
         else{try{if(o.glow)o.spr.filters.internal.remove(o.glow)}catch(e){}o.glow=null;o.bob?.remove();o.bob=null;o.spr.y=0}
       }
@@ -294,16 +305,15 @@ export function createPhaserBoard(box,{onTap}){
       }
     }
     const geo=geo0;
-    st.game=new Phaser.Game({type:Phaser.WEBGL,parent:box,transparent:true,antialias:true,
-      scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:Math.round(geo.vw*k),height:Math.round(geo.vh*k)},
-      input:{touch:{capture:false}},scene:[Board],banner:false});
+    st.game=new Phaser.Game(gameCfg(light,{parent:box,
+      scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:Math.round(geo.vw*k),height:Math.round(geo.vh*k)},scene:[Board]}));
     st.scene=await createdP;st.w=box.clientWidth;
     // 戰場捲出畫面或切回設定頁時暫停繪圖，省電
     if('IntersectionObserver'in window)new IntersectionObserver(es=>{const v=es[es.length-1].isIntersecting;if(v)st.game.loop.wake();else st.game.loop.sleep()}).observe(box);
     window.__slgPhaser=st.game;
     if(st.latest)apply();
   })().catch(e=>{st.failed=e;console.error(e);
-    box.replaceChildren(Object.assign(document.createElement('p'),{className:'phfail',textContent:'新版戰場載入失敗，請拿掉網址的 ?engine=phaser 改用舊版。'}))});
+    box.replaceChildren(Object.assign(document.createElement('p'),{className:'phfail',textContent:'戰場畫面載入失敗：這個瀏覽器可能不支援 WebGL，請更新瀏覽器或換一個瀏覽器再試。'}))});
   return view;
 }
 
@@ -317,10 +327,11 @@ const FLOAT={hit:['#ffffff','#7a1208'],mo:['#e3c9ff','#3b1a66'],heal:['#b9ffd0',
 
 // units: [{side,i,n,f,arm,boss,max,troops,left}]；faceSrc(name) → 卡圖網址或 null
 export async function createBattleStage(host,{units,faceSrc}){
-  const Phaser=await loadPhaser();
+  const Phaser=Phaser_=await loadPhaser();
   const ken=await loadKenney();
+  const light=isLight();
   await Promise.race([document.fonts?.load(`16px ${FONT}`),new Promise(r=>setTimeout(r,1500))]).catch(()=>{});
-  const k=Math.max(1,Math.min(2,(devicePixelRatio||1)*(host.clientWidth||340)/LW));
+  const k=Math.max(1,Math.min(light?1.25:2,(devicePixelRatio||1)*(host.clientWidth||340)/LW));
   const imgs=Object.fromEntries(await Promise.all(units.map(async u=>[`${u.side}-${u.i}`,await svgImg(chibi({n:u.n,f:u.f},{arm:u.arm,side:u.side,boss:u.boss}).replace('<svg ',`<svg ${NS} width="${Math.round(64*k)}" height="${Math.round(82*k)}" `))])));
   let created;const createdP=new Promise(r=>created=r);
   const U={};
@@ -451,9 +462,8 @@ export async function createBattleStage(host,{units,faceSrc}){
       c.destroy();dim.destroy();
     }
   }
-  const game=new Phaser.Game({type:Phaser.WEBGL,parent:host,transparent:true,antialias:true,
-    scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:Math.round(LW*k),height:Math.round(LH*k)},
-    input:{touch:{capture:false}},scene:[Battle],banner:false});
+  const game=new Phaser.Game(gameCfg(light,{parent:host,
+    scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:Math.round(LW*k),height:Math.round(LH*k)},scene:[Battle]}));
   const sc=await createdP;
   const call=m=>(...a)=>sc[m](...a);
   return{

@@ -1,4 +1,4 @@
-// 2.5D 斜視角地圖：程式畫的 SVG 地塊（不使用遊戲素材）。
+// 2.5D 斜視角地圖：程式畫的 SVG 地塊（戰場用 slg/board-phaser.js 轉成貼圖）（不使用遊戲素材）。
 // 每格是一塊有厚度的菱形地塊（頂面漸層＋細雜訊、受光邊、側面漸層）；山、森林、軍營、河、橋畫在地塊上，依 x+y 由後往前畫，前面的會遮住後面的。
 export const TW=96,TH=48;                       // 菱形的寬、高（SVG 單位）
 const LIFT={平:12,林:14,山:16,城:18,水:4,橋:6};    // 地塊厚度（水面較低）
@@ -43,8 +43,7 @@ const DEFS=`<defs><filter id="iTurb" x="0" y="0" width="100%" height="100%"><feT
 <linearGradient id="iSideR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5c3f24"/><stop offset="1" stop-color="#24170d"/></linearGradient>
 <radialGradient id="iSel"><stop offset="0" stop-color="#fff3c4" stop-opacity=".9"/><stop offset=".6" stop-color="#e3b75a" stop-opacity=".45"/><stop offset="1" stop-color="#e3b75a" stop-opacity="0"/></radialGradient>`+
 Object.entries(TOP2).map(([k,[a,b]])=>`<linearGradient id="iT${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')+'</defs>';
-// mark: Map 'x,y' → 'mv' | 'atk' | 'sel'
-export function isoTerrain(T,mark=new Map()){
+export function isoTerrain(T){
   const H=T.length,W=T[0].length,{OX,OY}=isoGeom(W,H);
   const isC=(x,y)=>T[y]?.[x]==='城';
   // 本陣畫在每組營地格（地形代號「城」）的後排那格
@@ -80,15 +79,11 @@ export function isoTerrain(T,mark=new Map()){
       s+=`<circle class="glint" style="animation-delay:-${(rnd(x,y)*2.4).toFixed(2)}s" cx="${cx+10}" cy="${ty+TH/2-6}" r="2" fill="#fff"/>`;
     }
     if(t==='橋')s+=`<polygon points="${cx-14},${ty+6} ${cx+34},${ty+30} ${cx+14},${ty+42} ${cx-34},${ty+18}" fill="#b98a55" stroke="#5a3b1e"/><path d="M${cx-24} ${ty+13} l48 24 M${cx-30} ${ty+20} l48 24" stroke="#6e4a2a" stroke-width="1.2"/><path d="M${cx-14} ${ty+4} l48 24" stroke="#8b2a1c" stroke-width="3"/>`;
-    const m=mark.get(x+','+y);
-    if(m)s+=`<polygon class="hl ${m}" points="${top}"/>`;
-    if(m==='sel')s+=`<ellipse class="selring" cx="${cx}" cy="${ty+TH/2}" rx="${TW/2-6}" ry="${TH/2-3}" fill="url(#iSel)" stroke="#ffe9a8" stroke-width="2.5"/>`;
     if(t==='林')s+=tree(cx-18,ty+TH/2+2,.9)+maple(cx+16,ty+TH/2-4,.8,rnd(x,y)>.5?'#d4462c':'#e48a2a')+tree(cx,ty+TH/2+12,1);
     if(t==='山')s+=mountain(cx,ty+TH/2+4);
     if(t==='城')s+=keeps.has(x+','+y)?honjin(cx,ty+TH/2):tent(cx+(rnd(x,y)-.5)*16,ty+TH/2+2,.8);
     if(t==='平'&&rnd(x,y,9)<.4){const fx=cx-14+rnd(x,y,3)*28,fy=ty+TH/2-6+rnd(x,y,4)*12;s+=`<circle cx="${fx}" cy="${fy}" r="1.8" fill="#fff"/><circle cx="${fx+6}" cy="${fy+3}" r="1.6" fill="#ffd34a"/><circle cx="${fx-5}" cy="${fy+4}" r="1.6" fill="#f08cb0"/>`}
-    // invisible hit area on top so trees and tents don't swallow taps
-    s+=`<polygon class="hit" points="${top}" fill="transparent"/></g>`;
+    s+='</g>';
   }
   return s;
 }
