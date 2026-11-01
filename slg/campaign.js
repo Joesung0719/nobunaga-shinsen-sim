@@ -49,14 +49,25 @@ export const SHOP=[
   {k:'camp',n:'兵種營',max:5,base:3000,fx:'全屬性 +2%／級（全軍）'},
   {k:'supply',n:'兵力補給',max:10,base:1600,fx:'每位武將兵力 +1000／級（全軍）'},
 ];
-export const ensureHero=h=>{if(!h.shop){h.silver=SILVER0;h.shop={weapon:0,armor:0,camp:0,supply:0};h.sale=null}return h};
+export const ensureHero=h=>{
+  if(!h.shop){h.silver=SILVER0;h.shop={weapon:0,armor:0,camp:0,supply:0};h.sale=null}
+  if(!h.roster){h.roster=['織田信雄','筒井順慶'];h.party=[...h.roster]}   // 舊存檔：先給兩位 3★ 夥伴
+  return h};
+// ---- 夥伴：開局從 3★ 挑兩位；劇情中通關某關後有名將加入；5★ 在商店用銀招募 ----
+export const STARTERS=['長野業盛','不破光治','河尻秀隆','林秀貞','織田信雄','小早川秀秋','內藤信成','松平忠直','本願寺教如','金森長近','筒井順慶','本莊實乃','色部長實','色部勝長','口羽通良','杉浦玄任','遠藤基信'];
+export const JOIN={okehazama:'池田恆興',kawanaka_u:'甘粕景繼',kawanaka_t:'小山田信茂',kanegasaki:'脇坂安治',anegawa:'磯野員昌',mikatagahara:'大久保忠世',nagashino:'鳥居元忠',tedorigawa:'佐久間盛政',honnoji:'齋藤利三',yamazaki:'山內一豐',shizugatake:'栗山善助',komaki:'結城秀康',sekigahara:'吉川廣家'};
+// 5★ 招募名單：[名字, 第幾關通關後開放（0 起算）]
+export const RECRUIT=[['森可成',0],['蜂須賀小六',0],['柴田勝家',1],['前田利家',2],['宮部繼潤',2],['竹中半兵衛',3],['酒井忠次',4],['榊原康政',4],['本多忠勝',5],['馬場信春',5],['山本勘助',6],['加藤清正',8],['福島正則',8],['石川數正',9],['本多正信',10],['稻葉一鐵',10]];
+export const RECRUIT_PRICE=20000;
+export const recruitPrice=h=>Math.round(RECRUIT_PRICE*(1-Math.min(.15,.003*h.pts.魅)));
+export const PARTY_MAX=2;
 // 價格：下一級的基本價，特價 7 折，魅力折扣每點 0.3%（上限 15%）
 export const price=(h,it)=>Math.round(it.base*(h.shop[it.k]+1)*(h.sale===it.k?.7:1)*(1-Math.min(.15,.003*h.pts.魅)));
 export const gearMul=h=>{const s=h.shop;return{武勇:1+.02*(s.weapon+s.camp),智略:1+.02*(s.weapon+s.camp),統率:1+.02*(s.armor+s.camp),速度:1+.02*(s.armor+s.camp)}};
 export const stageSilver=(i,rank,foes)=>Math.round((2000+300*(i+1))*(RANK_M[rank]||1)+(300+50*(i+1))*foes);
-export function newHero({name,arm='騎',color=COLORS[0][0],lean='武'}){
+export function newHero({name,arm='騎',color=COLORS[0][0],lean='武',party=['織田信雄','筒井順慶']}){
   const pts=Object.fromEntries(ATTRS.map(a=>[a,0]));pts[lean]=3;
-  return ensureHero({v:1,name:name.trim().slice(0,6)||'無名',arm,color,lean,lv:1,exp:0,pts,free:0,stage:0,pick:{},done:{}});
+  return ensureHero({v:1,name:name.trim().slice(0,6)||'無名',arm,color,lean,lv:1,exp:0,pts,free:0,stage:0,pick:{},done:{},roster:[...party],party:[...party]});
 }
 // 加經驗，回傳升了幾級；每升一級得 1 點自由點數（Lv50 共 49 點）
 export function addExp(h,n){
