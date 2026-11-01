@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=32';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=32';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=32';
-import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=32';
-import {isoGeom} from './iso.js?v=32';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=32';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=32';
-import {SCENARIOS} from './scenarios.js?v=32';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=32';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=33';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=33';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=33';
+import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=33';
+import {isoGeom} from './iso.js?v=33';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=33';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=33';
+import {SCENARIOS} from './scenarios.js?v=33';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=33';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='23';
+const VER='24';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -242,21 +242,27 @@ function renderCamp(){
   const reset=el('button',{type:'button',class:'btn ghost'},'重新開始戰役');
   reset.onclick=()=>{if(confirm('刪除目前的主角與戰役進度，重新開始？')){delete SET.hero;delete SET.campSel;save();renderSetup()}};
   const sel=campIdx();
+  // 沒打過的關卡不預告：只列出已通關的關與「下一關」；下一關只顯示是否要選陣營，打完才揭曉名稱
   const stages=CHAIN.map((c,i)=>{
+    if(i>h.stage)return null;
     const id=c.ids.length>1?(h.pick[i]&&c.ids.includes(h.pick[i])?h.pick[i]:c.ids[0]):c.ids[0],sc=c.finale?{name:c.name,year:`${c.era}年`,brief:c.brief}:SCENARIOS.find(x=>x.id===id);
-    const locked=i>h.stage,done=h.done[i];
-    const b=el('button',{type:'button',class:'scard',disabled:locked,'aria-pressed':String(sel===i)},
-      el('b',{},`第 ${i+1} 關・${sc.name}`,done?el('span',{class:'tag'},`${done.rank}`):i===h.stage?el('span',{class:'tag'},'下一關'):null),
-      el('small',{},locked?`${c.era}年　尚未解鎖`:c.finale?`${sc.year}　劇情終章`:`${sc.year}　敵軍 Lv${enemyLv(i)}`),
-      locked?'':el('p',{},sc.brief));
+    const done=h.done[i],next=i===h.stage&&!done&&!(i<h.stage);
+    const b=next
+      ?el('button',{type:'button',class:'scard','aria-pressed':String(sel===i)},
+          el('b',{},`第 ${i+1} 關・？？？`,el('span',{class:'tag'},'下一關')),
+          el('small',{},c.ids.length>1?'需要先選擇陣營':'尚未揭曉'))
+      :el('button',{type:'button',class:'scard','aria-pressed':String(sel===i)},
+          el('b',{},`第 ${i+1} 關・${sc.name}`,done?el('span',{class:'tag'},`${done.rank}`):null),
+          el('small',{},c.finale?`${sc.year}　劇情終章`:`${sc.year}　敵軍 Lv${enemyLv(i)}`),
+          el('p',{},sc.brief));
     b.onclick=()=>{SET.campSel=i;save();renderCamp()};
-    if(c.ids.length>1&&!locked&&sel===i){
+    if(c.ids.length>1&&sel===i){
       const alt=el('div',{class:'row'},el('small',{class:'muted'},'選邊：'));
       for(const x of c.ids){const a=el('button',{type:'button',class:'chip','aria-pressed':String(id===x)},SCENARIOS.find(y=>y.id===x).lordName+'陣營');a.onclick=e=>{e.stopPropagation();h.pick[i]=x;save();renderCamp()};alt.append(a)}
       b.append(alt);
     }
     return b;
-  });
+  }).filter(Boolean);
   const done=h.stage>=CHAIN.length;
   box.replaceChildren(el('div',{class:'hcard'},
     el('div',{class:'fig big',html:heroFig(h)}),
@@ -273,9 +279,9 @@ function renderCamp(){
         const on=h.party.includes(n),r=ROSTER.get(n)?.r||3;
         const b=el('button',{type:'button',class:'mate','aria-pressed':String(on),title:on?'同隊中（再點一次移出）':'點一下加入隊伍'},el('div',{class:'fig',html:compFig(n)}),el('span',{},n),el('small',{class:'muted'},`${starsOf(n)}${on?'・同隊':''}`));
         b.onclick=()=>{if(on){if(h.party.length>1)h.party=h.party.filter(x=>x!==n)}else h.party=[...h.party,n].slice(-PARTY_MAX);save();renderCamp()};return b}))),
-    el('div',{class:'shop'},el('h3',{},'武將招募',el('small',{class:'muted'},`　5★ 每位 ${fmt(recruitPrice(h))} 銀；通關新的關卡會開放更多人選`)),
-      ...RECRUIT.map(([n,at])=>{
-        const have=h.roster.includes(n),locked=at>=h.stage&&!have,p=recruitPrice(h);
+    el('div',{class:'shop'},el('h3',{},'武將招募',el('small',{class:'muted'},`　5★ 每位 ${fmt(recruitPrice(h))} 銀；通關新的關卡後，會出現新的人選`)),
+      ...RECRUIT.filter(([n,at])=>at<h.stage||h.roster.includes(n)).map(([n,at])=>{
+        const have=h.roster.includes(n),locked=false,p=recruitPrice(h);
         const b=el('button',{type:'button',class:'btn',disabled:have||locked||h.silver<p},have?'已加入':locked?`第 ${at+1} 關後開放`:`招募 ${fmt(p)} 銀`);
         b.onclick=()=>{if(h.silver<p)return;h.silver-=p;h.roster.push(n);if(h.party.length<PARTY_MAX)h.party.push(n);save();sfx('select');renderCamp()};
         return el('div',{class:'shopRow'},el('b',{},n),el('span',{class:'muted'},starsOf(n)),el('small',{class:'muted'},`${armTxt(n)}`),el('span'),b)})),
