@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=34';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=34';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=34';
-import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=34';
-import {isoGeom} from './iso.js?v=34';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=34';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=34';
-import {SCENARIOS} from './scenarios.js?v=34';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=34';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=35';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=35';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=35';
+import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=35';
+import {isoGeom} from './iso.js?v=35';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=35';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=35';
+import {SCENARIOS} from './scenarios.js?v=35';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=35';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='25';
+const VER='26';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -538,6 +538,7 @@ function renderBoard(){
   const g=isoGeom(W,H);
   box.style.setProperty('--ar',`${g.vw}/${g.vh}`);
   // 盤面交給 Phaser 畫（slg/board-phaser.js），規則與點擊處理在這裡
+  if(VIEW?.isLost()){VIEW.destroy();VIEW=null}   // 戰鬥演出後發現畫布 context 被瀏覽器收走：直接重建
   if(!VIEW){VIEW=createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});const v=VIEW;v.lost=()=>{if(VIEW!==v)return;v.destroy();VIEW=null;if(G)setTimeout(renderBoard,50)}}
   VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
     return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
