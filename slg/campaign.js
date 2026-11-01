@@ -51,7 +51,8 @@ export const SHOP=[
 ];
 export const ensureHero=h=>{
   if(!h.shop){h.silver=SILVER0;h.shop={weapon:0,armor:0,camp:0,supply:0};h.sale=null}
-  if(!h.roster){h.roster=['織田信雄','筒井順慶'];h.party=[...h.roster]}   // 舊存檔：先給兩位 3★ 夥伴
+  if(!h.roster){h.roster=['織田信雄','筒井順慶'];h.party=[...h.roster]}
+  if(!h.fav)h.fav={};   // 舊存檔：先給兩位 3★ 夥伴
   return h};
 // ---- 夥伴：開局從 3★ 挑兩位；劇情中通關某關後有名將加入；5★ 在商店用銀招募 ----
 export const STARTERS=['長野業盛','不破光治','河尻秀隆','林秀貞','織田信雄','小早川秀秋','內藤信成','松平忠直','本願寺教如','金森長近','筒井順慶','本莊實乃','色部長實','色部勝長','口羽通良','杉浦玄任','遠藤基信'];
