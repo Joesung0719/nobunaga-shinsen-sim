@@ -95,6 +95,7 @@ function crestOf(k,y,col){
   }
 }
 // g: {n, f(勢力)}; o: {arm, side, boss, flip}
+export const setSpec=(n,sp)=>{SPEC[n]=sp};   // 戰役主角的外觀（自創角色）
 let UID=0;   // 漸層 id 每隻武將獨立：同一頁有很多 SVG，id 重複時若第一個在隱藏區塊，後面的漸層會失效變全黑
 export function chibi(g,o={}){
   const uid=++UID,h=hash(g.n),sp=SPEC[g.n]||{},arm=o.arm||'槍',side=o.side||0;

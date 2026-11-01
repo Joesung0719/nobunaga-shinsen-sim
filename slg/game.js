@@ -1,17 +1,18 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=24';
-import {chibi,SIDE_COL} from './chibi.js?v=24';
-import {isoGeom} from './iso.js?v=24';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=24';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=24';
-import {SCENARIOS} from './scenarios.js?v=24';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=24';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=25';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=25';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic} from './campaign.js?v=25';
+import {isoGeom} from './iso.js?v=25';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=25';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=25';
+import {SCENARIOS} from './scenarios.js?v=25';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=25';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='18';
+const VER='19';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -62,6 +63,7 @@ function builderTeam(){
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
 }
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
+if(SET.hero)setSpec(SET.hero.name,heroSpec(SET.hero));   // 戰役主角的外觀
 // 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）
 const RANKV={S:4,A:3,B:2,C:1};
 const carryOk=c=>(RANKV[SET.camp?.[c.from]?.rank]||0)>=RANKV[c.min||'B'];
@@ -128,8 +130,8 @@ function garrisonTeam(k,lv){
 }
 
 // ---- setup UI ----
-const MODES=[['pvp','對戰模擬'],['land','打地'],['story','劇本']];
-// 模式由頁首的子分頁（site-nav.js）切換：網址 ?m=pvp|land|story 可直接開到該模式
+const MODES=[['pvp','對戰模擬'],['land','打地'],['story','劇本'],['camp','戰役']];
+// 模式由頁首的子分頁（site-nav.js）切換：網址 ?m=pvp|land|story|camp 可直接開到該模式
 {const m=new URLSearchParams(location.search).get('m');if(MODES.some(([k])=>k===m))SET.mode=m}
 function setMode(v){
   if(!MODES.some(([k])=>k===v))return;
@@ -182,6 +184,83 @@ function showSkill(n){
     el('form',{method:'dialog'},el('button',{class:'btn'},'關閉'))));
   $('skDlg').showModal();
 }
+// ---- 戰役畫面：建立角色／角色卡與配點／關卡列表 ----
+const campIdx=()=>{const h=SET.hero;return Math.max(0,Math.min(SET.campSel??h.stage,h.stage,CHAIN.length-1))};
+function campStageId(){const h=SET.hero,i=campIdx(),ids=CHAIN[i].ids;return ids.length>1?(h.pick[i]&&ids.includes(h.pick[i])?h.pick[i]:ids[0]):ids[0]}
+const NEWH={name:'',arm:'騎',color:COLORS[0][0],lean:'武'};
+const heroFig=h=>chibi({n:h.name,f:''},{arm:h.arm,side:0,boss:true});
+function renderCamp(){
+  const box=$('campRow'),h=SET.hero;
+  $('start').hidden=!h||h.stage>=CHAIN.length;
+  if(!h){
+    const name=el('input',{type:'text',maxlength:'6',placeholder:'你的名字（最多 6 字）',value:NEWH.name,'aria-label':'主角名字'});
+    name.oninput=()=>{NEWH.name=name.value};
+    const armBox=el('div',{class:'row'}),colBox=el('div',{class:'row'}),leanBox=el('div',{class:'row'});
+    chips(armBox,HARMS.map(a=>[a,a==='槍'?'足輕':a==='騎'?'騎兵':a==='弓'?'弓兵':a]),NEWH.arm,v=>{NEWH.arm=v;renderCamp()});
+    chips(colBox,COLORS.map(([c,l])=>[c,l]),NEWH.color,v=>{NEWH.color=v;renderCamp()});
+    chips(leanBox,ATTRS.map(a=>[a,`${a}　${ATTR_NAME[a]}`]),NEWH.lean,v=>{NEWH.lean=v;renderCamp()});
+    const go=el('button',{type:'button',class:'btn big'},'開始戰役');
+    go.onclick=()=>{
+      const nm=NEWH.name.trim();
+      if(!nm)return alert('先替你的角色取個名字。');
+      if(ROSTER.has(nm)||nm==='旁白'||nm==='我')return alert('這個名字和既有武將重複了，換一個吧。');
+      SET.hero=newHero({...NEWH,name:nm});setSpec(SET.hero.name,heroSpec(SET.hero));SET.campSel=0;save();renderSetup();
+    };
+    const tmp={name:NEWH.name.trim()||'無名',arm:NEWH.arm,color:NEWH.color,lean:NEWH.lean};
+    setSpec(tmp.name,heroSpec(tmp));
+    box.replaceChildren(el('div',{class:'hcard'},
+      el('div',{class:'fig big',html:heroFig(tmp)}),
+      el('div',{class:'hbody'},
+        el('h3',{},'創造你的客將'),
+        el('p',{class:'muted'},'你是一位流浪各國的客將，從桶狹間一路打到天下底定。每個關卡開頭與途中會有對話，你的回答會讓屬性成長；等級最高 50。'),
+        el('div',{class:'row'},el('span',{class:'lbl'},'名字'),name),
+        el('div',{class:'row'},el('span',{class:'lbl'},'兵種'),armBox),
+        el('div',{class:'row'},el('span',{class:'lbl'},'盔甲'),colBox),
+        el('div',{class:'row'},el('span',{class:'lbl'},'傾向'),leanBox),
+        el('small',{class:'muted'},ATTR_HINT[NEWH.lean]+'（起始 +3 點）'),
+        el('div',{class:'row',style:'margin-top:10px'},go))));
+    return;
+  }
+  setSpec(h.name,heroSpec(h));
+  const st=heroStats(h),need=expNeed(h.lv);
+  const stat={武:st.武勇,智:st.智略,統:st.統率,速:st.速度};
+  const attrs=el('div',{class:'attrs'},...ATTRS.map(a=>{
+    const row=el('div',{class:'attr',title:ATTR_HINT[a]},el('b',{},a),el('span',{class:'muted'},ATTR_NAME[a]),el('span',{},`${h.pts[a]} 點`),
+      el('small',{class:'muted'},a==='魅'?`全軍傷害 +${((charmDmg(h)-1)*100).toFixed(1)}%`:`${stat[a]}`));
+    if(h.free>0){const b=el('button',{type:'button',class:'btn ghost plus'},'＋');b.onclick=()=>{h.pts[a]++;h.free--;save();renderCamp()};row.append(b)}
+    return row}));
+  const reset=el('button',{type:'button',class:'btn ghost'},'重新開始戰役');
+  reset.onclick=()=>{if(confirm('刪除目前的主角與戰役進度，重新開始？')){delete SET.hero;delete SET.campSel;save();renderSetup()}};
+  const sel=campIdx();
+  const stages=CHAIN.map((c,i)=>{
+    const id=c.ids.length>1?(h.pick[i]&&c.ids.includes(h.pick[i])?h.pick[i]:c.ids[0]):c.ids[0],sc=SCENARIOS.find(x=>x.id===id);
+    const locked=i>h.stage,done=h.done[i];
+    const b=el('button',{type:'button',class:'scard',disabled:locked,'aria-pressed':String(sel===i)},
+      el('b',{},`第 ${i+1} 關・${sc.name}`,done?el('span',{class:'tag'},`${done.rank}`):i===h.stage?el('span',{class:'tag'},'下一關'):null),
+      el('small',{},locked?`${c.era}年　尚未解鎖`:`${sc.year}　敵軍 Lv${enemyLv(i)}`),
+      locked?'':el('p',{},sc.brief));
+    b.onclick=()=>{SET.campSel=i;save();renderCamp()};
+    if(c.ids.length>1&&!locked&&sel===i){
+      const alt=el('div',{class:'row'},el('small',{class:'muted'},'選邊：'));
+      for(const x of c.ids){const a=el('button',{type:'button',class:'chip','aria-pressed':String(id===x)},SCENARIOS.find(y=>y.id===x).lordName+'陣營');a.onclick=e=>{e.stopPropagation();h.pick[i]=x;save();renderCamp()};alt.append(a)}
+      b.append(alt);
+    }
+    return b;
+  });
+  const done=h.stage>=CHAIN.length;
+  box.replaceChildren(el('div',{class:'hcard'},
+    el('div',{class:'fig big',html:heroFig(h)}),
+    el('div',{class:'hbody'},
+      el('h3',{},h.name,el('small',{class:'muted'},`　${h.arm==='槍'?'足輕':h.arm}・傾向 ${h.lean}`)),
+      el('div',{class:'row'},el('b',{},`Lv${h.lv}`),h.lv>=MAXLV?el('small',{class:'muted'},'已達上限'):el('div',{class:'bar'},el('i',{style:`width:${Math.round(h.exp/need*100)}%`})),
+        h.lv<MAXLV?el('small',{class:'muted'},`經驗 ${h.exp} / ${need}`):null),
+      h.free?el('div',{class:'ok'},`自由點數 ${h.free}：按 ＋ 分配到喜歡的屬性`):null,
+      attrs,
+      el('small',{class:'muted'},`帶兵 ${fmt(heroTroops(h))}；我方名將的等級跟著你走（Lv${h.lv}），敵軍每關固定。`),
+      el('div',{class:'row',style:'margin-top:8px'},reset))),
+    done?el('p',{class:'ok'},'已打完目前所有關卡。關原之戰與終章（家康開幕府）製作中。'):'',
+    el('div',{class:'teams',style:'margin-top:12px'},...stages));
+}
 function renderSetup(){
   chips($('modeChips'),MODES,SET.mode,setMode);
   {const u=new URL(location.href);   // 網址只留模式；舊的 ?engine= 參數去掉
@@ -200,7 +279,9 @@ function renderSetup(){
    t.onclick=()=>{SET.foe=SET.foe==='ai'?'2p':'ai';save();renderSetup()};$('foeChips').replaceChildren(b,t)}
   const L=D.levels[SET.lv];
   $('lvNote').textContent=SET.mode==='land'?`守將 Lv${L.glv}・每人 ${fmt(L.per)} 兵・${L.waves||1} 隊守軍・${L.note}`:'';
-  $('storyRow').hidden=SET.mode!=='story';$('mineWrap').hidden=SET.mode==='story';$('mineNote').hidden=SET.mode==='story';
+  const noTeam=SET.mode==='story'||SET.mode==='camp';
+  $('storyRow').hidden=SET.mode!=='story';$('mineWrap').hidden=noTeam;$('mineNote').hidden=noTeam;$('legend').hidden=noTeam;
+  $('campRow').hidden=SET.mode!=='camp';if(SET.mode==='camp')renderCamp();else $('start').hidden=false;
   SET.sc=SCENARIOS.find(x=>x.id===SET.sc)?.id||SCENARIOS[0].id;
   $('storyList').replaceChildren(...SCENARIOS.map(sc=>{
     const b=el('button',{type:'button',class:'scard','aria-pressed':String(SET.sc===sc.id)},
@@ -238,8 +319,10 @@ function genMap(mode){
 // skills for scenario generals: innate + 2 picked from the modelled pool by name (same every time)
 function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
 const armOfUnit=u=>bestArm(D,u.gens)||u.arm;   // 劇本的兵種：以隊伍滿紅時自帶的兵種為主，沒有兵種特性才用劇本寫的
+let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, lvB 敵方等級}
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t,st:fullRedStats(D,n,u.gens,armOfUnit(u))}))},u.side)});   // 劇本的武將一律滿紅
+  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t,st:fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50)}))},u.side)});   // 劇本的武將一律滿紅
+const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[{n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)}]},0)});
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
 //   say 對話；log 戰報文字；spawn 增援部隊（格子被占住就往旁邊找空格）；ai {部隊代號:{ai,r}} 改變行動；
 //   buff {side,dmg,days:[起,迄],arm?,label}：期間內該陣營（可限兵種）造成的傷害乘以 dmg；heal {side,pct} 補兵
@@ -263,19 +346,30 @@ async function runEvents(on){
     if(ev.say)await talk(ev.say);
   }
 }
-function startStory(){
-  const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
+function startStory(scId){
+  const sc=SCENARIOS.find(x=>x.id===(scId||SET.sc));let id=0;
+  const hero=SET.mode==='camp'?SET.hero:null,ci=hero?campIdx():0;
+  CAMP=hero?{h:hero,i:ci,lvA:hero.lv,lvB:enemyLv(ci)}:null;
   const T=sc.map.map(r=>[...r]);
   const carries=(sc.carry||[]).filter(carryOk);
   const units=sc.units.map(u=>{let t=u.t;for(const c of carries)if(c.troops&&u.side===c.troops.side&&(!c.troops.keys||c.troops.keys.includes(u.key)))t=Math.round(t*(1+c.troops.pct));return mkUnit({...u,t},id++)});
+  if(hero){   // 主角當作額外一隊，放在大將旁邊的空格
+    const base=units.find(u=>u.side===0&&u.lord)||units.find(u=>u.side===0);
+    const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!units.some(o=>o.x===x&&o.y===y);
+    const spot=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[2,0],[-2,0],[0,2]].map(([a,b])=>[base.x+a,base.y+b]).find(([a,b])=>free(a,b))||[base.x,base.y];
+    units.push(mkHero(hero,id++,spot[0],spot[1]));
+  }
   G={T,units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
+    camp:hero?{h:hero,i:ci,lvA:hero.lv,lvB:CAMP.lvB}:null,
     st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
-  addLog(`劇本「${sc.name}」：${sc.brief}`);
+  addLog(`${hero?`戰役第 ${ci+1} 關・`:''}劇本「${sc.name}」：${sc.brief}`);
+  if(hero)addLog(`${hero.name} Lv${hero.lv} 出陣（我方名將 Lv${hero.lv}，敵軍 Lv${CAMP.lvB}）`);
   for(const c of carries)addLog(`戰役加成（${scName(c.from)}）：${c.text}`);
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
-  talk(sc.talk.start).then(()=>runEvents('day'));
+  const scene=hero?(SCENES[sc.id]||generic(sc.lordName)):null;
+  talk([...(scene?.pre||[]),...(sc.talk.start||[])]).then(()=>runEvents('day'));
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
 function renderObj(){
@@ -288,21 +382,38 @@ function renderObj(){
       el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'');
 }
 const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
-// story dialogue: one line per tap
+// story dialogue: one line per tap。{choose:[…]} 是選擇點（戰役主角的選項，選了加屬性）；who '我' 是主角、'旁白' 沒有人像
 async function talk(lines){
   if(!lines?.length)return;
-  const dlg=$('talk');
+  const dlg=$('talk'),hn=SET.hero?.name||'你',sub=t=>t.replaceAll('{名}',hn);
   for(const ln of lines){
-    const f=facOf(ln.who),side=G.units.find(u=>u.team.gens.some(g=>g.n===ln.who))?.side??0;
-    dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:portrait(ln.who,chibi({n:ln.who,f},{side,boss:true}))}),
-      el('div',{class:'tx'},el('b',{style:`color:${SIDE_COL[side]}`},ln.who),el('p',{},ln.text),el('small',{class:'muted'},'點一下繼續'))));
+    if(ln.choose){await choose(ln.choose,sub);continue}
+    const who=ln.who==='我'?hn:ln.who,nar=who==='旁白';
+    const f=facOf(who),side=G.units.find(u=>u.team.gens.some(g=>g.n===who))?.side??0;
+    dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:nar?'':portrait(who,chibi({n:who,f},{side,boss:true}))}),
+      el('div',{class:'tx'},el('b',{style:`color:${nar?'var(--muted)':SIDE_COL[side]}`},nar?'':who),el('p',{},sub(ln.text)),
+        ln.tag?el('small',{class:'ok'},ln.tag):null,el('small',{class:'muted'},'點一下繼續'))));
     if(!dlg.open)dlg.showModal();
     sfx('select');
     await new Promise(r=>{dlg.onclick=r;dlg.oncancel=e=>{e.preventDefault();r()}});
   }
   dlg.close();
 }
+async function choose(opts,sub){
+  const dlg=$('talk');
+  const k=await new Promise(res=>{
+    dlg.onclick=null;dlg.oncancel=e=>e.preventDefault();
+    dlg.replaceChildren(el('div',{class:'ch'},el('small',{class:'muted'},'你要怎麼回答？'),
+      ...opts.map((o,j)=>{const b=el('button',{type:'button',class:'opt',title:ATTR_HINT[o.a]},el('b',{class:'at'},o.a),' '+sub(o.text));b.onclick=e=>{e.stopPropagation();res(j)};return b})));
+    if(!dlg.open)dlg.showModal();
+  });
+  const o=opts[k],h=SET.hero,p=o.pts||1;
+  if(h){h.pts[o.a]+=p;save();addLog(`選擇「${o.a}」：${ATTR_NAME[o.a]} +${p}`)}
+  sfx('select');
+  await talk([{who:'我',text:o.text,tag:`${ATTR_NAME[o.a]} +${p}`},...(o.reply||[])]);
+}
 function startGame(){
+  if(SET.mode==='camp')return SET.hero?startStory(campStageId()):undefined;
   if(SET.mode==='story')return startStory();
   const m=genMap(SET.mode);let id=0;
   const units=[];
@@ -404,7 +515,8 @@ async function tap(x,y){
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
-  const mul=(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
+  const charm=G.camp&&a.side===0&&G.units.some(u=>u.hero&&alive(u))?charmDmg(G.camp.h):1;
+  const mul=charm*(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
   a.team.mods=mul!==1?{dmg:mul}:null;d.team.mods=null;
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
@@ -442,6 +554,7 @@ async function fight(a,d){
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
   if(G.mode==='story'){
+    if(G.camp&&G.over)return;
     const sc=G.sc,lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
     const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0);
     const lose=!win&&(lordDown||!left(0)||timeUp);
@@ -456,18 +569,28 @@ function checkOver(){
       G.over=`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
       sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
       lines=[...sc.talk.win,...(rk?.ending||[])];
+      if(G.camp){   // 戰役：結算經驗，第一次通關才推進到下一關；重打舊關只拿 25%
+        const{h,i}=G.camp,first=i>=h.stage,foes=G.units.filter(u=>u.side===1&&!alive(u)).length;
+        const gain=Math.round((stageExp(i,rank)+routExp(i)*foes)*(first?1:.25)),lv0=h.lv,up=addExp(h,gain);
+        if(first)h.stage=Math.min(CHAIN.length,i+1);
+        const od=h.done[i];if(!od||RANKV[rank]>RANKV[od.rank])h.done[i]={rank};
+        save();
+        sub.splice(1,0,`戰役：獲得經驗 ${gain}（擊潰敵軍 ${foes} 隊${first?'':'，重打舊關只拿 25%'}）${up?`，Lv${lv0} → Lv${h.lv}，自由點數 +${up}`:''}`);
+        lines.push(...(SCENES[sc.id]||generic(sc.lordName)).post);
+      }
     }else{
       G.over=`${sc.name}：敗北（${lordDown?(sc.lordName||'總大將')+'隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;
       lines=(lordDown?sc.talk.loseLord:timeUp?sc.talk.loseTime:null)||sc.talk.lose;
     }
     addLog(G.over);sub.slice(1).forEach(x=>addLog(x));play(win?'win':'lose');
+    overButtons(win);
     talk(lines).then(()=>{$('overMsg').textContent=G.over;$('overSub').replaceChildren(...sub.map(x=>el('div',{},x)));$('over').hidden=false});
     return;
   }
   if(!left(1))G.over=G.mode==='land'?'佔領成功！':G.foe==='2p'?'藍方獲勝！':'勝利！';
   else if(!left(0))G.over=G.mode==='land'?'出征失敗：全軍潰走':G.foe==='2p'?'紅方獲勝！':'敗北';
   else if(G.mode==='land'&&G.day>DAYS)G.over=`出征失敗：${DAYS} 天內沒有攻下`;
-  if(G.over){addLog(G.over);$('overSub').replaceChildren();const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
+  if(G.over){overButtons(true);addLog(G.over);$('overSub').replaceChildren();const good=!/失敗|敗北|紅方/.test(G.over);play(good?'win':'lose');$('overMsg').textContent=G.over;$('over').hidden=false}
 }
 async function endTurn(){
   clearTimeout(G?.autoT);
@@ -640,6 +763,11 @@ async function playBattle(a,d,before,r){
 $('start').onclick=startGame;
 $('endTurn').onclick=endTurn;
 $('reset').onclick=()=>{if(G&&!G.over&&!confirm('放棄這場，回到設定？'))return;G=null;play('title');$('game').hidden=true;$('setup').hidden=false;$('over').hidden=true;renderSetup()};
+const AGAIN0=$('again').textContent,SETUP0=$('toSetup').textContent;
+function overButtons(win){   // 戰役：勝利後只留「回戰役畫面」（升級配點、選下一關），失敗可重打本關
+  const camp=!!G?.camp;
+  $('again').hidden=camp&&win;$('again').textContent=camp?'重打本關':AGAIN0;$('toSetup').textContent=camp?'回戰役畫面':SETUP0;
+}
 $('again').onclick=()=>{$('over').hidden=true;startGame()};
 $('toSetup').onclick=()=>{$('over').hidden=true;G=null;play('title');$('game').hidden=true;$('setup').hidden=false;renderSetup()};
 $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
