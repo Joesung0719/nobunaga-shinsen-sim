@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=39';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=39';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=39';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=39';
-import {isoGeom} from './iso.js?v=39';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=39';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=39';
-import {SCENARIOS} from './scenarios.js?v=39';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=39';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=40';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=40';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=40';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=40';
+import {isoGeom} from './iso.js?v=40';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=40';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=40';
+import {SCENARIOS} from './scenarios.js?v=40';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=40';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='30';
+const VER='31';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -356,9 +356,9 @@ function genMap(mode){
 function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
 const armOfUnit=u=>bestArm(D,u.gens)||u.arm;   // 劇本的兵種：以隊伍滿紅時自帶的兵種為主，沒有兵種特性才用劇本寫的
 let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, lvB 敵方等級}
-const gearSt=(st,side)=>{if(!CAMP||side!==0)return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
+const gearSt=(st,side)=>{if(!CAMP||(side!==0&&!CAMP.mirror))return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor||(u.ai==='guard'?[u.x,u.y]:undefined),r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&u.side===0?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
+  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&(u.side===0||CAMP.mirror)?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
 // 夥伴的數值：有資料的武將一律當滿紅算（自由點數＋兵種營＋特性），3★、4★ 也一樣；等級跟著玩家，再套用裝備加成。
 // 平衡（2026-11-01）：原本 3★、4★ 只有基礎成長，Lv50 的 3★ 武勇約 80，只有 5★ 的四分之一；滿紅後約 5★ 的六到七成
 function compStats(n,h){
@@ -409,6 +409,8 @@ function startStory(scId,bandit){
   const hero=SET.mode==='camp'?SET.hero:null,ci=hero?(bandit?hero.bandit.i:campIdx()):0;
   const sc=bandit?banditScenario(ci,hero):SCENARIOS.find(x=>x.id===(scId||SET.sc));let id=0;
   CAMP=hero?{h:hero,i:ci,lvA:hero.lv,lvB:enemyLv(ci)}:null;
+  // 打輸才拿得到隱藏武將的關卡（還沒拿到時）：敵軍也吃到跟玩家一樣的裝備與兵力補給，不然買滿裝備就很難輸（Joe 2026-11-01）
+  if(CAMP&&!bandit){const fv=FAVS[sc.id];CAMP.mirror=!!(fv&&fv.how==='lose'&&!hero.roster.includes(fv.n))}
   if(hero&&!bandit&&hero.bandit){   // 沒去打的盜賊，下一關開場偷走 5% 的銀
     const lost=Math.round(hero.silver*.05);hero.silver-=lost;hero.bandit=null;save();
     if(lost)setTimeout(()=>addLog(`上一關留下的盜賊趁夜偷走了 ${fmt(lost)} 銀。`),0);
@@ -441,7 +443,7 @@ function startStory(scId,bandit){
     if(t){G.spot={x:t[0],y:t[1],fv,done:false};G.favHint='地圖上的小屋可以拜訪：帶任一隊走到小屋上或旁邊';
       rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。就住在${dirText(hu,t)}邊那間小屋，附近有兵，請小心。`})}
   }else if(want&&fv.how==='win'){G.favHint=`${fv.hint}（${fv.text}）`;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。聽說只要${fv.text}，那個人就會來找您。`})}
-  else if(want&&fv.how==='lose'){G.favHint=fv.hint;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}……不過，還是請您平安回來。`})}
+  else if(want&&fv.how==='lose'){G.favHint=`${fv.hint}（總大將兵力剩三成以下時，會有人前來救援；之後護著總大將退到撤退點，算敗走通關，評價 C）`;rumor.push({who:'村民',text:`大人，${fv.hint}聽說若是總大將撐不住、兵力只剩三成，會有人冒死殺進來，護著大將往後方撤退……這一仗敵軍也備足了兵糧刀槍，請千萬小心。`})}
   if(G.favHint)renderObj();
   if(G.spot)renderBoard();
   if(G.ret)addLog(`撤退點：${G.ret.name}（地圖角落的旗子）。第 ${G.ret.from} 天起，${lordNm()}隊走到這裡就算撤退成功。`);
