@@ -3,11 +3,12 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=15';
-import {chibi,SIDE_COL} from './chibi.js?v=15';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=17';
+import {chibi,SIDE_COL} from './chibi.js?v=17';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
 const REDUCE=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 const hex=c=>parseInt(c.slice(1),16);
 const svgImg=svg=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
@@ -20,8 +21,29 @@ function loadPhaser(){
     s.onload=()=>res(window.Phaser);s.onerror=()=>{phaserP=null;rej(new Error('Phaser 載入失敗'))};document.head.append(s)});
 }
 
-// 程式畫的小貼圖：火花、煙、雲影、篝火火星、紅葉、雨滴、刀光
-function makeTextures(s){
+// Kenney 素材（CC0，見 assets/kenney/CREDITS.md 與根目錄 CREDITS.md）：刀光、火花、煙、火焰、碎土與介面框。
+// 原圖 512×512，載入後縮成小圖再交給 Phaser；任何一張載入失敗就退回下面程式畫的小貼圖，不影響遊戲。
+const KDIR=new URL('../assets/kenney/',import.meta.url).href;
+const KFILES={   // key → [路徑, 輸出邊長, 轉角度]
+  spark:['particle-pack/png/star_06.png',24],
+  smoke:['particle-pack/png/smoke_06.png',48],
+  slash:['particle-pack/png/slash_03.png',140,Math.PI],   // 原圖開口向右，轉 180° 配合原本的弧形方向
+  flame:['particle-pack/png/flame_05.png',48],
+  dirt:['particle-pack/png/dirt_02.png',32],
+  panel:['ui-pack-rpg-expansion/png/panel_brown.png',0],   // 介面框：0 表示維持原尺寸（9 宮格用）
+};
+let kenP=null;
+function loadKenney(){
+  return kenP??=Promise.all(Object.entries(KFILES).map(async([key,[path,size,rot]])=>{
+    try{
+      const img=await loadImg(KDIR+path),c=document.createElement('canvas');c.width=size||img.width;c.height=size||img.height;
+      const x=c.getContext('2d');x.translate(c.width/2,c.height/2);if(rot)x.rotate(rot);x.drawImage(img,-c.width/2,-c.height/2,c.width,c.height);
+      return[key,c]}
+    catch(e){console.warn('Kenney 素材載入失敗，改用程式畫的貼圖：',path);return null}
+  })).then(a=>Object.fromEntries(a.filter(Boolean)));
+}
+// 程式畫的小貼圖：火花、煙、雲影、篝火火星、紅葉、雨滴、刀光（Kenney 素材載入後會蓋掉其中幾張）
+function makeTextures(s,ken={}){
   const g=s.make.graphics({x:0,y:0},false);
   const soft=(key,r,col)=>{g.clear();for(let i=r;i>0;i--){g.fillStyle(col,(1-i/r)**1.6*.9);g.fillCircle(r,r,i)}g.generateTexture(key,r*2,r*2)};
   soft('spark',10,0xffffff);soft('smoke',24,0xd8d0c0);soft('cloud',90,0x0b1a10);soft('ember',5,0xffffff);
@@ -31,6 +53,7 @@ function makeTextures(s){
   g.generateTexture('slash',140,140);
   g.clear();g.fillStyle(0xcfe6ff,1);g.fillRect(0,0,2,22);g.generateTexture('drop',2,22);
   g.destroy();
+  for(const[k,c]of Object.entries(ken)){if(s.textures.exists(k))s.textures.remove(k);s.textures.addCanvas(k,c)}
 }
 
 export function createPhaserBoard(box,{onTap}){
@@ -55,6 +78,7 @@ export function createPhaserBoard(box,{onTap}){
   }
   view.ready=(async()=>{
     const Phaser=await loadPhaser();
+    const ken=await loadKenney();
     await Promise.race([document.fonts?.load(`16px ${FONT}`),new Promise(r=>setTimeout(r,2000))]).catch(()=>{});
     const geo0=isoGeom(st.latest?.T[0].length||7,st.latest?.T.length||9);
     // 畫布解析度：依螢幕像素密度放大（最多 2 倍），手機上字和線條才清楚
@@ -63,7 +87,7 @@ export function createPhaserBoard(box,{onTap}){
     class Board extends Phaser.Scene{
       constructor(){super('board')}
       create(){
-        makeTextures(this);
+        makeTextures(this,ken);
         this.k=k;this.units=new Map();this.mapKey=null;this.focusing=null;
         this.cameras.main.setZoom(k);
         try{this.cameras.main.filters.external.addVignette(.5,.5,.95,.25)}catch(e){}
@@ -121,7 +145,7 @@ export function createPhaserBoard(box,{onTap}){
           while(q.length){const[a,b]=q.pop();grp.push([a,b]);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const kk=(a+dx)+','+(b+dy);if(isC(a+dx,b+dy)&&!seen.has(kk)){seen.add(kk);q.push([a+dx,b+dy])}}}
           grp.sort((p,q2)=>(p[0]+p[1])-(q2[0]+q2[1])||Math.abs(p[0]-p[1])-Math.abs(q2[0]-q2[1]));
           const[kx,ky]=grp[Math.min(grp.length-1,grp.length>2?1:0)],[cx,cy]=this.at(kx,ky);
-          this.amb.push(this.add.particles(cx-20,cy+12,'ember',{speedY:{min:-40,max:-18},speedX:{min:-6,max:6},scale:{start:.8,end:0},lifespan:{min:500,max:900},frequency:90,
+          this.amb.push(this.add.particles(cx-20,cy+12,this.textures.exists('flame')?'flame':'ember',{speedY:{min:-40,max:-18},speedX:{min:-6,max:6},scale:this.textures.exists('flame')?{start:.3,end:0}:{start:.8,end:0},lifespan:{min:500,max:900},frequency:90,
             tint:[0xffd34a,0xff8a2a,0xffb03a],blendMode:'ADD'}).setDepth(cy+40))}
         for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(T[y][x]==='水'||T[y][x]==='橋'){const[cx,cy]=this.at(x,y);
           const s=this.add.image(cx+Phaser.Math.Between(-18,18),cy+Phaser.Math.Between(-6,6),'spark').setScale(.35).setBlendMode('ADD').setDepth(2).setAlpha(0);
@@ -289,12 +313,12 @@ export function createPhaserBoard(box,{onTap}){
 // 彈出數字、回合大字、戰法 cut-in。畫的內容完全由 game.js 依 engine.battle() 的紀錄驅動，數字與舊版一致。
 const LW=400,LH=290,ROWS=[64,152,240];
 const fmtN=n=>Math.round(n).toLocaleString('en-US');
-const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
 const FLOAT={hit:['#ffffff','#7a1208'],mo:['#e3c9ff','#3b1a66'],heal:['#b9ffd0','#0f5a2e'],st:['#ffe9a8','#4a3206']};
 
 // units: [{side,i,n,f,arm,boss,max,troops,left}]；faceSrc(name) → 卡圖網址或 null
 export async function createBattleStage(host,{units,faceSrc}){
   const Phaser=await loadPhaser();
+  const ken=await loadKenney();
   await Promise.race([document.fonts?.load(`16px ${FONT}`),new Promise(r=>setTimeout(r,1500))]).catch(()=>{});
   const k=Math.max(1,Math.min(2,(devicePixelRatio||1)*(host.clientWidth||340)/LW));
   const imgs=Object.fromEntries(await Promise.all(units.map(async u=>[`${u.side}-${u.i}`,await svgImg(chibi({n:u.n,f:u.f},{arm:u.arm,side:u.side,boss:u.boss}).replace('<svg ',`<svg ${NS} width="${Math.round(64*k)}" height="${Math.round(82*k)}" `))])));
@@ -303,11 +327,13 @@ export async function createBattleStage(host,{units,faceSrc}){
   class Battle extends Phaser.Scene{
     constructor(){super('battle')}
     create(){
-      makeTextures(this);this.cameras.main.setZoom(k).centerOn(LW/2,LH/2);
+      makeTextures(this,ken);this.cameras.main.setZoom(k).centerOn(LW/2,LH/2);
       const res=k*2;
       for(const u of units){
         const key=`${u.side}-${u.i}`,x0=u.left?34:LW-34,y=ROWS[u.i],tx=u.left?62:LW-62,al=u.left?0:1,bx=u.left?62:LW-62-112;
         this.textures.addImage('g'+key,imgs[key]);
+        if(this.textures.exists('panel')){const pw=134;
+          const pl=this.add.nineslice(u.left?58+pw/2:LW-58-pw/2,y+1,'panel',undefined,pw,60,12,12,12,12).setDepth(3).setAlpha(.82);pl.setTint(u.left?0xb8c8ff:0xffc8b8)}
         const spr=this.add.image(x0,y+30,'g'+key).setOrigin(.5,1).setScale(1/k*.95).setFlipX(!u.left).setDepth(5);
         const sh=this.add.ellipse(x0,y+31,40,10,0x000000,.35).setDepth(4);
         const name=this.add.text(tx,y-24,u.n,{fontFamily:FONT,fontStyle:'bold',fontSize:'14px',color:'#fff',stroke:'#000',strokeThickness:3}).setOrigin(al,0).setResolution(res).setDepth(6);
@@ -368,6 +394,8 @@ export async function createBattleStage(host,{units,faceSrc}){
       this.tweens.add({targets:sl,scale:.6,alpha:0,duration:320,ease:'Cubic.easeOut',onComplete:()=>sl.destroy()});
       const p=this.add.particles(0,0,'spark',{speed:{min:80,max:220},angle:{min:0,max:360},scale:{start:.5,end:0},lifespan:{min:200,max:450},tint:mo?[0xe3c9ff,0xa771f0]:[0xfff3c4,0xffb03a,0xffffff],blendMode:'ADD',emitting:false}).setDepth(21);
       p.explode(14,x,y);this.time.delayedCall(600,()=>p.destroy());
+      if(!mo&&this.textures.exists('dirt')){const d=this.add.particles(0,0,'dirt',{speed:{min:60,max:150},angle:{min:200,max:340},gravityY:260,scale:{start:.5,end:.1},alpha:{start:.9,end:0},lifespan:520,emitting:false}).setDepth(19);
+        d.explode(5,x,o.y+16);this.time.delayedCall(700,()=>d.destroy())}
     }
     heal(side,i){
       const o=U[side+'-'+i];if(!o)return;

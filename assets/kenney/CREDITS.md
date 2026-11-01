@@ -5,7 +5,10 @@
 可商用、可修改、可再散布，不必標示作者（我們仍然標示）。每個資料夾裡都附上原包的 `License.txt`，內文都寫明 CC0。
 下載日期：2026-10-31，Joe 從 kenney.nl 各素材頁以瀏覽器手動下載；下載時每一包頁面上的授權欄都寫 Creative Commons CC0。
 
-目前**還沒有接進遊戲程式**，只是先放進 repo 備用。
+**已接進遊戲的項目**（2026-11-01，第三批遷移；其餘仍備用）：
+
+- 視覺（`slg/board-phaser.js`）：`particle-pack/png/` 的 `star_06`（火花）、`smoke_06`（潰走煙塵）、`slash_03`（刀光，轉 180°）、`flame_05`（本陣篝火）、`dirt_02`（命中碎土），載入時縮成小圖；`ui-pack-rpg-expansion/png/panel_brown.png`（戰鬥視窗的武將名牌框，9 宮格拉伸並染色）。
+- 音效（`slg/audio.js`）：`rpg-audio` 的 `knifeSlice`、`knifeSlice2`；`impact-sounds` 的 `impactMetal_light_000–002`、`impactSoft_medium_000–002`、`impactPlate_heavy_000–001`、`impactWood_heavy_000–002`、`impactBell_heavy_000–001`、`impactSoft_heavy_000–001`、`footstep_grass_000–003`；`interface-sounds` 的 `click_001–002`、`confirmation_001`。疊在原本合成的音效上面；OGG 解碼失敗的瀏覽器（舊版 Safari）只聽到合成音效。任何一張圖載入失敗都會退回程式畫的貼圖。
 
 | 資料夾 | 原包（版本） | 來源網址 | 收錄內容 | 打算用在 |
 | --- | --- | --- | --- | --- |

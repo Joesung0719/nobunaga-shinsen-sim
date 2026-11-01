@@ -29,6 +29,33 @@ const SONGS={
 };
 
 let ctx=null,master=null,musicBus=null,sfxBus=null,noiseBuf=null;
+// ---- Kenney 錄音取樣（CC0，見 assets/kenney 與根目錄 CREDITS.md）----
+// 疊在合成音效上面（斬擊、受擊、腳步、點擊）。取樣是 OGG，不支援的瀏覽器（舊版 Safari）解碼失敗就只剩合成音效，不影響遊戲。
+const SB=new URL('../assets/kenney/',import.meta.url).href;
+const imp=(n,k)=>Array.from({length:k},(_,i)=>`impact-sounds/audio/${n}_00${i}.ogg`);
+const GROUPS={
+  slash:['rpg-audio/audio/knifeSlice.ogg','rpg-audio/audio/knifeSlice2.ogg',...imp('impactMetal_light',3)],
+  soft:imp('impactSoft_medium',3),
+  plate:imp('impactPlate_heavy',2),
+  wood:imp('impactWood_heavy',3),
+  bell:imp('impactBell_heavy',2),
+  thud:imp('impactSoft_heavy',2),
+  step:Array.from({length:4},(_,i)=>`impact-sounds/audio/footstep_grass_00${i}.ogg`),
+  click:['interface-sounds/audio/click_001.ogg','interface-sounds/audio/click_002.ogg'],
+  ok:['interface-sounds/audio/confirmation_001.ogg'],
+};
+const BUF=Object.fromEntries(Object.keys(GROUPS).map(k=>[k,[]]));
+function loadSamples(){
+  for(const[k,list]of Object.entries(GROUPS))for(const f of list)
+    fetch(SB+f).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(b=>new Promise((res,rej)=>ctx.decodeAudioData(b,res,rej))).then(buf=>BUF[k].push(buf)).catch(()=>{});
+}
+export const samplesLoaded=()=>Object.fromEntries(Object.entries(BUF).map(([k,v])=>[k,v.length]));   // 檢查用
+// 播放一組取樣中隨機一個；回傳有沒有播出（沒載入就回 false，呼叫端改用合成音效）
+function sample(group,vol=.8,t=ctx.currentTime){
+  const b=BUF[group];if(!b?.length)return false;
+  const s=ctx.createBufferSource(),g=ctx.createGain();s.buffer=b[Math.floor(Math.random()*b.length)];s.playbackRate.value=.94+Math.random()*.12;
+  g.gain.value=vol;s.connect(g);g.connect(sfxBus);s.start(t);return true;
+}
 const S={music:true,sfx:true,vol:.6};
 let cur=null,timer=null;
 export function audioSettings(){return S}
@@ -45,7 +72,7 @@ export function unlock(){
   ctx=new AC();master=ctx.createGain();master.connect(ctx.destination);
   musicBus=ctx.createGain();musicBus.connect(master);sfxBus=ctx.createGain();sfxBus.connect(master);
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.6,ctx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-  setAudio({});
+  setAudio({});loadSamples();
   if(cur){const n=cur;cur=null;play(n)}
 }
 function tone(bus,type,f,t,dur,vol,slide){
@@ -116,19 +143,20 @@ export function sfx(kind,arm){
   if(!ctx||!S.sfx)return;const t=ctx.currentTime;
   switch(kind){
     case'hit':
+      sample(arm==='弓'?'soft':arm==='鐵炮'?'plate':arm==='器械'?'wood':'slash',.9);
       if(arm==='弓'){noise(sfxBus,t,.25,.5,5000,'highpass',1200);noise(sfxBus,t+.2,.06,.6,1500)}
       else if(arm==='鐵炮'){noise(sfxBus,t,.35,1,2500,'lowpass',200);tone(sfxBus,'sine',90,t,.2,.6,40)}
       else if(arm==='器械'){taiko(sfxBus,t,1.2,80);noise(sfxBus,t,.3,.6,600)}
       else{noise(sfxBus,t,.16,.8,7000,'bandpass',1800);tone(sfxBus,'triangle',1900,t,.12,.12,1300)}
       break;
     case'mou':[880,1175,1568].forEach((f,i)=>tone(sfxBus,'sine',f,t+i*.06,.35,.18));noise(sfxBus,t,.4,.15,6000,'highpass');break;
-    case'skill':taiko(sfxBus,t,.9);[294,311,392,440,466].forEach((f,i)=>pluck(sfxBus,f*2,t+.02+i*.03,.5,.28));break;   // 三味線「錚」
+    case'skill':sample('bell',.5);taiko(sfxBus,t,.9);[294,311,392,440,466].forEach((f,i)=>pluck(sfxBus,f*2,t+.02+i*.03,.5,.28));break;   // 三味線「錚」
     case'heal':[587,698,880].forEach((f,i)=>tone(sfxBus,'triangle',f*2,t+i*.08,.3,.22));break;
-    case'rout':taiko(sfxBus,t,1.2,100);taiko(sfxBus,t+.18,1,90);noise(sfxBus,t,.5,.4,500);break;
+    case'rout':sample('thud',.8);taiko(sfxBus,t,1.2,100);taiko(sfxBus,t+.18,1,90);noise(sfxBus,t,.5,.4,500);break;
     case'stun':tone(sfxBus,'sine',600,t,.08,.15);tone(sfxBus,'sine',600,t+.12,.08,.15);break;
-    case'move':noise(sfxBus,t,.05,.4,900,'bandpass');noise(sfxBus,t+.09,.05,.3,700,'bandpass');break;   // 腳步
-    case'select':tone(sfxBus,'sine',1050,t,.07,.25);break;                                                 // 拍子木
-    case'confirm':tone(sfxBus,'sine',1050,t,.07,.25);tone(sfxBus,'sine',1400,t+.09,.1,.25);break;
+    case'move':if(sample('step',.7)){sample('step',.55,t+.16);break}noise(sfxBus,t,.05,.4,900,'bandpass');noise(sfxBus,t+.09,.05,.3,700,'bandpass');break;   // 腳步
+    case'select':if(sample('click',.9))break;tone(sfxBus,'sine',1050,t,.07,.25);break;                                                 // 拍子木
+    case'confirm':if(sample('ok',.8))break;tone(sfxBus,'sine',1050,t,.07,.25);tone(sfxBus,'sine',1400,t+.09,.1,.25);break;
     case'start':horagai(sfxBus,t,1.4);taiko(sfxBus,t+.9,1);taiko(sfxBus,t+1.15,1);taiko(sfxBus,t+1.4,1.1);break;
     case'opening':horagai(sfxBus,t,2.2,220);horagai(sfxBus,t+.05,2.2,330);[1.6,1.9,2.2,2.35,2.5].forEach((d,i)=>taiko(sfxBus,t+d,.8+i*.08));break;
   }
