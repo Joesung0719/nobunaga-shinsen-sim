@@ -27,10 +27,10 @@ const team=(arm,gens,side)=>({name:gens[0].n+'隊',side,arm,terrain:'平',
   gens:gens.map(g=>({n:g.n,f:'',st:{...g.st},troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps),bg:null}))});
 const armOfUnit=u=>bestArm(D,u.gens)||u.arm;
 function mkUnit(u,id,ctx){
-  const arm=armOfUnit(u),lv=u.side===0?ctx.lvA:ctx.lvB,m=u.side===0?C.gearMul(ctx.h):null;
+  const arm=armOfUnit(u),lv=u.side===0?ctx.lvA:ctx.lvB,m=u.side===0||ctx.mirror?C.gearMul(ctx.h):null;
   return{id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor||(u.ai==='guard'?[u.x,u.y]:undefined),r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
     team:team(arm,u.gens.map(n=>{let st=fullRedStats(D,n,u.gens,arm,lv);if(m)st=Object.fromEntries(Object.entries(st).map(([k,v])=>[k,v*(m[k]||1)]));
-      return{n,s:u.s?.[n]||fixedSkills(n),t:u.t+(u.side===0?1000*ctx.h.shop.supply:0),st}}),u.side)};
+      return{n,s:u.s?.[n]||fixedSkills(n),t:u.t+(u.side===0||ctx.mirror?1000*ctx.h.shop.supply:0),st}}),u.side)};
 }
 function compStats(n,h){
   const r=ROSTER.get(n)?.r||4,m=C.gearMul(h);
@@ -216,7 +216,7 @@ export function runCampaign({policy='gear',arm='騎',lean='武',party=['織田�
     let r,tries=0;
     // 開場對話先加點（pre），勝利後才有 post；這裡簡化成第一次出陣時一起加
     h.pts[lean]+=choicePts(id,lean);
-    do{tries++;r=play(sc,{h,lvA:h.lv,lvB:C.enemyLv(i)},carries,{bold:tries%2===0,rescue:FAVS[id]?.how==='lose'&&!h.roster.includes(FAVS[id].n)});
+    do{tries++;r=play(sc,{h,lvA:h.lv,lvB:C.enemyLv(i),mirror:FAVS[id]?.how==='lose'&&!h.roster.includes(FAVS[id].n)},carries,{bold:tries%2===0,rescue:FAVS[id]?.how==='lose'&&!h.roster.includes(FAVS[id].n)});
       if(r.win&&r.rescued&&!h.roster.includes(FAVS[id].n))h.roster.push(FAVS[id].n);
       if(!r.win)log.push({i,id,lv:h.lv,try:tries,lose:r.why})}while(!r.win&&tries<maxTry);
     if(!r.win){log.push({i,id,stuck:true,lv:h.lv});return{h,log,stuck:i}}
@@ -252,7 +252,7 @@ export function stageWin(i,lv,n=40,{arm='騎',lean='武',party=['織田信雄','
   for(const k in h.shop)h.shop[k]=Math.min(k==='supply'?10:5,shopLv);
   const id=C.CHAIN[i].ids[0],sc=SCN[id];let best=null;
   for(const bold of[false,true]){let w=0;const why={},ranks={};
-    for(let k=0;k<n;k++){const r=play(sc,{h,lvA:lv,lvB:lvB??C.enemyLv(i)},[],{bold,rescue:!!process.env.RESCUE});if(r.win){w++;ranks[r.rank]=(ranks[r.rank]||0)+1}else why[r.why]=(why[r.why]||0)+1}
+    for(let k=0;k<n;k++){const r=play(sc,{h,lvA:lv,lvB:lvB??C.enemyLv(i),mirror:FAVS[sc.id]?.how==='lose'&&!process.env.NOMIRROR},[],{bold,rescue:!!process.env.RESCUE});if(r.win){w++;ranks[r.rank]=(ranks[r.rank]||0)+1}else why[r.why]=(why[r.why]||0)+1}
     if(!best||w>best.w)best={w,why,ranks,bold}}
   return{id,name:sc.name,lv,lvB:lvB??C.enemyLv(i),win:best.w/n,why:best.why,ranks:best.ranks,bold:best.bold};
 }
@@ -260,8 +260,8 @@ export function stageWin(i,lv,n=40,{arm='騎',lean='武',party=['織田信雄','
 if(import.meta.url===`file://${process.argv[1]}`){
   const a=process.argv.slice(2);
   if(a[0]==='stage'){
-    const i=+a[1],lv=+a[2],n=+(a[3]||40),party=a[4]?a[4].split(','):undefined;
-    console.log(JSON.stringify(stageWin(i,lv,n,{party})));
+    const i=+a[1],lv=+a[2],n=+(a[3]||40),party=a[4]&&a[4]!=='-'?a[4].split(','):undefined,shopLv=+(process.env.SHOP||0);
+    console.log(JSON.stringify(stageWin(i,lv,n,{party,shopLv})));
   }else if(a[0]==='stages'){
     // 每關在「預期等級」下的勝率（不買東西、起始夥伴）
     const n=+(a[1]||30),shopLv=+(a[2]||0);
