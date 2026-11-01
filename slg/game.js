@@ -1,11 +1,11 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=18';
-import {chibi,SIDE_COL} from './chibi.js?v=18';
-import {isoGeom} from './iso.js?v=18';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=18';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=18';
-import {SCENARIOS} from './scenarios.js?v=18';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=19';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=20';
+import {chibi,SIDE_COL} from './chibi.js?v=20';
+import {isoGeom} from './iso.js?v=20';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=20';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=20';
+import {SCENARIOS} from './scenarios.js?v=20';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=20';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -216,7 +216,7 @@ function renderSetup(){
 // ---- map ----
 let G=null;
 // 遊戲內地形不擋路也沒有攻防加成（Joe），目前地形只是裝飾；之後有數值（例如火炬）再加移動耗費
-const TER={平:{c:1},林:{c:1},山:{c:1},水:{c:1},橋:{c:1},城:{c:1}};
+const TER={平:{c:1},林:{c:1},山:{c:1},水:{c:1},橋:{c:1},城:{c:1},寺:{c:1},柵:{c:1},田:{c:1},村:{c:1}};
 function genMap(mode){
   for(let tries=0;tries<200;tries++){
     const T=Array.from({length:H},()=>Array(W).fill('平'));
