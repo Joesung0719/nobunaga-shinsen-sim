@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=36';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=36';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=36';
-import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=36';
-import {isoGeom} from './iso.js?v=36';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=36';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=36';
-import {SCENARIOS} from './scenarios.js?v=36';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=36';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=37';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=37';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=37';
+import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=37';
+import {isoGeom} from './iso.js?v=37';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=37';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=37';
+import {SCENARIOS} from './scenarios.js?v=37';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=37';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='27';
+const VER='28';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -359,10 +359,11 @@ let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, 
 const gearSt=(st,side)=>{if(!CAMP||side!==0)return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor||(u.ai==='guard'?[u.x,u.y]:undefined),r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
   team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&u.side===0?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
-// 夥伴的數值：5★ 一律滿紅；3★、4★ 用該等級的基礎成長。等級都跟著玩家，再套用裝備加成
+// 夥伴的數值：有資料的武將一律當滿紅算（自由點數＋兵種營＋特性），3★、4★ 也一樣；等級跟著玩家，再套用裝備加成。
+// 平衡（2026-11-01）：原本 3★、4★ 只有基礎成長，Lv50 的 3★ 武勇約 80，只有 5★ 的四分之一；滿紅後約 5★ 的六到七成
 function compStats(n,h){
   const r=ROSTER.get(n)?.r||4;
-  const st=r>=5&&D.stats[n]?fullRedStats(D,n,[n],h.arm,h.lv):statsAt(D,n,h.lv,r);
+  const st=D.stats[n]?fullRedStats(D,n,[n],h.arm,h.lv):statsAt(D,n,h.lv,r);
   return gearSt(st,0);
 }
 const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[
