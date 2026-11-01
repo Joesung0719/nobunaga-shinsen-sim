@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&family=LXGW+WenKai+TC:wght@400;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'18';
+:root{--slg-ver:'19';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -147,6 +147,22 @@ svg.chibi.flip{transform:scaleX(-1)}
 .scard b{font-family:var(--display);font-size:1.15rem;color:var(--gold)}
 .scard small{color:var(--muted);font-size:.75rem}
 .scard p{margin:2px 0;font-size:.82rem;line-height:1.55}
+.ch{display:flex;flex-direction:column;gap:6px}
+.opt{all:unset;cursor:pointer;display:block;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#171412;font-family:var(--display);line-height:1.5}
+.opt:hover,.opt:focus-visible{border-color:var(--gold)}
+.opt .at{color:var(--gold);margin-right:4px}
+.hcard{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:12px;background:#171412}
+.hcard .fig.big svg{width:120px;height:auto}
+.hcard h3{margin:0 0 6px;font-family:var(--display);color:var(--gold)}
+.hcard input[type=text]{background:#0f0d0b;color:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:inherit}
+.attrs{display:grid;gap:4px;margin:8px 0}
+.attr{display:grid;grid-template-columns:24px 56px 56px 1fr auto;align-items:center;gap:6px;font-size:.9rem}
+.attr b{color:var(--gold);font-family:var(--display)}
+.attr .plus{padding:0 10px}
+.bar{flex:1;min-width:80px;height:8px;border-radius:4px;background:#2a2420;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+.scard:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:560px){.hcard{grid-template-columns:1fr}.hcard .fig.big{text-align:center}}
 dialog.talk{position:fixed;inset:auto 0 12px 0;margin:0 auto;width:min(520px,calc(100vw - 16px));cursor:pointer}
 dialog.talk::backdrop{background:#0006}
 .tk{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:center}
@@ -289,7 +305,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 </div>
 <div class="wrap">
   <header class="top">
-    <div><h1>Q版戰棋</h1><p>對戰模擬、打地、劇本的小型戰棋：每格一支部隊，接觸就打 8 回合自動戰鬥</p></div>
+    <div><h1>Q版戰棋</h1><p>對戰模擬、打地、劇本、戰役的小型戰棋：每格一支部隊，接觸就打 8 回合自動戰鬥</p></div>
     <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="slg.html" aria-current="page">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
   </header>
   <div id="snd" aria-label="聲音設定"></div>
@@ -302,11 +318,12 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
     <p class="muted" id="lvNote"></p>
     <div class="row" id="foeRow" style="margin-top:8px"><span class="lbl">對手</span><div class="row" id="foeChips"></div></div>
     <div class="row" id="perfRow" style="margin-top:8px"><span class="lbl">畫面效果</span><div class="row" id="perfChips"></div><small class="muted" id="perfNote"></small></div>
+    <div id="campRow" style="margin-top:12px" hidden></div>
     <div id="storyRow" style="margin-top:12px"><div class="teams" id="storyList"></div></div>
     <div id="mineWrap"><h2 style="margin-top:14px" id="mineTitle">我方部隊（藍）</h2>
     <div class="teams" id="mine"></div></div>
     <div id="enemyWrap"><h2 style="margin-top:14px" id="enemyTitle">對方部隊（紅）</h2><div class="teams" id="enemy"></div></div>
-    <div class="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
+    <div class="legend" id="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
     <p class="muted" id="mineNote">「編輯這隊」會打開組隊頁的畫面，可自選武將、傳承戰法、紅度、配點、兵種與設施，按「完成」帶回這一格（對方部隊也能編輯），屬性計算與組隊頁相同。「帶入組隊頁的隊伍」則直接帶入組隊頁目前的隊伍。隨機隊伍為 Lv50、50 點配在武勇或智略較高者，再加兵種營 Lv5（10%）。</p>
     <div class="row" style="justify-content:center;margin-top:12px"><button id="start" class="btn big" type="button">出陣</button></div>
   </section>
@@ -336,7 +353,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>
-<script type="module" src="slg/game.js?v=24"></script>
-<script src="site-nav.js?v=2" data-page="slg"></script>
+<script type="module" src="slg/game.js?v=25"></script>
+<script src="site-nav.js?v=3" data-page="slg"></script>
 </body>
 </html>
