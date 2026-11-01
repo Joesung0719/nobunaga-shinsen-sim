@@ -1,11 +1,11 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=23';
-import {chibi,SIDE_COL} from './chibi.js?v=23';
-import {isoGeom} from './iso.js?v=23';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=23';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=23';
-import {SCENARIOS} from './scenarios.js?v=23';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=23';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=24';
+import {chibi,SIDE_COL} from './chibi.js?v=24';
+import {isoGeom} from './iso.js?v=24';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=24';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=24';
+import {SCENARIOS} from './scenarios.js?v=24';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=24';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -62,6 +62,10 @@ function builderTeam(){
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
 }
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
+// 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）
+const RANKV={S:4,A:3,B:2,C:1};
+const carryOk=c=>(RANKV[SET.camp?.[c.from]?.rank]||0)>=RANKV[c.min||'B'];
+const scName=id=>SCENARIOS.find(x=>x.id===id)?.name||id;
 // 對戰模擬平時是對人（Joe 2026-10-31）：舊存檔的「對電腦」改回對人一次
 if(!SET.v2){SET.v2=1;SET.foe='2p';save()}
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
@@ -200,7 +204,8 @@ function renderSetup(){
   SET.sc=SCENARIOS.find(x=>x.id===SET.sc)?.id||SCENARIOS[0].id;
   $('storyList').replaceChildren(...SCENARIOS.map(sc=>{
     const b=el('button',{type:'button',class:'scard','aria-pressed':String(SET.sc===sc.id)},
-      el('b',{},sc.name),el('small',{},sc.year),el('p',{},sc.brief),
+      el('b',{},sc.name,SET.camp?.[sc.id]?el('span',{class:'tag'},`${SET.camp[sc.id].rank} ${SET.camp[sc.id].title}`):null),el('small',{},sc.year),el('p',{},sc.brief),
+      ...(sc.carry||[]).map(c=>el('small',{class:carryOk(c)?'ok':'muted'},`${carryOk(c)?'✓':'○'} 戰役加成：${c.text}${carryOk(c)?'（已啟用）':`（需先在「${scName(c.from)}」拿到 ${c.min||'B'} 評價以上）`}`)),
       el('div',{class:'figs'},...sc.units.filter(u=>u.side===0).map(u=>el('div',{class:'fig',html:chibi({n:u.gens[0],f:facOf(u.gens[0])},{arm:armOfUnit(u),side:0,boss:true})+`<span>${u.gens[0]}</span>`}))));
     b.onclick=()=>{SET.sc=sc.id;save();renderSetup()};return b}));
   // 對戰模擬是一隊對一隊；打地仍可帶 3 隊
@@ -261,11 +266,13 @@ async function runEvents(on){
 function startStory(){
   const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
   const T=sc.map.map(r=>[...r]);
-  const units=sc.units.map(u=>mkUnit(u,id++));
-  G={T,units,buffs:[],fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
+  const carries=(sc.carry||[]).filter(carryOk);
+  const units=sc.units.map(u=>{let t=u.t;for(const c of carries)if(c.troops&&u.side===c.troops.side&&(!c.troops.keys||c.troops.keys.includes(u.key)))t=Math.round(t*(1+c.troops.pct));return mkUnit({...u,t},id++)});
+  G={T,units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
     st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(`劇本「${sc.name}」：${sc.brief}`);
+  for(const c of carries)addLog(`戰役加成（${scName(c.from)}）：${c.text}`);
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
   talk(sc.talk.start).then(()=>runEvents('day'));
@@ -444,6 +451,8 @@ function checkOver(){
     if(win){
       const got=(sc.hidden||[]).map(h=>({h,ok:!!h.test(G.st)})),n=got.filter(x=>x.ok).length;
       const rk=(sc.rank||[]).find(r=>n>=r.n);
+      const rank=rk?.rank||'C',old=SET.camp?.[sc.id];
+      if(!old||RANKV[rank]>RANKV[old.rank]){(SET.camp||={})[sc.id]={rank,title:rk?.title||'',day:G.day};save()}
       G.over=`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
       sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
       lines=[...sc.talk.win,...(rk?.ending||[])];
