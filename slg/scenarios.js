@@ -12,6 +12,7 @@
 //          st.killDay 擊破目標的天、st.killRain 是否在豪雨中、st.finisher 最後一擊的部隊 key、
 //          st.routed 我方潰走部隊 key 的陣列、st.hitBy[key] 我方攻擊過該敵方部隊的次數
 //   rank   依達成的隱藏條件數評價（由高到低，n 是最少條件數），ending 是對應的結局對話
+//   retreat:{x,y,from,name} 撤退點：第 from 天起總大將走到這格即勝利（地圖畫旗子）
 //   lordName 總大將潰走時敗北訊息用的名字；survive:true 撐過 days 天（總大將沒潰走）就勝利；annihilate:true 全滅敵軍也算勝利
 //   carry 戰役串連：[{from:前一關id, min:最低評價, text, buff|troops:{side,pct,keys?}}]，之前打過該關且評價夠高才啟用
 //   events 劇情事件（見 game.js runEvents）：{day|on:'rout:部隊代號', say, log, spawn:[部隊], ai:{代號:{ai,r}}, buff:{side,dmg,days:[起,迄],arm?}, heal:{side,pct}}
@@ -101,9 +102,9 @@ const ALL=[{
 },{
   id:'kanegasaki',lordName:'豐臣秀吉',name:'金崎撤退戰',year:'元龜元年（1570）',
   brief:'信長進攻越前，卻傳來妻舅淺井長政背叛的消息。你是殿軍（斷後）：撐到本隊撤出京都。',
-  win:['撐過 4 天，且豐臣秀吉隊沒有潰走'],
+  win:['撐過 4 天，且豐臣秀吉隊沒有潰走','或第 3 天起豐臣秀吉隊撤到朽木谷（旗子）'],
   lose:['豐臣秀吉隊潰走','我方全軍潰走'],
-  days:4,survive:true,
+  days:4,survive:true,retreat:{x:3,y:8,from:3,name:'朽木谷'},
   map:[
     '林林山山林平林',
     '林平林平平林山',
@@ -116,7 +117,7 @@ const ALL=[{
     '平平平平平平平',
   ],
   units:[
-    {side:0,key:'hideyoshi',x:3,y:8,arm:'鐵炮',t:9000,lord:true,gens:['豐臣秀吉','蜂須賀小六','宮部繼潤'],
+    {side:0,key:'hideyoshi',x:3,y:6,arm:'鐵炮',t:9000,lord:true,gens:['豐臣秀吉','蜂須賀小六','宮部繼潤'],
       s:{豐臣秀吉:['荷駄崩','疑兵盜城']}},
     {side:0,key:'mitsuhide',x:2,y:6,arm:'弓',t:9000,gens:['明智光秀','齋藤利三','明智秀滿']},
     {side:0,key:'ieyasu',x:4,y:6,arm:'槍',t:9000,gens:['德川家康','酒井忠次','鳥居元忠']},
@@ -532,18 +533,18 @@ const ALL=[{
   ],
 },{
   id:'mikatagahara',lordName:'德川家康',name:'三方原之戰',year:'元龜三年（1572）',
-  brief:'武田信玄的大軍無視濱松城，直接進軍西上。你是德川家康：出城追擊，被打得慘敗，要活著撤回城。',
-  win:['撐過 5 天，且德川家康隊沒有潰走'],
+  brief:'武田信玄的大軍無視濱松城，直接進軍西上。你是德川家康：出城追擊，被打得慘敗，要活著撤回濱松城（地圖下方的旗子）。',
+  win:['撐過 5 天，且德川家康隊沒有潰走','或第 4 天起德川家康隊撤回濱松城（旗子）'],
   lose:['德川家康隊潰走','我方全軍潰走'],
-  days:5,survive:true,
+  days:5,survive:true,retreat:{x:3,y:8,from:4,name:'濱松城'},
   map:['林平平平平林林','平林平平林平平','平平平林平平林','林平平平平林平','平平林平平平平','平林平平林平林','林平平平平平平','平平平林平平平','平平林城平平平'],
   units:[
-    {side:0,key:'ieyasu',x:3,y:8,arm:'槍',t:10000,lord:true,gens:['德川家康','本多忠勝','榊原康政']},
-    {side:0,key:'sakai',x:2,y:6,arm:'槍',t:9000,gens:['酒井忠次','石川數正','鳥居元忠']},
-    {side:0,key:'sakuma',x:4,y:6,arm:'鐵炮',t:8000,gens:['佐久間信盛','林秀貞','河尻秀隆']},
-    {side:1,key:'yamagata',x:2,y:2,arm:'騎',t:10000,ai:'advance',gens:['山縣昌景','內藤昌豐','馬場信春']},
-    {side:1,key:'shingen',x:3,y:0,arm:'騎',t:11000,ai:'guard',r:3,gens:['武田信玄','原虎胤','飯富虎昌']},
-    {side:1,key:'oyamada',x:5,y:2,arm:'槍',t:9000,ai:'advance',gens:['小山田信茂','三枝昌貞','保科正俊']},
+    {side:0,key:'ieyasu',x:3,y:4,arm:'槍',t:10000,lord:true,gens:['德川家康','本多忠勝','榊原康政']},
+    {side:0,key:'sakai',x:2,y:4,arm:'槍',t:9000,gens:['酒井忠次','石川數正','鳥居元忠']},
+    {side:0,key:'sakuma',x:4,y:4,arm:'鐵炮',t:8000,gens:['佐久間信盛','林秀貞','河尻秀隆']},
+    {side:1,key:'yamagata',x:2,y:2,arm:'騎',t:13000,ai:'advance',gens:['山縣昌景','內藤昌豐','馬場信春']},
+    {side:1,key:'shingen',x:3,y:0,arm:'騎',t:13000,ai:'guard',r:3,gens:['武田信玄','原虎胤','飯富虎昌']},
+    {side:1,key:'oyamada',x:5,y:2,arm:'槍',t:11000,ai:'advance',gens:['小山田信茂','三枝昌貞','保科正俊']},
   ],
   events:[
     {day:2,log:'夏目吉信替身殿後：我方恢復 25% 兵力',heal:{side:0,pct:.25},

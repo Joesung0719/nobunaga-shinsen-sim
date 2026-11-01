@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=37';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=37';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=37';
-import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=37';
-import {isoGeom} from './iso.js?v=37';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=37';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=37';
-import {SCENARIOS} from './scenarios.js?v=37';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=37';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=38';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=38';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=38';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot} from './favor.js?v=38';
+import {isoGeom} from './iso.js?v=38';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=38';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=38';
+import {SCENARIOS} from './scenarios.js?v=38';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=38';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='28';
+const VER='29';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -431,13 +431,18 @@ function startStory(scId,bandit){
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
   const scene=hero&&!bandit?(SCENES[sc.id]||generic(sc.lordName)):null;
-  const fv=hero&&!bandit?FAVS[sc.id]:null;
-  if(fv&&!hero.roster.includes(fv.n)&&fv.how==='spot'){
-    const hu=G.units.find(u=>u.hero),t=hu&&spotTile(sc.id,T,G.units,hu);
-    if(t){G.spot={x:t[0],y:t[1],fv,done:false};G.favHint=`${fv.hint}（大概在主角的${dirText(hu,t)}方向）`;renderObj()}
-  }else if(fv&&!hero.roster.includes(fv.n))G.favHint=fv.hint;
+  const fv=hero&&!bandit?FAVS[sc.id]:null,want=fv&&!hero.roster.includes(fv.n);
+  // 隱藏武將的提示改由村民開口說（Joe 2026-11-01）；地點型的在地圖上畫一間小屋，走到小屋上或旁邊就能拜訪
+  const rumor=[];
+  if(want&&fv.how==='spot'){
+    const hu=G.units.find(u=>u.hero),goal=G.units.find(u=>u.side===1&&u.target)||G.units.find(u=>u.side===1),t=hu&&spotTile(sc.id,T,G.units,hu,goal);
+    if(t){G.spot={x:t[0],y:t[1],fv,done:false};G.favHint='地圖上的小屋可以拜訪：帶任一隊走到小屋上或旁邊';
+      rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。就住在${dirText(hu,t)}邊那間小屋，路過時進去打聲招呼吧。`})}
+  }else if(want&&fv.how==='win'){G.favHint=`${fv.hint}（${fv.text}）`;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。聽說只要${fv.text}，那個人就會來找您。`})}
+  else if(want&&fv.how==='lose'){G.favHint=fv.hint;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}……不過，還是請您平安回來。`})}
   if(G.favHint)renderObj();
-  talk([...(scene?.pre||[]),...(fv&&fv.how==='talk'&&!hero.roster.includes(fv.n)?fv.pre:[]),...(sc.talk.start||[])]).then(()=>runEvents('day'));
+  if(sc.retreat)addLog(`撤退點：${sc.retreat.name}（地圖上的旗子）。第 ${sc.retreat.from} 天起，${sc.lordName}隊走到這裡就算撤退成功。`);
+  talk([...(scene?.pre||[]),...(want&&fv.how==='talk'?fv.pre:[]),...rumor,...(sc.talk.start||[])]).then(()=>runEvents('day')).then(()=>autoPlay());
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
 function renderObj(){
@@ -448,7 +453,8 @@ function renderObj(){
     el('div',{},el('b',{class:'ng'},'敗北'),' '+(sc.lose||[]).join('、')),
     sc.hidden?.length?el('details',{},el('summary',{},`隱藏條件 ×${sc.hidden.length}（結算時揭曉，達成越多評價越高）`),
       el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'',
-    G.favHint?el('div',{class:'muted'},'？？？ 人物傳聞：'+G.favHint):'');
+    G.favHint?el('div',{class:'muted'},'？？？ 人物傳聞：'+G.favHint):'',
+    sc.retreat?el('div',{},el('b',{class:'ok'},'撤退'),` 第 ${sc.retreat.from} 天起，${sc.lordName}隊走到「${sc.retreat.name}」（旗子）即勝利`):'');
 }
 const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
 // story dialogue: one line per tap。{choose:[…]} 是選擇點（戰役主角的選項，選了加屬性）；who '我' 是主角、'旁白' 沒有人像
@@ -500,6 +506,7 @@ function startGame(){
   addLog(SET.mode==='land'?`出征 Lv${SET.lv} 土地：擊破全部 ${units.filter(u=>u.side).length} 隊守軍即可佔領（${DAYS} 天內）。`:'對戰模擬：一隊對一隊，擊潰對方部隊獲勝。');
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(autoPlay,600);
 }
 const alive=u=>u.team.gens[0].troops>0;
 const unitAt=(x,y)=>G.units.find(u=>u.x===x&&u.y===y&&alive(u));
@@ -541,7 +548,10 @@ function renderBoard(){
   // 盤面交給 Phaser 畫（slg/board-phaser.js），規則與點擊處理在這裡
   if(VIEW?.isLost()){VIEW.destroy();VIEW=null}   // 戰鬥演出後發現畫布 context 被瀏覽器收走：直接重建
   if(!VIEW){VIEW=createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});const v=VIEW;v.lost=()=>{if(VIEW!==v)return;console.warn('[slg] 戰場畫布 context lost，重建');addLog('戰場畫布被瀏覽器回收，已自動重建。');v.destroy();VIEW=null;if(G)setTimeout(renderBoard,50)}}
-  VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
+  const pins=[];
+  if(G.spot&&!G.spot.done)pins.push({kind:'house',x:G.spot.x,y:G.spot.y,label:'小屋'});
+  if(G.sc?.retreat){const r=G.sc.retreat;pins.push({kind:'flag',x:r.x,y:r.y,label:G.day>=r.from?'撤退點':`撤退點・第${r.from}天起`})}
+  VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,pins,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
     return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
       cnt:u.team.gens.filter(g=>g.troops>0).length,done:!!u.acted,on:u===sel,tgt:!!u.target,lord:!!u.lord,draw:dn?u.drawUntil-G.day+1:0}})});
   const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
@@ -575,11 +585,11 @@ function autoEnd(){
   clearTimeout(G.autoT);G.autoT=setTimeout(endTurn,500);
 }
 async function tap(x,y){
-  if(!G||G.busy||G.over)return;
+  if(!G||G.busy||G.over||autoRun)return;
   const u=unitAt(x,y),s=G.sel,me=ctrl();
   if(aiPhase())return;
   if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);autoEnd();return}
-  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();if(G.spot&&!G.spot.done&&s.side===0&&x===G.spot.x&&y===G.spot.y){spotMeet();return}autoEnd();return}}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();if(G.spot&&!G.spot.done&&s.side===0&&atSpot(s,G.spot)){spotMeet();return}if(G.sc?.retreat&&s.lord){checkOver();if(G.over)return}autoEnd();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;sfx('select');renderBoard();return}
   G.sel=null;G.peek=u||null;renderBoard();
 }
@@ -601,11 +611,15 @@ function favEnd(win,lines,sub){
   }else if((h.fav[fv.n]||0)>0&&fv.how==='talk')sub.push('似乎有人對你有些好感……也許再來一次，會有不一樣的答案。');
   save();
 }
+// 攻方這一擊的傷害倍率：魅力光環 × 豪雨奇襲 × 劇本事件加成
+function dmgMul(a){
+  const charm=G.camp&&a.side===0&&G.units.some(u=>u.hero&&alive(u))?charmDmg(G.camp.h):1;
+  return charm*(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
+}
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
-  const charm=G.camp&&a.side===0&&G.units.some(u=>u.hero&&alive(u))?charmDmg(G.camp.h):1;
-  const mul=charm*(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
+  const mul=dmgMul(a);
   a.team.mods=mul!==1?{dmg:mul}:null;d.team.mods=null;
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
@@ -647,9 +661,11 @@ function checkOver(){
   if(G.mode==='story'){
     if(G.camp&&G.over)return;
     const sc=G.sc,lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
-    const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0);
+    const fled=sc.retreat&&G.day>=sc.retreat.from&&G.units.some(u=>u.lord&&alive(u)&&u.x===sc.retreat.x&&u.y===sc.retreat.y);
+    const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0)||fled;
     const lose=!win&&(lordDown||!left(0)||timeUp);
     if(win&&!G.st.killDay)G.st.killDay=sc.survive&&timeUp?sc.days:G.day;
+    if(fled)G.st.fled=true;
     if(!win&&!lose)return;
     let lines,sub=[];
     if(win){
@@ -724,6 +740,7 @@ async function endTurn(){
     }
     if(!G.over)await runEvents('day');
   }
+  autoPlay();
 }
 async function aiTurn(){
   G.busy=true;renderBoard();
@@ -752,6 +769,72 @@ async function aiTurn(){
   }
   G.busy=false;renderBoard();
 }
+
+// ---- 自動戰鬥（Joe 2026-11-01）：我方部隊自己移動、自己攻擊 ----
+// 每隊先試算每個可攻擊的目標（複製兩隊模擬 3 次），划算或是勝利目標才打；總大將不衝前、離會動的敵軍遠一點；
+// 有隱藏武將的小屋就順路拜訪；有撤退點的關卡，時間到了總大將往撤退點走。同一套邏輯在 tools/campaign-sim.mjs 用來測平衡。
+let autoRun=false;
+const cloneT=t=>({...t,gens:t.gens.map(g=>({...g,st:{...g.st}}))});
+function evalAtk(a,d){
+  let s=0;const N=3,mul=dmgMul(a);
+  for(let k=0;k<N;k++){const A=cloneT(a.team),B=cloneT(d.team);A.mods=mul!==1?{dmg:mul}:null;B.mods=null;
+    const b0=total(B),a0=total(A);battle(A,B);
+    let v=(b0-total(B))-(a0-total(A))*(a.lord?1.6:1.1);
+    if(B.gens[0].troops<=0)v+=d.target?1e6:3000;
+    if(A.gens[0].troops<=0)v-=a.lord?1e6:4000;
+    s+=v}
+  return s/N;
+}
+function threatAt(x,y,side){
+  return G.units.filter(o=>o.side!==side&&alive(o)).filter(o=>{
+    if(o.ai==='hold'||raining()||o.garrison&&!G.garAi)return dist({x,y},o)<=rg(o);
+    if(o.ai==='guard'&&o.anchor)return dist({x,y},{x:o.anchor[0],y:o.anchor[1]})<=(o.r||0)+rg(o);
+    return dist({x,y},o)<=mv(o)+rg(o)}).length;
+}
+async function autoUnit(u){
+  const R=u.moved?new Map([[u.x+','+u.y,0]]):reach(u),ox=u.x,oy=u.y;
+  let best=null;
+  for(const k of R.keys()){const[x,y]=k.split(',').map(Number);u.x=x;u.y=y;
+    for(const o of targets(u)){const v=evalAtk(u,o);if(!best||v>best.v)best={x,y,o,v}}}
+  u.x=ox;u.y=oy;
+  const moveTo=async(x,y)=>{if(x===u.x&&y===u.y)return;u.x=x;u.y=y;u.moved=true;sfx('move');renderBoard();await sleep(380)};
+  const thr=u.lord?0:-.12*total(u.team);
+  if(best&&(best.v>thr||best.o.target&&best.v>-.3*total(u.team))){await moveTo(best.x,best.y);await fight(u,best.o);return}
+  const tiles=[...R.keys()].map(k=>k.split(',').map(Number));
+  if(G.spot&&!G.spot.done&&u.side===0&&!u.lord){const t=tiles.find(([x,y])=>atSpot({x,y},G.spot));if(t){await moveTo(t[0],t[1]);u.acted=true;await spotMeet();return}}
+  const foes=G.units.filter(o=>o.side!==u.side&&alive(o));
+  if(!foes.length){u.acted=true;return}
+  const sc=G.mode==='story'?G.sc:null,ret=sc?.retreat,lordU=G.units.find(o=>o.lord&&o.side===u.side&&alive(o));
+  const goal=foes.find(o=>o.target)||[...foes].sort((a,b)=>dist(a,u)-dist(b,u))[0];
+  let bk=null;
+  for(const[x,y]of tiles){let d;
+    if(u.lord&&ret)d=threatAt(x,y,u.side)*(G.day>=ret.from?20:100)+dist({x,y},ret)*(G.day>=ret.from?10:1);
+    else if(u.lord)d=threatAt(x,y,u.side)*100+(sc?.survive?-Math.min(...foes.map(o=>dist({x,y},o))):dist({x,y},goal));
+    else if(sc?.survive&&lordU){const near=[...foes].sort((a,b)=>dist(a,lordU)-dist(b,lordU))[0];d=dist({x,y},near)+dist({x,y},lordU)*.5}
+    else d=dist({x,y},goal);
+    if(!bk||d<bk.d)bk={x,y,d}}
+  await moveTo(bk.x,bk.y);u.acted=true;
+  if(u.lord&&ret)checkOver();
+}
+async function autoPlay(){
+  if(autoRun||!SET.auto||!G||G.over||G.busy||aiPhase())return;
+  autoRun=true;G.sel=null;renderBoard();
+  try{
+    const side=ctrl();
+    for(;;){
+      if(!SET.auto||!G||G.over)break;
+      while(G.busy)await sleep(200);
+      const u=G.units.filter(o=>o.side===side&&alive(o)&&!o.acted).sort((a,b)=>(a.lord?1:0)-(b.lord?1:0))[0];
+      if(!u)break;
+      await sleep(250);await autoUnit(u);renderBoard();
+    }
+  }catch(e){console.error(e)}
+  finally{autoRun=false}
+  if(G&&!G.over&&SET.auto)autoEnd();
+}
+function drawAuto(){const b=$('autoBtn');b.textContent=SET.auto?'自動戰鬥：開':'自動戰鬥：關';b.setAttribute('aria-pressed',String(!!SET.auto))}
+$('autoBtn').onclick=()=>{SET.auto=!SET.auto;save();drawAuto();if(SET.auto)autoPlay()};
+drawAuto();
 
 // ---- battle playback ----
 const SPEEDS=[['1','普通',650],['2','快',300],['4','很快',120]];
@@ -863,6 +946,7 @@ async function playBattle(a,d,before,r){
   const mine=a.side===0?r.res:{W:'L',L:'W',D:'D'}[r.res];   // from the blue side's view
   speak(a.side,0,resText);
   play(mine==='W'?'win':mine==='L'?'lose':null);
+  if(SET.auto)setTimeout(()=>{if(dlg.open&&!done.hidden)done.click()},skip?300:1200/speed);   // 自動戰鬥：戰鬥結束自己返回地圖
   await new Promise(fin=>{done.onclick=()=>{closeDlg();fin()};dlg.oncancel=e=>{e.preventDefault();closeDlg();fin()}});
   if(!G.over)play('map');
 }

@@ -3,8 +3,8 @@
 // game.js 每次 renderBoard 把目前盤面（地形、部隊、標記格、是否下雨）交給 render()，這裡比對差異後做動畫；
 // 點擊換算成格子座標後呼叫 onTap(x,y)，和舊版點 SVG 地塊一樣。
 // 美術沿用自己畫的 SVG（iso.js 地塊、chibi.js 武將）轉成貼圖；粒子、刀光等小貼圖用 Phaser Graphics 現場畫，不用任何外部素材。
-import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=37';
-import {chibi,SIDE_COL} from './chibi.js?v=37';
+import {isoTerrain,isoGeom,TW,TH} from './iso.js?v=38';
+import {chibi,SIDE_COL} from './chibi.js?v=38';
 
 const FONT='"LXGW WenKai TC","Noto Serif TC",serif';
 const NS='xmlns="http://www.w3.org/2000/svg"';
@@ -262,6 +262,30 @@ export function createPhaserBoard(box,{onTap}){
           const P=[{x:cx,y:cy-TH/2},{x:cx+TW/2,y:cy},{x:cx,y:cy+TH/2},{x:cx-TW/2,y:cy}];
           g.fillStyle(c,a).fillPoints(P,true).lineStyle(2,c,.95).strokePoints(P,true)}
         this.rainShade.setVisible(s.rain);this.rainFx.emitting=s.rain&&!REDUCE();
+        this.setPins(s.pins||[]);
+      }
+      // 地圖標記：house 隱藏武將的小屋（走過去拜訪）、flag 撤退點。內容沒變就不重畫
+      setPins(pins){
+        const key=JSON.stringify(pins);if(key===this.pinKey)return;this.pinKey=key;
+        for(const o of this.pinObjs||[])o.destroy();this.pinObjs=[];
+        for(const p of pins){
+          const[cx,cy]=this.at(p.x,p.y),c=this.add.container(cx,cy+4).setDepth(cy+8),g=this.add.graphics();
+          if(p.kind==='house'){
+            g.fillStyle(0x000000,.3).fillEllipse(0,2,40,12);
+            g.fillStyle(0xd9c39a,1).fillRect(-13,-18,26,18).lineStyle(1.5,0x4a3520,1).strokeRect(-13,-18,26,18);
+            g.fillStyle(0x5a3a22,1).fillRect(-4,-11,8,11);
+            g.fillStyle(0x7a4a2a,1).fillTriangle(-18,-17,18,-17,0,-34).lineStyle(1.5,0x3a2414,1).strokeTriangle(-18,-17,18,-17,0,-34);
+            g.fillStyle(0xffe08a,1).fillRect(6,-14,4,4);
+          }else{
+            g.fillStyle(0x000000,.3).fillEllipse(0,2,30,10);
+            g.lineStyle(2.5,0x3a2a1a,1).lineBetween(-6,0,-6,-40);
+            g.fillStyle(0xe3b75a,1).fillTriangle(-5,-40,18,-33,-5,-26).lineStyle(1.2,0x6a4a10,1).strokeTriangle(-5,-40,18,-33,-5,-26);
+          }
+          const t=this.add.text(0,6,p.label||'',{fontFamily:FONT,fontStyle:'bold',fontSize:'10px',color:'#2b1d0c',backgroundColor:'#f2e3b0e6',padding:{x:3,y:1}}).setOrigin(.5,0).setResolution(this.k*2);
+          c.add([g,t]);
+          if(!REDUCE())this.tweens.add({targets:g,y:{from:0,to:-3},duration:900,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+          this.pinObjs.push(c);
+        }
       }
       // 點擊：先看點到哪位武將（前面的蓋住後面的，從最前面找起），再看菱形格
       pick(wx,wy){

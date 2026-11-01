@@ -101,7 +101,8 @@ function play(sc,ctx,carries,ai={}){
   function check(){
     if(G.over)return;
     const lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
-    const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0);
+    const fled=sc.retreat&&G.day>=sc.retreat.from&&G.units.some(u=>u.lord&&alive(u)&&u.x===sc.retreat.x&&u.y===sc.retreat.y);
+    const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0)||fled;
     const lose=!win&&(lordDown||!left(0)||timeUp);
     if(win&&!G.st.killDay)G.st.killDay=sc.survive&&timeUp?sc.days:G.day;
     if(win)G.over='W';else if(lose)G.over=lordDown?'Llord':!left(0)?'Lall':'Ltime';
@@ -137,11 +138,13 @@ function play(sc,ctx,carries,ai={}){
         if(o.ai==='guard')return dist({x,y},{x:o.anchor[0],y:o.anchor[1]})<=o.r+rg(o);return dist({x,y},o)<=mv(o)+rg(o)}).length;
       let bk=null;
       for(const k of R.keys()){const[x,y]=k.split(',').map(Number);let d;
-        if(u.lord&&!bold)d=threat(x,y)*100+(sc.survive?-Math.min(...foes.map(o=>dist({x,y},o))):dist({x,y},goal));
+        const ret=sc.retreat;
+        if(u.lord&&ret)d=threat(x,y)*(G.day>=ret.from?20:100)+dist({x,y},ret)*(G.day>=ret.from?10:1);
+        else if(u.lord&&!bold)d=threat(x,y)*100+(sc.survive?-Math.min(...foes.map(o=>dist({x,y},o))):dist({x,y},goal));
         else if(sc.survive&&lordU){const near=[...foes].sort((a,b)=>dist(a,lordU)-dist(b,lordU))[0];d=dist({x,y},near)+dist({x,y},lordU)*.5}
         else d=dist({x,y},goal);
         if(!bk||d<bk.d)bk={x,y,d}}
-      u.x=bk.x;u.y=bk.y;u.acted=true;
+      u.x=bk.x;u.y=bk.y;u.acted=true;if(u.lord&&sc.retreat)check();
     }
   }
   function aiTurn(){
