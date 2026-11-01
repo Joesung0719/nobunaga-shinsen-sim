@@ -23,9 +23,10 @@ export const FAVS={
         {a:'魅',text:'「別擔心，不管前後被堵，我都會帶兄長平安回去。」',fav:2,reply:[L('阿市','謝謝您。這句話，我記住了。')]},
         {a:'武',text:'「管他什麼意思，前後都砍開就是了。」',fav:1,reply:[L('阿市','……您真是個直率的人。')]}]}],
     join:[L('阿市','{名}大人，您護著兄長回到京都了。往後，請讓我也盡一份力。')]},
-  anegawa:{n:'真柄直隆',how:'win',cond:st=>st.killDay>0&&st.killDay<=4,hint:'據說敵軍陣中有位揮舞大太刀的猛將，想看看是誰有膽量速戰速決。',text:'4 天內取勝',
+  anegawa:{n:'真柄直隆',how:'win',cond:st=>st.killDay>0&&st.killDay<=5,hint:'據說敵軍陣中有位揮舞大太刀的猛將，想看看是誰有膽量速戰速決。',text:'5 天內取勝',
     join:[L('真柄直隆','{名}，你比我想的更快、更狠。這一刀，我服了。若你不嫌我是敗軍之將，我願效命。')]},
   mikatagahara:{n:'高力清長',how:'lose',hint:'若是敗了，也許有人會留下來斷後。',
+    rescue:[L('高力清長','主公！{名}大人！這裡由我高力清長斷後，請從那條小路撤回去！'),L('德川家康','清長……好，全軍，往撤退路線走！')],
     join:[L('高力清長','{名}大人，戰敗並不可恥，可恥的是不再起來。主公命我跟著您，再戰一次。')]},
   nagashino:{n:'津田算長',how:'talk',hint:'鐵炮隊裡有個老師傅，想看看新來的指揮官有沒有眼力。',
     pre:[L('津田算長','在下津田算長，鐵炮的事我最懂。指揮官，三段擊的要領是什麼，您說說看？'),
@@ -37,16 +38,13 @@ export const FAVS={
   tedorigawa:{n:'河田長親',how:'spot',hint:'風雪的河畔有人還在為上杉守著一座舊哨站。',
     say:[L('河田長親','……別出聲，我在聽河水的聲音。這一帶，我熟得很。')],
     join:[L('河田長親','{名}，這一戰我看明白了。往後，換我替你探路。')]},
-  honnoji:{n:'妻木熙子',how:'talk',hint:'出發前，有人悄悄遞來一封信。',
-    pre:[L('妻木熙子','我是光秀的妻，熙子。夫君這幾天睡得很少。您要陪他去的地方，我想託您一句話。'),
-      {fav:'妻木熙子',choose:[
-        {a:'魅',text:'「請您放心。不論結果如何，我會陪在他身邊。」',fav:3,reply:[L('妻木熙子','……謝謝您。有您在，我就安心一些。')]},
-        {a:'智',text:'「我會設法讓他看清局勢，再做決定。」',fav:2,reply:[L('妻木熙子','但願他聽得進去。')]},
-        {a:'武',text:'「事已至此，只能往前衝了。」',fav:1,reply:[L('妻木熙子','……是啊，事已至此。')]}]}],
-    join:[L('妻木熙子','{名}大人，您守住了諾言。我想，我也可以為您做些什麼。')]},
-  yamazaki:{n:'池田輝政',how:'win',cond:st=>st.killDay>0&&st.killDay<=4,hint:'有位年輕武將想看看，誰能在最短時間內討伐逆賊。',text:'4 天內取勝',
+  honnoji:{n:'彌助',how:'spot',hint:'寺外的小巷裡，有位高大的異國侍從還在奮戰。',
+    say:[L('彌助','……你也是信長公的人？我是彌助，殿下的侍從。殿下要我活下去，把刀帶出去。'),L('彌助','一起走吧。兩個人，總比一個人更容易殺出去。')],
+    join:[L('彌助','{名}大人，殿下說過，要看到天下太平的那一天。這條命，就跟著你走下去吧。')]},
+  yamazaki:{n:'池田輝政',how:'win',cond:st=>st.killDay>0&&st.killDay<=5,hint:'有位年輕武將想看看，誰能在最短時間內討伐逆賊。',text:'5 天內取勝',
     join:[L('池田輝政','{名}，你的速度讓我心服口服！從今天起，讓我跟著你。')]},
   shizugatake:{n:'仙石權兵衛',how:'lose',hint:'若是敗了，也許會有人冒死前來救援。',
+    rescue:[L('仙石權兵衛','{名}！撐住！我帶人殺開了一條路，跟我往那邊撤！'),L('豐臣秀吉','權兵衛！好傢伙，全軍跟上，先撤，再說！')],
     join:[L('仙石權兵衛','{名}，不要放棄！我帶了人過來，這一次，讓我們一起重來。')]},
   komaki:{n:'堀直政',how:'spot',hint:'聽說對面陣中有位文武雙全的人，正在某處觀望局勢。',
     say:[L('堀直政','這場仗誰勝誰負還不好說，不過，你帶兵的氣勢我很喜歡。')],
@@ -60,18 +58,26 @@ export const FAVS={
     join:[L('柳生宗嚴','{名}大人，天下已定，但劍還沒有停。請讓我隨您走下去。')]},
 };
 export const favOf=id=>FAVS[id]||null;
-// 地圖上的隱藏地點（畫成小屋）：離主角起點 2～4 格內，優先挑往勝利目標方向、順路的格子，各關固定（用關卡 id 當種子）。
-// Joe 2026-11-01：原本 3～6 格且方向隨機，很多關沒時間繞過去，改成順路
-export const spotTile=(id,T,occ,from,goal)=>{
-  const H=T.length,W=T[0].length,c=[];
+// 地圖上的隱藏地點（畫成小屋）：放在敵軍附近（離某隊敵軍 1～2 格），約四分之一的關卡改放在友軍附近；離主角至少 3 格。
+// 各關固定（用關卡 id 當種子）。Joe 2026-11-01：原本 2～4 格太近，要冒點險才拿得到
+export const spotTile=(id,T,units,hero)=>{
+  const H=T.length,W=T[0].length;let s=0;for(const ch of id)s=(s*31+ch.charCodeAt(0))>>>0;
+  const near=s%4===0?units.filter(u=>u.side===0&&u!==hero):units.filter(u=>u.side===1);
+  const free=(x,y)=>!units.some(o=>o.x===x&&o.y===y),dh=(x,y)=>Math.abs(x-hero.x)+Math.abs(y-hero.y);
+  let c=[];
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const d=Math.abs(x-from.x)+Math.abs(y-from.y);
-    if(d>=2&&d<=4&&!occ.some(o=>o.x===x&&o.y===y))c.push([x,y]);
+    const d=Math.min(99,...near.map(o=>Math.abs(o.x-x)+Math.abs(o.y-y)));
+    if(free(x,y)&&d>=1&&d<=2&&dh(x,y)>=3)c.push([x,y]);
   }
-  if(!c.length)return null;
-  if(goal){const g=([x,y])=>Math.abs(x-goal.x)+Math.abs(y-goal.y);c.sort((a,b)=>g(a)-g(b));c.length=Math.max(1,Math.ceil(c.length/3))}
-  let s=0;for(const ch of id)s=(s*31+ch.charCodeAt(0))>>>0;
-  return c[s%c.length];
+  if(!c.length)for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(free(x,y)&&dh(x,y)>=3&&dh(x,y)<=6)c.push([x,y]);
+  return c.length?c[(s>>>3)%c.length]:null;
+};
+// 撤退點：地圖四個角落裡，離敵軍最遠的那一個（Joe 2026-11-01：撤退點要在敵軍後方或最遠的角落）
+export const farCorner=(T,units,from)=>{
+  const H=T.length,W=T[0].length,foes=units.filter(u=>u.side===1&&u.team.gens[0].troops>0);
+  const sc=([x,y])=>Math.min(99,...foes.map(o=>Math.abs(o.x-x)+Math.abs(o.y-y)))*100-(from?Math.abs(from.x-x)+Math.abs(from.y-y):0);
+  const[x,y]=[[0,0],[W-1,0],[0,H-1],[W-1,H-1]].sort((a,b)=>sc(b)-sc(a))[0];
+  return{x,y};
 };
 // 走到小屋上或旁邊一格就算拜訪
 export const atSpot=(u,sp)=>Math.abs(u.x-sp.x)+Math.abs(u.y-sp.y)<=1;

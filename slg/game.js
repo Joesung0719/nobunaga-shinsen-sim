@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=38';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=38';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=38';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot} from './favor.js?v=38';
-import {isoGeom} from './iso.js?v=38';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=38';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=38';
-import {SCENARIOS} from './scenarios.js?v=38';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=38';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=39';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=39';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=39';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=39';
+import {isoGeom} from './iso.js?v=39';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=39';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=39';
+import {SCENARIOS} from './scenarios.js?v=39';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=39';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='29';
+const VER='30';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -43,7 +43,7 @@ const PSK=new Map();const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));retur
 const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
 const ARMS=[['騎','騎兵'],['弓','弓兵'],['槍','足輕'],['鐵炮','鐵炮'],['器械','器械']];
 const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2};
-const W=7,H=9,DAYS=20,DRAW_DAYS=3;
+let W=7,H=9;const DAYS=20,DRAW_DAYS=3;   // 戰役地圖 9×11（scenarios.js 放大），打地／對戰／盜賊 7×9：開場時依地圖設定
 
 // ---- setup state ----
 const KEY='shinsen-slg-v1';
@@ -366,7 +366,7 @@ function compStats(n,h){
   const st=D.stats[n]?fullRedStats(D,n,[n],h.arm,h.lv):statsAt(D,n,h.lv,r);
   return gearSt(st,0);
 }
-const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[
+const mkHero=(h,id,x,y,lord)=>({id,side:0,key:'hero',hero:true,lord:!!lord,x,y,team:battleTeam({arm:h.arm,gens:[
   {n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)},
   ...(h.party||[]).slice(0,PARTY_MAX).map(n=>({n,s:fixedSkills(n),t:Math.round(heroTroops(h)*.8),st:compStats(n,h)}))]},0)});
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
@@ -387,6 +387,7 @@ async function runEvents(on){
     }
     for(const[k,v]of Object.entries(ev.ai||{}))for(const u of G.units)if(u.key===k&&alive(u)){Object.assign(u,v);if(u.ai==='guard'&&!u.anchor)u.anchor=[u.x,u.y]}
     if(ev.buff)G.buffs.push(ev.buff);
+    for(const k of ev.kill||[])for(const u of G.units)if(u.key===k&&alive(u)){u.team.gens.forEach(g=>g.troops=0);addLog(`${u.team.name} 離開了戰場。`)}
     if(ev.heal)for(const u of G.units)if(u.side===ev.heal.side&&alive(u))for(const g of u.team.gens)if(g.troops>0)g.troops=Math.min(g.max,g.troops+Math.round(g.max*ev.heal.pct));
     renderBoard();
     if(ev.say)await talk(ev.say);
@@ -412,22 +413,23 @@ function startStory(scId,bandit){
     const lost=Math.round(hero.silver*.05);hero.silver-=lost;hero.bandit=null;save();
     if(lost)setTimeout(()=>addLog(`上一關留下的盜賊趁夜偷走了 ${fmt(lost)} 銀。`),0);
   }
-  const T=sc.map.map(r=>[...r]);
+  const T=sc.map.map(r=>[...r]);H=T.length;W=T[0].length;
   const carries=(sc.carry||[]).filter(carryOk);
   const units=sc.units.map(u=>{let t=u.t;for(const c of carries)if(c.troops&&u.side===c.troops.side&&(!c.troops.keys||c.troops.keys.includes(u.key)))t=Math.round(t*(1+c.troops.pct));return mkUnit({...u,t},id++)});
   if(hero){   // 主角當作額外一隊，放在大將旁邊的空格
     const base=units.find(u=>u.side===0&&u.lord)||units.find(u=>u.side===0)||{x:3,y:8};
     const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!units.some(o=>o.x===x&&o.y===y);
     const spot=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[2,0],[-2,0],[0,2]].map(([a,b])=>[base.x+a,base.y+b]).find(([a,b])=>free(a,b))||[base.x,base.y];
-    units.push(mkHero(hero,id++,spot[0],spot[1]));
+    units.push(mkHero(hero,id++,spot[0],spot[1],sc.heroLord));
   }
-  G={T,units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
+  G={T,units,ret:null,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
     camp:hero?{h:hero,i:ci,lvA:hero.lv,lvB:CAMP.lvB,bandit:!!bandit}:null,
     st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(`${hero?(bandit?'關間・':`戰役第 ${ci+1} 關・`):''}${bandit?'':'劇本'}「${sc.name}」：${sc.brief}`);
   if(hero)addLog(`${hero.name} Lv${hero.lv} 出陣（我方名將 Lv${hero.lv}，敵軍 Lv${CAMP.lvB}）`);
   for(const c of carries)addLog(`戰役加成（${scName(c.from)}）：${c.text}`);
+  if(sc.retreat){const lu=G.units.find(u=>u.side===0&&u.lord);G.ret={...sc.retreat,...(sc.retreat.auto?farCorner(T,G.units,lu):{})}}
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
   const scene=hero&&!bandit?(SCENES[sc.id]||generic(sc.lordName)):null;
@@ -435,13 +437,14 @@ function startStory(scId,bandit){
   // 隱藏武將的提示改由村民開口說（Joe 2026-11-01）；地點型的在地圖上畫一間小屋，走到小屋上或旁邊就能拜訪
   const rumor=[];
   if(want&&fv.how==='spot'){
-    const hu=G.units.find(u=>u.hero),goal=G.units.find(u=>u.side===1&&u.target)||G.units.find(u=>u.side===1),t=hu&&spotTile(sc.id,T,G.units,hu,goal);
+    const hu=G.units.find(u=>u.hero),t=hu&&spotTile(sc.id,T,G.units,hu);
     if(t){G.spot={x:t[0],y:t[1],fv,done:false};G.favHint='地圖上的小屋可以拜訪：帶任一隊走到小屋上或旁邊';
-      rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。就住在${dirText(hu,t)}邊那間小屋，路過時進去打聲招呼吧。`})}
+      rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。就住在${dirText(hu,t)}邊那間小屋，附近有兵，請小心。`})}
   }else if(want&&fv.how==='win'){G.favHint=`${fv.hint}（${fv.text}）`;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}。聽說只要${fv.text}，那個人就會來找您。`})}
   else if(want&&fv.how==='lose'){G.favHint=fv.hint;rumor.push({who:'村民',text:`大人，${fv.hint.replace(/。$/,'')}……不過，還是請您平安回來。`})}
   if(G.favHint)renderObj();
-  if(sc.retreat)addLog(`撤退點：${sc.retreat.name}（地圖上的旗子）。第 ${sc.retreat.from} 天起，${sc.lordName}隊走到這裡就算撤退成功。`);
+  if(G.spot)renderBoard();
+  if(G.ret)addLog(`撤退點：${G.ret.name}（地圖角落的旗子）。第 ${G.ret.from} 天起，${lordNm()}隊走到這裡就算撤退成功。`);
   talk([...(scene?.pre||[]),...(want&&fv.how==='talk'?fv.pre:[]),...rumor,...(sc.talk.start||[])]).then(()=>runEvents('day')).then(()=>autoPlay());
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
@@ -454,7 +457,7 @@ function renderObj(){
     sc.hidden?.length?el('details',{},el('summary',{},`隱藏條件 ×${sc.hidden.length}（結算時揭曉，達成越多評價越高）`),
       el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'',
     G.favHint?el('div',{class:'muted'},'？？？ 人物傳聞：'+G.favHint):'',
-    sc.retreat?el('div',{},el('b',{class:'ok'},'撤退'),` 第 ${sc.retreat.from} 天起，${sc.lordName}隊走到「${sc.retreat.name}」（旗子）即勝利`):'');
+    G.ret?el('div',{},el('b',{class:'ok'},'撤退'),` 第 ${G.ret.from} 天起，${lordNm()}隊走到「${G.ret.name}」（旗子）${G.ret.rescue?'即敗走成功（本關算通過，評價 C）':'即勝利'}`):'');
 }
 const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
 // story dialogue: one line per tap。{choose:[…]} 是選擇點（戰役主角的選項，選了加屬性）；who '我' 是主角、'旁白' 沒有人像
@@ -492,6 +495,7 @@ async function choose(opts,sub,favN){
 function startGame(){
   if(SET.mode==='camp'){if(!SET.hero)return;if(CHAIN[campIdx()].finale&&!(G?.camp?.bandit&&SET.hero.bandit))return startFinale();return G?.camp?.bandit&&SET.hero.bandit?startStory(null,true):startStory(campStageId())}
   if(SET.mode==='story')return startStory();
+  W=7;H=9;
   const m=genMap(SET.mode);let id=0;
   const units=[];
   SET.mine.slice(0,SET.mode==='pvp'?1:3).forEach((s,i)=>units.push({id:id++,side:0,x:m.spawn0[i][0],y:m.spawn0[i][1],team:battleTeam(s,0)}));
@@ -550,7 +554,7 @@ function renderBoard(){
   if(!VIEW){VIEW=createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});const v=VIEW;v.lost=()=>{if(VIEW!==v)return;console.warn('[slg] 戰場畫布 context lost，重建');addLog('戰場畫布被瀏覽器回收，已自動重建。');v.destroy();VIEW=null;if(G)setTimeout(renderBoard,50)}}
   const pins=[];
   if(G.spot&&!G.spot.done)pins.push({kind:'house',x:G.spot.x,y:G.spot.y,label:'小屋'});
-  if(G.sc?.retreat){const r=G.sc.retreat;pins.push({kind:'flag',x:r.x,y:r.y,label:G.day>=r.from?'撤退點':`撤退點・第${r.from}天起`})}
+  if(G.ret){const r=G.ret;pins.push({kind:'flag',x:r.x,y:r.y,label:G.day>=r.from?'撤退點':`撤退點・第${r.from}天起`})}
   VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,pins,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
     return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
       cnt:u.team.gens.filter(g=>g.troops>0).length,done:!!u.acted,on:u===sel,tgt:!!u.target,lord:!!u.lord,draw:dn?u.drawUntil-G.day+1:0}})});
@@ -589,7 +593,7 @@ async function tap(x,y){
   const u=unitAt(x,y),s=G.sel,me=ctrl();
   if(aiPhase())return;
   if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);autoEnd();return}
-  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();if(G.spot&&!G.spot.done&&s.side===0&&atSpot(s,G.spot)){spotMeet();return}if(G.sc?.retreat&&s.lord){checkOver();if(G.over)return}autoEnd();return}}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();if(G.spot&&!G.spot.done&&s.side===0&&atSpot(s,G.spot)){spotMeet();return}if(G.ret&&s.lord){checkOver();if(G.over)return}autoEnd();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;sfx('select');renderBoard();return}
   G.sel=null;G.peek=u||null;renderBoard();
 }
@@ -604,7 +608,7 @@ function favEnd(win,lines,sub){
   const sc=G.sc,fv=FAVS[sc.id],h=G.camp.h;
   if(!fv||h.roster.includes(fv.n))return;
   if(fv.how==='win'&&win&&fv.cond(G.st)){h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED;sub.push(`隱藏人物條件達成：${fv.text}`)}
-  if(fv.how==='lose'&&!win){h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED}
+  if(fv.how==='lose'&&(!win||G.rescued)){h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED}
   if((h.fav[fv.n]||0)>=FAV_NEED){
     h.roster.push(fv.n);if(h.party.length<PARTY_MAX)h.party.push(fv.n);save();
     lines.push(...fv.join);sub.push(`隱藏夥伴加入：${fv.n}（${starsOf(fv.n)}）`);
@@ -650,18 +654,37 @@ async function fight(a,d){
   if(a.team.mods)addLog(`${raining()&&a.side===0?'豪雨奇襲':'戰場加成'}：${a.team.name} 造成的傷害 ×${+a.team.mods.dmg.toFixed(2)}`);
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
+  lines.push(...rescueCheck());
   checkOver();renderBoard();
   if(VIEW)await VIEW.unfocus();
   if(!G.over&&lines.length)await talk(lines);
   if(!G.over&&G.mode==='story')for(const u of[a,d])if(!alive(u)&&u.key)await runEvents('rout:'+u.key);
   G.busy=was;renderBoard();
 }
+const lordNm=()=>G.sc?.heroLord?(SET.hero?.name||'主角'):(G.sc?.lordName||'總大將');
+// 「打輸才拿得到」的隱藏武將（favor.js how:'lose'）：總大將兵力掉到三成以下（或潰走）時，他現身斷後，
+// 總大將補回五成兵力、追兵傷害 ×0.7、地圖出現撤退點（離敵軍最遠的角落），撤到就算敗走、本關評價 C 通過，人物加入（Joe 2026-11-01）
+function rescueCheck(){
+  if(G.mode!=='story'||!G.camp||G.camp.bandit||G.rescued||G.over)return[];
+  const fv=FAVS[G.sc.id],h=G.camp.h;if(!fv||fv.how!=='lose'||h.roster.includes(fv.n))return[];
+  const lord=G.units.find(u=>u.side===0&&u.lord);if(!lord||total(lord.team)>totalMax(lord.team)*.3)return[];
+  G.rescued=true;
+  for(const g of lord.team.gens)g.troops=Math.max(g.troops,Math.round(g.max*.5));
+  G.buffs.push({side:1,dmg:.7,days:[G.day,99]});   // 斷後拖住追兵：敵軍之後的傷害 ×0.7
+  const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!unitAt(x,y);
+  const c=[[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1],[0,2],[2,0],[-2,0]].map(([a,b])=>[lord.x+a,lord.y+b]).find(([x,y])=>free(x,y));
+  if(c)G.units.push({...mkUnit({side:0,key:'rescue',x:c[0],y:c[1],arm:'槍',t:Math.round(lord.team.gens[0].max*.8),gens:[fv.n,'槍足輕','弓足輕']},Math.max(...G.units.map(u=>u.id))+1),acted:true,moved:true});
+  G.ret={...farCorner(G.T,G.units,lord),from:G.day,name:'撤退路線',rescue:true};
+  addLog(`${fv.n} 前來斷後！${lordNm()}隊恢復到五成兵力，追兵的傷害 ×0.7。撤到地圖角落的旗子，就能敗走撤退。`);
+  renderObj();
+  return fv.rescue||[];
+}
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
   if(G.mode==='story'){
     if(G.camp&&G.over)return;
     const sc=G.sc,lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
-    const fled=sc.retreat&&G.day>=sc.retreat.from&&G.units.some(u=>u.lord&&alive(u)&&u.x===sc.retreat.x&&u.y===sc.retreat.y);
+    const fled=G.ret&&G.day>=G.ret.from&&G.units.some(u=>u.side===0&&u.lord&&alive(u)&&u.x===G.ret.x&&u.y===G.ret.y);
     const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0)||fled;
     const lose=!win&&(lordDown||!left(0)||timeUp);
     if(win&&!G.st.killDay)G.st.killDay=sc.survive&&timeUp?sc.days:G.day;
@@ -670,10 +693,10 @@ function checkOver(){
     let lines,sub=[];
     if(win){
       const got=(sc.hidden||[]).map(h=>({h,ok:!!h.test(G.st)})),n=got.filter(x=>x.ok).length;
-      const rk=(sc.rank||[]).find(r=>n>=r.n);
+      const rk=G.rescued?{rank:'C',title:'敗走',ending:[]}:(sc.rank||[]).find(r=>n>=r.n);
       const rank=rk?.rank||'C',old=SET.camp?.[sc.id];
       if(!G.camp?.bandit&&(!old||RANKV[rank]>RANKV[old.rank])){(SET.camp||={})[sc.id]={rank,title:rk?.title||'',day:G.day};save()}
-      G.over=`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
+      G.over=G.rescued?`${sc.name}：敗走撤退成功（評價 C）`:`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
       sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
       lines=[...sc.talk.win,...(rk?.ending||[])];
       if(G.camp?.bandit){   // 盜賊小戰：固定經驗與銀，不推進關卡
@@ -804,7 +827,7 @@ async function autoUnit(u){
   if(G.spot&&!G.spot.done&&u.side===0&&!u.lord){const t=tiles.find(([x,y])=>atSpot({x,y},G.spot));if(t){await moveTo(t[0],t[1]);u.acted=true;await spotMeet();return}}
   const foes=G.units.filter(o=>o.side!==u.side&&alive(o));
   if(!foes.length){u.acted=true;return}
-  const sc=G.mode==='story'?G.sc:null,ret=sc?.retreat,lordU=G.units.find(o=>o.lord&&o.side===u.side&&alive(o));
+  const sc=G.mode==='story'?G.sc:null,ret=G.ret,lordU=G.units.find(o=>o.lord&&o.side===u.side&&alive(o));
   const goal=foes.find(o=>o.target)||[...foes].sort((a,b)=>dist(a,u)-dist(b,u))[0];
   let bk=null;
   for(const[x,y]of tiles){let d;
