@@ -226,4 +226,35 @@ export function statsAt(D,n,lv,r=4){
   if(!x){const b={5:[82,1.6],4:[72,1.3],3:[62,1.0]}[r]||[70,1.2];return Object.fromEntries(ST4.map(k=>[k,Math.round(b[0]+b[1]*(lv-1))]))}
   return Object.fromEntries(ST4.map(k=>{const[b,g]=x.st[k];return[k,Math.round((b+g*(lv-1))*10)/10]}));
 }
+// 滿紅（5 紅）的武將數值，劇本用：Lv50、4 個特性全部解鎖、自由點數 = 每 10 級 10 點（立身出世類特性另加）+ 紅度 5×10，全加在武勇／智略較高的一項；
+// 再乘上 兵種營 Lv5 與隊中已解鎖兵種特性（馬術、弓術…、X兵大將）提供的兵種等級（每級全屬性 +2%，上限 10＋大將數）、特性自身的屬性 %、我軍全體屬性 %。
+// 規則同 land.html 的組隊頁；沒有收錄的特性文字就只讀特性名稱。gens 是同隊武將名單。
+const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'},STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
+function traitFx(D,n,t){
+  const txt=D.traitText?.[n]?.[t];let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
+  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),c=txt.match(/等級上限增加(\d)級/);
+    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],+m[2]])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],+c[1]])):null}}
+  m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],m[2].length]))};
+  m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][m[2].length-1]};
+  m=(txt||'').match(/^我軍全體(武勇|智略|統率|速度)提高([\d.]+)%$/);if(m)return{team:m[1],tpct:+m[2]};
+  return{};
+}
+// 隊伍滿紅時自帶的兵種：把隊中每位武將 4 個特性裡的兵種加成（X術N、X兵大將）加總，最高的兵種為主；同分看大將自己，再依 騎→槍→弓→鐵炮→器械。都沒有就回 null。
+export function bestArm(D,names){
+  const score=n=>{const o={};for(const t of D.stats?.[n]?.traits||[]){const a=traitFx(D,n,t).arm;for(const k in a||{})o[k]=(o[k]||0)+a[k]}return o};
+  const tot={},lead=score(names[0]);for(const n of names){const o=score(n);for(const k in o)tot[k]=(tot[k]||0)+o[k]}
+  const order=['騎','槍','弓','鐵炮','器械'];
+  return order.filter(k=>tot[k]).sort((a,b)=>tot[b]-tot[a]||(lead[b]||0)-(lead[a]||0)||order.indexOf(a)-order.indexOf(b))[0]||null;
+}
+export function fullRedStats(D,n,names,arm,lv=50){
+  const traits=D.stats?.[n]?.traits||[];
+  let lvArm=5,cap=10;const team={};
+  for(const nm of names)for(const t of D.stats?.[nm]?.traits||[]){const x=traitFx(D,nm,t);lvArm+=x.arm?.[arm]||0;cap+=x.cap?.[arm]||0;if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
+  lvArm=Math.min(cap,lvArm);
+  const own={};let extra=0;
+  for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}
+  const st=statsAt(D,n,lv,D.stats?.[n]?.r),k=st.武勇>=st.智略?'武勇':'智略';
+  st[k]+=Math.floor(lv/10)*(10+extra)+50;
+  return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+(own[x]||0)+(team[x]||0))/100)*10)/10]));
+}
 export const innateOf=(D,n)=>D.stats?.[n]?.inn||D.innate?.[n]||'';

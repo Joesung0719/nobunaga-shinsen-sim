@@ -1,11 +1,11 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=21';
-import {chibi,SIDE_COL} from './chibi.js?v=21';
-import {isoGeom} from './iso.js?v=21';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=21';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=21';
-import {SCENARIOS} from './scenarios.js?v=21';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=21';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=23';
+import {chibi,SIDE_COL} from './chibi.js?v=23';
+import {isoGeom} from './iso.js?v=23';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=23';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=23';
+import {SCENARIOS} from './scenarios.js?v=23';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=23';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -53,7 +53,7 @@ function randomTeam(){
     const c=ns.reduce((a,n)=>a+costOf(n),0);
     if(c>20||c<16)continue;
     const sk=[];while(sk.length<6){const s=pick(GOOD);if(!sk.includes(s))sk.push(s)}
-    return{src:'random',arm:pick(['騎','弓','槍','鐵炮']),gens:ns.map((n,i)=>({n,s:sk.slice(i*2,i*2+2),t:10000}))};
+    return{src:'random',arm:bestArm(D,ns)||pick(['騎','弓','槍','鐵炮']),gens:ns.map((n,i)=>({n,s:sk.slice(i*2,i*2+2),t:10000}))};
   }
 }
 function builderTeam(){
@@ -201,7 +201,7 @@ function renderSetup(){
   $('storyList').replaceChildren(...SCENARIOS.map(sc=>{
     const b=el('button',{type:'button',class:'scard','aria-pressed':String(SET.sc===sc.id)},
       el('b',{},sc.name),el('small',{},sc.year),el('p',{},sc.brief),
-      el('div',{class:'figs'},...sc.units.filter(u=>u.side===0).map(u=>el('div',{class:'fig',html:chibi({n:u.gens[0],f:facOf(u.gens[0])},{arm:u.arm,side:0,boss:true})+`<span>${u.gens[0]}</span>`}))));
+      el('div',{class:'figs'},...sc.units.filter(u=>u.side===0).map(u=>el('div',{class:'fig',html:chibi({n:u.gens[0],f:facOf(u.gens[0])},{arm:armOfUnit(u),side:0,boss:true})+`<span>${u.gens[0]}</span>`}))));
     b.onclick=()=>{SET.sc=sc.id;save();renderSetup()};return b}));
   // 對戰模擬是一隊對一隊；打地仍可帶 3 隊
   const n=SET.mode==='pvp'?1:3;
@@ -232,8 +232,9 @@ function genMap(mode){
 }
 // skills for scenario generals: innate + 2 picked from the modelled pool by name (same every time)
 function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
+const armOfUnit=u=>bestArm(D,u.gens)||u.arm;   // 劇本的兵種：以隊伍滿紅時自帶的兵種為主，沒有兵種特性才用劇本寫的
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-  team:battleTeam({arm:u.arm,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)});
+  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t,st:fullRedStats(D,n,u.gens,armOfUnit(u))}))},u.side)});   // 劇本的武將一律滿紅
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
 //   say 對話；log 戰報文字；spawn 增援部隊（格子被占住就往旁邊找空格）；ai {部隊代號:{ai,r}} 改變行動；
 //   buff {side,dmg,days:[起,迄],arm?,label}：期間內該陣營（可限兵種）造成的傷害乘以 dmg；heal {side,pct} 補兵
