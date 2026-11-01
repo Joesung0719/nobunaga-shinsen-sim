@@ -1,18 +1,18 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=30';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=30';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp} from './campaign.js?v=30';
-import {isoGeom} from './iso.js?v=30';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=30';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=30';
-import {SCENARIOS} from './scenarios.js?v=30';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=30';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=31';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=31';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=31';
+import {isoGeom} from './iso.js?v=31';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=31';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=31';
+import {SCENARIOS} from './scenarios.js?v=31';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=31';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='21';
+const VER='22';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -187,7 +187,10 @@ function showSkill(n){
 // ---- 戰役畫面：建立角色／角色卡與配點／關卡列表 ----
 const campIdx=()=>{const h=SET.hero;return Math.max(0,Math.min(SET.campSel??h.stage,h.stage,CHAIN.length-1))};
 function campStageId(){const h=SET.hero,i=campIdx(),ids=CHAIN[i].ids;return ids.length>1?(h.pick[i]&&ids.includes(h.pick[i])?h.pick[i]:ids[0]):ids[0]}
-const NEWH={name:'',arm:'騎',color:COLORS[0][0],lean:'武'};
+const NEWH={name:'',arm:'騎',color:COLORS[0][0],lean:'武',party:['織田信雄','筒井順慶']};
+const starsOf=n=>'★'.repeat(ROSTER.get(n)?.r||3);
+const compFig=n=>portrait(n,chibi({n,f:facOf(n)},{arm:'槍',side:0,boss:false}));
+const armTxt=n=>{const a=bestArm(D,[n]);return a?`自帶 ${a==='槍'?'足輕':a}`:'兵種依主角'};
 const heroFig=h=>chibi({n:h.name,f:''},{arm:h.arm,side:0,boss:true});
 function renderCamp(){
   const box=$('campRow'),h=SET.hero;
@@ -199,11 +202,16 @@ function renderCamp(){
     chips(armBox,HARMS.map(a=>[a,a==='槍'?'足輕':a==='騎'?'騎兵':a==='弓'?'弓兵':a]),NEWH.arm,v=>{NEWH.arm=v;renderCamp()});
     chips(colBox,COLORS.map(([c,l])=>[c,l]),NEWH.color,v=>{NEWH.color=v;renderCamp()});
     chips(leanBox,ATTRS.map(a=>[a,`${a}　${ATTR_NAME[a]}`]),NEWH.lean,v=>{NEWH.lean=v;renderCamp()});
+    const pick2=el('div',{class:'mates'},...STARTERS.map(n=>{
+      const on=NEWH.party.includes(n);
+      const b=el('button',{type:'button',class:'mate','aria-pressed':String(on)},el('div',{class:'fig',html:compFig(n)}),el('span',{},n));
+      b.onclick=()=>{if(on)NEWH.party=NEWH.party.filter(x=>x!==n);else NEWH.party=[...NEWH.party,n].slice(-PARTY_MAX);renderCamp()};return b}));
     const go=el('button',{type:'button',class:'btn big'},'開始戰役');
     go.onclick=()=>{
       const nm=NEWH.name.trim();
       if(!nm)return alert('先替你的角色取個名字。');
       if(ROSTER.has(nm)||nm==='旁白'||nm==='我')return alert('這個名字和既有武將重複了，換一個吧。');
+      if(NEWH.party.length<PARTY_MAX)return alert('請選兩位 3★ 夥伴。');
       SET.hero=newHero({...NEWH,name:nm});setSpec(SET.hero.name,heroSpec(SET.hero));SET.campSel=0;save();renderSetup();
     };
     const tmp={name:NEWH.name.trim()||'無名',arm:NEWH.arm,color:NEWH.color,lean:NEWH.lean};
@@ -218,6 +226,7 @@ function renderCamp(){
         el('div',{class:'row'},el('span',{class:'lbl'},'盔甲'),colBox),
         el('div',{class:'row'},el('span',{class:'lbl'},'傾向'),leanBox),
         el('small',{class:'muted'},ATTR_HINT[NEWH.lean]+'（起始 +3 點）'),
+        el('div',{class:'row',style:'margin-top:8px'},el('span',{class:'lbl'},'夥伴'),el('small',{class:'muted'},`選兩位 3★ 武將同隊（已選 ${NEWH.party.length}/${PARTY_MAX}），之後會有更強的武將加入`)),pick2,
         el('div',{class:'row',style:'margin-top:10px'},go))));
     return;
   }
@@ -258,6 +267,17 @@ function renderCamp(){
       attrs,
       el('small',{class:'muted'},`帶兵 ${fmt(heroTroops(h))}；我方名將的等級跟著你走（Lv${h.lv}），敵軍每關固定。`),
       el('div',{class:'row',style:'margin-top:8px'},reset))),
+    el('div',{class:'shop'},el('h3',{},'夥伴',el('small',{class:'muted'},`　同隊 ${PARTY_MAX} 位，點選名簿裡的武將換人`)),
+      el('div',{class:'mates'},...h.roster.map(n=>{
+        const on=h.party.includes(n),r=ROSTER.get(n)?.r||3;
+        const b=el('button',{type:'button',class:'mate','aria-pressed':String(on),title:on?'同隊中（再點一次移出）':'點一下加入隊伍'},el('div',{class:'fig',html:compFig(n)}),el('span',{},n),el('small',{class:'muted'},`${starsOf(n)}${on?'・同隊':''}`));
+        b.onclick=()=>{if(on){if(h.party.length>1)h.party=h.party.filter(x=>x!==n)}else h.party=[...h.party,n].slice(-PARTY_MAX);save();renderCamp()};return b}))),
+    el('div',{class:'shop'},el('h3',{},'武將招募',el('small',{class:'muted'},`　5★ 每位 ${fmt(recruitPrice(h))} 銀；通關新的關卡會開放更多人選`)),
+      ...RECRUIT.map(([n,at])=>{
+        const have=h.roster.includes(n),locked=at>=h.stage&&!have,p=recruitPrice(h);
+        const b=el('button',{type:'button',class:'btn',disabled:have||locked||h.silver<p},have?'已加入':locked?`第 ${at+1} 關後開放`:`招募 ${fmt(p)} 銀`);
+        b.onclick=()=>{if(h.silver<p)return;h.silver-=p;h.roster.push(n);if(h.party.length<PARTY_MAX)h.party.push(n);save();sfx('select');renderCamp()};
+        return el('div',{class:'shopRow'},el('b',{},n),el('span',{class:'muted'},starsOf(n)),el('small',{class:'muted'},`${armTxt(n)}`),el('span'),b)})),
     h.bandit?(()=>{const go=el('button',{type:'button',class:'btn'},'討伐盜賊（限 4 回合）');go.onclick=()=>startStory(null,true);
       return el('div',{class:'bandit'},el('b',{},'盜賊出沒！'),el('small',{class:'muted'},`獎勵 ${fmt(banditSilver(h.bandit.i))} 銀與經驗；不理會的話，下一關開場被偷走 5% 的銀。`),go)})():'',
     el('div',{class:'shop'},el('h3',{},'商店',el('small',{class:'muted'},`　銀 ${fmt(h.silver)}${h.pts.魅?`・魅力折扣 ${Math.min(15,h.pts.魅*.3).toFixed(1)}%`:''}`)),
@@ -332,7 +352,15 @@ let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, 
 const gearSt=(st,side)=>{if(!CAMP||side!==0)return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor||(u.ai==='guard'?[u.x,u.y]:undefined),r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
   team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&u.side===0?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
-const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[{n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)}]},0)});
+// 夥伴的數值：5★ 一律滿紅；3★、4★ 用該等級的基礎成長。等級都跟著玩家，再套用裝備加成
+function compStats(n,h){
+  const r=ROSTER.get(n)?.r||4;
+  const st=r>=5&&D.stats[n]?fullRedStats(D,n,[n],h.arm,h.lv):statsAt(D,n,h.lv,r);
+  return gearSt(st,0);
+}
+const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[
+  {n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)},
+  ...(h.party||[]).slice(0,PARTY_MAX).map(n=>({n,s:fixedSkills(n),t:Math.round(heroTroops(h)*.8),st:compStats(n,h)}))]},0)});
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
 //   say 對話；log 戰報文字；spawn 增援部隊（格子被占住就往旁邊找空格）；ai {部隊代號:{ai,r}} 改變行動；
 //   buff {side,dmg,days:[起,迄],arm?,label}：期間內該陣營（可限兵種）造成的傷害乘以 dmg；heal {side,pct} 補兵
@@ -611,6 +639,12 @@ function checkOver(){
         sub.splice(1,0,`戰役：獲得 ${fmt(silver)} 銀${h.sale?`；商店本期特價：${SHOP.find(x=>x.k===h.sale).n}（7 折）`:''}`);
         sub.splice(1,0,`戰役：獲得經驗 ${gain}（擊潰敵軍 ${foes} 隊${first?'':'，重打舊關只拿 25%'}）${up?`，Lv${lv0} → Lv${h.lv}，自由點數 +${up}`:''}`);
         lines.push(...(SCENES[sc.id]||generic(sc.lordName)).post);
+        const jn=JOIN[sc.id];
+        if(first&&jn&&!h.roster.includes(jn)){
+          h.roster.push(jn);if(h.party.length<PARTY_MAX)h.party.push(jn);save();
+          lines.push({who:jn,text:'{名}，這一仗我都看在眼裡。若不嫌棄，請讓我也加入你的隊伍。'});
+          sub.push(`夥伴加入：${jn}（${starsOf(jn)}）`);
+        }
         if(h.bandit)sub.push('路上有盜賊出沒！回戰役畫面可以選擇討伐，不理會的話下一關開場會被偷走 5% 的銀。');
       }
     }else{

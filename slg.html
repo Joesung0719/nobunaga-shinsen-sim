@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&family=LXGW+WenKai+TC:wght@400;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'21';
+:root{--slg-ver:'22';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -167,6 +167,10 @@ svg.chibi.flip{transform:scaleX(-1)}
 @media (max-width:560px){.shopRow{grid-template-columns:70px 50px 1fr;}.shopRow .btn{grid-column:1/-1}}
 .bandit{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;border:1px solid #a3352f;border-radius:8px;padding:10px 12px;background:#241512}
 .bandit b{color:#e86a5a;font-family:var(--display)}
+.mates{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.mate{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:#171412;font-size:.8rem;text-align:center}
+.mate .fig svg,.mate .fig img{width:56px;height:auto}
+.mate[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
 .scard:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:560px){.hcard{grid-template-columns:1fr}.hcard .fig.big{text-align:center}}
 dialog.talk{position:fixed;inset:auto 0 12px 0;margin:0 auto;width:min(520px,calc(100vw - 16px));cursor:pointer}
@@ -359,7 +363,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>
-<script type="module" src="slg/game.js?v=30"></script>
+<script type="module" src="slg/game.js?v=31"></script>
 <script src="site-nav.js?v=3" data-page="slg"></script>
 </body>
 </html>
