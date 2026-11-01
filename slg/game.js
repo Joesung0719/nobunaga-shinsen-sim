@@ -1,18 +1,18 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=27';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=27';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver} from './campaign.js?v=27';
-import {isoGeom} from './iso.js?v=27';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=27';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=27';
-import {SCENARIOS} from './scenarios.js?v=27';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=27';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=28';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=28';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp} from './campaign.js?v=28';
+import {isoGeom} from './iso.js?v=28';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=28';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=28';
+import {SCENARIOS} from './scenarios.js?v=28';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=28';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='20';
+const VER='21';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -258,6 +258,8 @@ function renderCamp(){
       attrs,
       el('small',{class:'muted'},`帶兵 ${fmt(heroTroops(h))}；我方名將的等級跟著你走（Lv${h.lv}），敵軍每關固定。`),
       el('div',{class:'row',style:'margin-top:8px'},reset))),
+    h.bandit?(()=>{const go=el('button',{type:'button',class:'btn'},'討伐盜賊（限 4 回合）');go.onclick=()=>startStory(null,true);
+      return el('div',{class:'bandit'},el('b',{},'盜賊出沒！'),el('small',{class:'muted'},`獎勵 ${fmt(banditSilver(h.bandit.i))} 銀與經驗；不理會的話，下一關開場被偷走 5% 的銀。`),go)})():'',
     el('div',{class:'shop'},el('h3',{},'商店',el('small',{class:'muted'},`　銀 ${fmt(h.silver)}${h.pts.魅?`・魅力折扣 ${Math.min(15,h.pts.魅*.3).toFixed(1)}%`:''}`)),
       ...SHOP.map(it=>{
         const lv=h.shop[it.k],maxed=lv>=it.max,p=price(h,it);
@@ -328,7 +330,7 @@ function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0
 const armOfUnit=u=>bestArm(D,u.gens)||u.arm;   // 劇本的兵種：以隊伍滿紅時自帶的兵種為主，沒有兵種特性才用劇本寫的
 let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, lvB 敵方等級}
 const gearSt=(st,side)=>{if(!CAMP||side!==0)return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
-const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
+const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor||(u.ai==='guard'?[u.x,u.y]:undefined),r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
   team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&u.side===0?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
 const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[{n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)}]},0)});
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
@@ -354,29 +356,33 @@ async function runEvents(on){
     if(ev.say)await talk(ev.say);
   }
 }
-function startStory(scId){
-  const sc=SCENARIOS.find(x=>x.id===(scId||SET.sc));let id=0;
-  const hero=SET.mode==='camp'?SET.hero:null,ci=hero?campIdx():0;
+function startStory(scId,bandit){
+  const hero=SET.mode==='camp'?SET.hero:null,ci=hero?(bandit?hero.bandit.i:campIdx()):0;
+  const sc=bandit?banditScenario(ci,hero):SCENARIOS.find(x=>x.id===(scId||SET.sc));let id=0;
   CAMP=hero?{h:hero,i:ci,lvA:hero.lv,lvB:enemyLv(ci)}:null;
+  if(hero&&!bandit&&hero.bandit){   // 沒去打的盜賊，下一關開場偷走 5% 的銀
+    const lost=Math.round(hero.silver*.05);hero.silver-=lost;hero.bandit=null;save();
+    if(lost)setTimeout(()=>addLog(`上一關留下的盜賊趁夜偷走了 ${fmt(lost)} 銀。`),0);
+  }
   const T=sc.map.map(r=>[...r]);
   const carries=(sc.carry||[]).filter(carryOk);
   const units=sc.units.map(u=>{let t=u.t;for(const c of carries)if(c.troops&&u.side===c.troops.side&&(!c.troops.keys||c.troops.keys.includes(u.key)))t=Math.round(t*(1+c.troops.pct));return mkUnit({...u,t},id++)});
   if(hero){   // 主角當作額外一隊，放在大將旁邊的空格
-    const base=units.find(u=>u.side===0&&u.lord)||units.find(u=>u.side===0);
+    const base=units.find(u=>u.side===0&&u.lord)||units.find(u=>u.side===0)||{x:3,y:8};
     const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!units.some(o=>o.x===x&&o.y===y);
     const spot=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[2,0],[-2,0],[0,2]].map(([a,b])=>[base.x+a,base.y+b]).find(([a,b])=>free(a,b))||[base.x,base.y];
     units.push(mkHero(hero,id++,spot[0],spot[1]));
   }
   G={T,units,buffs:carries.filter(c=>c.buff).map(c=>c.buff),fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
-    camp:hero?{h:hero,i:ci,lvA:hero.lv,lvB:CAMP.lvB}:null,
+    camp:hero?{h:hero,i:ci,lvA:hero.lv,lvB:CAMP.lvB,bandit:!!bandit}:null,
     st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
-  addLog(`${hero?`戰役第 ${ci+1} 關・`:''}劇本「${sc.name}」：${sc.brief}`);
+  addLog(`${hero?(bandit?'關間・':`戰役第 ${ci+1} 關・`):''}${bandit?'':'劇本'}「${sc.name}」：${sc.brief}`);
   if(hero)addLog(`${hero.name} Lv${hero.lv} 出陣（我方名將 Lv${hero.lv}，敵軍 Lv${CAMP.lvB}）`);
   for(const c of carries)addLog(`戰役加成（${scName(c.from)}）：${c.text}`);
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
-  const scene=hero?(SCENES[sc.id]||generic(sc.lordName)):null;
+  const scene=hero&&!bandit?(SCENES[sc.id]||generic(sc.lordName)):null;
   talk([...(scene?.pre||[]),...(sc.talk.start||[])]).then(()=>runEvents('day'));
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
@@ -421,7 +427,7 @@ async function choose(opts,sub){
   await talk([{who:'我',text:o.text,tag:`${ATTR_NAME[o.a]} +${p}`},...(o.reply||[])]);
 }
 function startGame(){
-  if(SET.mode==='camp')return SET.hero?startStory(campStageId()):undefined;
+  if(SET.mode==='camp')return SET.hero?(G?.camp?.bandit&&SET.hero.bandit?startStory(null,true):startStory(campStageId())):undefined;
   if(SET.mode==='story')return startStory();
   const m=genMap(SET.mode);let id=0;
   const units=[];
@@ -573,11 +579,15 @@ function checkOver(){
       const got=(sc.hidden||[]).map(h=>({h,ok:!!h.test(G.st)})),n=got.filter(x=>x.ok).length;
       const rk=(sc.rank||[]).find(r=>n>=r.n);
       const rank=rk?.rank||'C',old=SET.camp?.[sc.id];
-      if(!old||RANKV[rank]>RANKV[old.rank]){(SET.camp||={})[sc.id]={rank,title:rk?.title||'',day:G.day};save()}
+      if(!G.camp?.bandit&&(!old||RANKV[rank]>RANKV[old.rank])){(SET.camp||={})[sc.id]={rank,title:rk?.title||'',day:G.day};save()}
       G.over=`${sc.name}：勝利！${rk?`評價 ${rk.rank}「${rk.title}」`:''}`;
       sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
       lines=[...sc.talk.win,...(rk?.ending||[])];
-      if(G.camp){   // 戰役：結算經驗，第一次通關才推進到下一關；重打舊關只拿 25%
+      if(G.camp?.bandit){   // 盜賊小戰：固定經驗與銀，不推進關卡
+        const{h,i}=G.camp,lv0=h.lv,up=addExp(h,banditExp(i)),sv=banditSilver(i);h.silver+=sv;h.bandit=null;save();
+        G.over=`盜賊討伐：勝利！`;sub=[`第 ${G.day} 天取勝`,`戰役：獲得經驗 ${banditExp(i)}、${fmt(sv)} 銀${up?`，Lv${lv0} → Lv${h.lv}，自由點數 +${up}`:''}`];
+        lines=[...sc.talk.win];
+      }else if(G.camp){   // 戰役：結算經驗，第一次通關才推進到下一關；重打舊關只拿 25%
         const{h,i}=G.camp,first=i>=h.stage,foes=G.units.filter(u=>u.side===1&&!alive(u)).length;
         const gain=Math.round((stageExp(i,rank)+routExp(i)*foes)*(first?1:.25)),lv0=h.lv,up=addExp(h,gain);
         if(first)h.stage=Math.min(CHAIN.length,i+1);
@@ -585,9 +595,11 @@ function checkOver(){
         const ag=first?1:.25,silver=Math.round(stageSilver(i,rank,foes)*ag);h.silver+=silver;
         const open=SHOP.filter(it=>h.shop[it.k]<it.max);h.sale=open.length?pick(open).k:null;
         save();
+        if(first&&Math.random()<.6)h.bandit={i};save();
         sub.splice(1,0,`戰役：獲得 ${fmt(silver)} 銀${h.sale?`；商店本期特價：${SHOP.find(x=>x.k===h.sale).n}（7 折）`:''}`);
         sub.splice(1,0,`戰役：獲得經驗 ${gain}（擊潰敵軍 ${foes} 隊${first?'':'，重打舊關只拿 25%'}）${up?`，Lv${lv0} → Lv${h.lv}，自由點數 +${up}`:''}`);
         lines.push(...(SCENES[sc.id]||generic(sc.lordName)).post);
+        if(h.bandit)sub.push('路上有盜賊出沒！回戰役畫面可以選擇討伐，不理會的話下一關開場會被偷走 5% 的銀。');
       }
     }else{
       G.over=`${sc.name}：敗北（${lordDown?(sc.lordName||'總大將')+'隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;

@@ -251,3 +251,25 @@ export const generic=(lord)=>({
        {who:'我',text:'「是。我會盡全力。」'}],
   post:[{who:lord,text:'幹得好，{名}。先回營休息，下一場仗還在等著。'}],
 });
+
+// ---- 關間盜賊：限 4 回合的小戰，主角帶一隊村人義勇出陣，擊破頭目就贏 ----
+const BOSS=['黑風寨頭目','夜叉丸','赤鬼仁藏','山犬之助','鬼面源八'];
+export const banditSilver=i=>400+100*(i+1);
+export const banditExp=i=>150+30*(i+1);
+export function banditScenario(i,h){
+  const T=Math.round(heroTroops(h)*.9),b=BOSS[i%BOSS.length],m1=b+'的弓手',m2=b+'的騎手';
+  return{id:'bandit',name:'盜賊討伐',year:'關間',lordName:h.name,days:4,
+    brief:`${b}率手下在路上劫掠。4 回合內擊破頭目，否則他們會逃進山裡。`,
+    win:[`4 回合內擊破${b}`],lose:['我方全軍潰走','4 回合內沒有擊破頭目'],
+    map:['平平林平林平平','平林平平平林平','平平平林平平平','林平平平平平林','平平林平林平平','平林平平平平平','平平平林平平林','林平平平平林平','平平平平平平平'],
+    units:[
+      {side:0,key:'militia',x:2,y:8,arm:'槍',t:Math.round(T*.7),gens:['村人義勇']},
+      {side:1,key:'boss',target:true,x:3,y:1,arm:'槍',t:Math.round(T*.8),gens:[b],ai:'advance'},
+      {side:1,key:'m1',x:1,y:2,arm:'弓',t:Math.round(T*.5),gens:[m1],ai:'guard',r:2},
+      {side:1,key:'m2',x:5,y:2,arm:'騎',t:Math.round(T*.5),gens:[m2],ai:'guard',r:2},
+    ],
+    talk:{start:[{who:'旁白',text:`路旁的林子裡傳來了喊聲：「${b}在此，留下買路錢！」`}],
+      win:[{who:'旁白',text:`${b}倒下了，山賊四散逃走。路上的行商向你深深鞠躬。`}],
+      lose:[{who:'旁白',text:'你被迫退下。山賊們搶走東西，消失在林子裡。'}]},
+    hidden:[],rank:[]};
+}
