@@ -733,7 +733,63 @@ const ALL=[{
   carry:[
     {from:'mikatagahara',min:'A',text:'三方原的教訓：德川軍全程造成的傷害 ×1.1',buff:{side:0,dmg:1.1,days:[1,99]}},
   ],
+},{
+  id:'sekigahara',lordName:'德川家康',name:'關原之戰',year:'慶長五年（1600）',
+  brief:'天下分為東西兩軍，大霧籠罩關原。你是家康的東軍：撐到小早川秀秋倒戈，擊破石田三成的本陣。',
+  win:['擊破石田三成隊（西軍本陣）'],
+  lose:['德川家康隊潰走','我方全軍潰走','6 天內沒有擊破石田三成隊'],
+  days:6,
+  map:['山山林平林山山','山平平平平平山','林平村平平林平','平平平平平平平','平林平平平林平','平平平林平平平','林平平平平平林','山平平平平平山','山山平城平山山'],
+  units:[
+    {side:0,key:'ieyasu',x:3,y:7,arm:'槍',t:10000,lord:true,gens:['德川家康','本多忠勝','井伊直政']},
+    {side:0,key:'fukushima',x:1,y:6,arm:'槍',t:10000,gens:['福島正則','加藤嘉明','黑田長政']},
+    {side:0,key:'hosokawa',x:5,y:6,arm:'鐵炮',t:9000,gens:['細川忠興','藤堂高虎','京極高知']},
+    {side:1,key:'ishida',x:3,y:1,arm:'槍',t:10000,ai:'hold',target:true,gens:['石田三成','島左近','蒲生賴郎']},
+    {side:1,key:'ukita',x:1,y:2,arm:'槍',t:10000,ai:'guard',anchor:[1,2],r:2,gens:['宇喜多秀家','明石全登','小西行長']},
+    {side:1,key:'otani',x:5,y:3,arm:'槍',t:9000,ai:'guard',anchor:[5,3],r:2,gens:['大谷吉繼','平塚為廣','戶田重政']},
+    {side:1,key:'shimazu',x:3,y:3,arm:'鐵炮',t:8000,ai:'hold',gens:['島津義弘','島津豐久','長壽院盛淳']},
+  ],
+  events:[
+    {day:2,log:'松尾山上的小早川軍遲遲沒有動作，雙方都在看著他們。',
+      say:[{who:'石田三成',text:'松尾山的小早川……為什麼還不動？狼煙已經點了兩次。'},{who:'德川家康',text:'再等一下。他還在選邊。'}]},
+    {day:3,log:'小早川秀秋倒戈：西軍動搖，傷害 ×0.85；東軍傷害 ×1.2（第 3–6 天）',buff:{side:0,dmg:1.2,days:[3,6]},
+      say:[{who:'小早川秀秋',text:'……全軍，下山！目標，大谷吉繼的陣！'},{who:'大谷吉繼',text:'果然，還是來了。三成，我先走一步。'}],
+      spawn:[{side:0,key:'kobayakawa',x:5,y:4,arm:'槍',t:9000,gens:['小早川秀秋','脇坂安治','朽木元綱']}]},
+    {day:3,log:'西軍崩潰的聲音：西軍傷害 ×0.85（第 3–6 天）',buff:{side:1,dmg:.85,days:[3,6]}},
+    {day:4,log:'島津義弘開始突破：島津軍轉為主動出擊',ai:{shimazu:{ai:'advance'}},
+      say:[{who:'島津義弘',text:'既然大勢已去，就朝家康的本陣，一路殺出去！'},{who:'德川家康',text:'薩摩的人，真是不要命。'}]},
+  ],
+  talk:{
+    start:[
+      {who:'德川家康',text:'天下分為兩半，今天，就在這片霧裡，一次分出勝負。'},
+      {who:'福島正則',text:'主公，我軍願意擔任先鋒！'},
+      {who:'石田三成',text:'為了豐臣家，今天，不能退一步。'}],
+    rout_ishida:[{who:'石田三成',text:'……可惡。就差一點。'},{who:'德川家康',text:'三成，你是個忠臣。'}],
+    rout_otani:[{who:'大谷吉繼',text:'三成……保重。'}],
+    rout_ukita:[{who:'宇喜多秀家',text:'連我也……'}],
+    rout_shimazu:[{who:'島津義弘',text:'撤！朝伊勢路突圍！'}],
+    rout_ieyasu:[{who:'石田三成',text:'家康倒下了？天下，是我們的了。'}],
+    lordLow:[{who:'本多忠勝',text:'主公，兵力折損過半，請退後一些！'},{who:'德川家康',text:'這一戰，不能輸。'}],
+    win:[{who:'德川家康',text:'石田軍的本陣，已經擊破。'},{who:'井伊直政',text:'主公，關原的霧，散了。'}],
+    lose:[{who:'石田三成',text:'東軍潰散了！天下，屬於豐臣！'}],
+    loseLord:[{who:'石田三成',text:'家康……倒下了。'}],
+    loseTime:[{who:'石田三成',text:'東軍沒能在時間內擊破本陣。豐臣的天下，保住了。'}],
+  },
+  hidden:[
+    {id:'fast',name:'半日定天下',hint:'據說，這一戰只打了半天。',desc:'第 3 天以內取勝',test:st=>st.killDay<=3},
+    {id:'safe',name:'東軍無一退卻',hint:'今天，沒有人可以先倒下。',desc:'我方沒有任何一隊潰走',test:st=>!st.routed.length},
+    {id:'otani',name:'送別大谷吉繼',hint:'有人，等的就是這一天。',desc:'擊潰大谷吉繼隊',test:st=>st.foeRouted.includes('otani')},
+    {id:'shimazu',name:'島津之退口',hint:'最不要命的人，最後出現。',desc:'擊潰島津義弘隊',test:st=>st.foeRouted.includes('shimazu')},
+  ],
+  rank:[
+    {n:3,rank:'S',title:'天下分け目',ending:[{who:'德川家康',text:'關原一戰，天下定了。接下來，是讓這個天下，安靜下來。'}]},
+    {n:1,rank:'A',title:'關原大捷',ending:[{who:'本多忠勝',text:'主公，東軍，贏了。'}]},
+    {n:0,rank:'B',title:'慘勝',ending:[{who:'井伊直政',text:'贏是贏了，只是，這一天流的血，實在太多。'}]},
+  ],
+  carry:[
+    {from:'komaki',min:'A',text:'長久手的磨練：德川軍全程造成的傷害 ×1.1',buff:{side:0,dmg:1.1,days:[1,99]}},
+  ],
 }];
 // 依年代排序（劇本選單的順序）
-const ORDER=['okehazama','kawanaka_u','kawanaka_t','kanegasaki','anegawa','mikatagahara','nagashino','tedorigawa','honnoji','yamazaki','shizugatake','komaki'];
+const ORDER=['okehazama','kawanaka_u','kawanaka_t','kanegasaki','anegawa','mikatagahara','nagashino','tedorigawa','honnoji','yamazaki','shizugatake','komaki','sekigahara'];
 export const SCENARIOS=ORDER.map(id=>ALL.find(x=>x.id===id));
