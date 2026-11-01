@@ -95,17 +95,18 @@ function crestOf(k,y,col){
   }
 }
 // g: {n, f(勢力)}; o: {arm, side, boss, flip}
+let UID=0;   // 漸層 id 每隻武將獨立：同一頁有很多 SVG，id 重複時若第一個在隱藏區塊，後面的漸層會失效變全黑
 export function chibi(g,o={}){
-  const h=hash(g.n),sp=SPEC[g.n]||{},arm=o.arm||'槍',side=o.side||0;
+  const uid=++UID,h=hash(g.n),sp=SPEC[g.n]||{},arm=o.arm||'槍',side=o.side||0;
   const ar=sp.armor||FAC_COL[g.f]||'#6a6f7a',trim=sp.trim||'#f2c94c',hair=sp.hair||HAIR[h%HAIR.length],skin=sp.skin||SKIN[(h>>>3)%SKIN.length];
   const ride=arm==='騎',dy=ride?-12:0,ey=31+dy,fem=!!sp.female;
   const helm=sp.helm||(fem?'none':['kabuto','kabuto','kabuto','jin'][(h>>>14)%4]);
   const crestK=sp.crest!==undefined?sp.crest:['moon','kuwa','sun','sword','x'][(h>>>5)%5];   // 前立最高不超過 viewBox 上緣
   const eyeK=sp.eye||['round','smile','fierce'][(h>>>9)%3];
-  const ink='#221a16',aL=lite(ar),aD=dark(ar),aid='a'+gid(ar),sid='s'+gid(skin);
+  const ink='#221a16',aL=lite(ar),aD=dark(ar),aid='a'+uid,sid='s'+uid,hid='h'+uid;
   const defs=`<defs><linearGradient id="${aid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${aL}"/><stop offset=".55" stop-color="${ar}"/><stop offset="1" stop-color="${aD}"/></linearGradient>`+
     `<radialGradient id="${sid}" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="${lerpHex(skin,'#ffffff',.35)}"/><stop offset=".6" stop-color="${skin}"/><stop offset="1" stop-color="${lerpHex(skin,'#a8643c',.45)}"/></radialGradient>`+
-    `<linearGradient id="hl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a5e6a"/><stop offset=".5" stop-color="#2e2a2c"/><stop offset="1" stop-color="#15131a"/></linearGradient></defs>`;
+    `<linearGradient id="${hid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a5e6a"/><stop offset=".5" stop-color="#2e2a2c"/><stop offset="1" stop-color="#15131a"/></linearGradient></defs>`;
   const E=(x,w=2.1,hh=2.7)=>`<ellipse cx="${x}" cy="${ey}" rx="${w}" ry="${hh}" fill="${ink}"/><circle cx="${x+.7}" cy="${ey-1}" r=".85" fill="#fff"/>`;
   const eye={
     round:E(26.5)+E(37.5),
@@ -136,12 +137,12 @@ export function chibi(g,o={}){
     :`<path d="M17 ${30+dy} Q16 ${41+dy} 21 ${42+dy} L43 ${42+dy} Q48 ${41+dy} 47 ${30+dy}Z" fill="${hair}"/>`;
   let top='';
   if(helm==='kabuto'){
-    top=`<path d="M15.5 ${27+dy} Q16 ${10+dy} 32 ${10+dy} Q48 ${10+dy} 48.5 ${27+dy} Q40 ${21+dy} 32 ${21+dy} Q24 ${21+dy} 15.5 ${27+dy}Z" fill="url(#hl)" stroke="#000" stroke-width=".7"/>`+
+    top=`<path d="M15.5 ${27+dy} Q16 ${10+dy} 32 ${10+dy} Q48 ${10+dy} 48.5 ${27+dy} Q40 ${21+dy} 32 ${21+dy} Q24 ${21+dy} 15.5 ${27+dy}Z" fill="url(#${hid})" stroke="#000" stroke-width=".7"/>`+
       `<path d="M16 ${27.5+dy} Q10 ${31+dy} 11.5 ${37+dy} Q16 ${35+dy} 17.5 ${30+dy}Z M48 ${27.5+dy} Q54 ${31+dy} 52.5 ${37+dy} Q48 ${35+dy} 46.5 ${30+dy}Z" fill="${ar}" stroke="#00000070" stroke-width=".7"/>`+
       `<path d="M20 ${20.4+dy} Q32 ${15.5+dy} 44 ${20.4+dy}" stroke="${trim}" stroke-width="1.4" fill="none"/><path d="M21 ${14+dy} Q28 ${11+dy} 35 ${12+dy}" stroke="#fff" stroke-opacity=".5" stroke-width="1.2" fill="none"/>`+
       (crestK?crestOf(crestK,9+dy):'');
   }else if(helm==='jin'){
-    top=`<path d="M10 ${23+dy} Q32 ${6+dy} 54 ${23+dy} Q32 ${27+dy} 10 ${23+dy}Z" fill="url(#hl)" stroke="#000" stroke-width=".7"/><path d="M18 ${20+dy} Q32 ${12+dy} 46 ${20+dy}" stroke="#fff" stroke-opacity=".45" stroke-width="1.2" fill="none"/><circle cx="32" cy="${14+dy}" r="1.6" fill="${trim}"/>`;
+    top=`<path d="M10 ${23+dy} Q32 ${6+dy} 54 ${23+dy} Q32 ${27+dy} 10 ${23+dy}Z" fill="url(#${hid})" stroke="#000" stroke-width=".7"/><path d="M18 ${20+dy} Q32 ${12+dy} 46 ${20+dy}" stroke="#fff" stroke-opacity=".45" stroke-width="1.2" fill="none"/><circle cx="32" cy="${14+dy}" r="1.6" fill="${trim}"/>`;
   }else if(helm==='eboshi'){
     top=`<path d="M19 ${22+dy} Q22 ${8+dy} 34 ${0+dy} Q42 ${8+dy} 45 ${22+dy} Q32 ${18+dy} 19 ${22+dy}Z" fill="#1d1a22" stroke="#000" stroke-width=".7"/><path d="M26 ${10+dy} Q33 ${5+dy} 38 ${12+dy}" stroke="#fff" stroke-opacity=".3" stroke-width="1" fill="none"/><path d="M45 ${21+dy} q8 3 7 14" stroke="#1d1a22" stroke-width="2" fill="none"/>`;
   }else if(helm==='hood'){
