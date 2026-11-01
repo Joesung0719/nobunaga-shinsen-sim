@@ -1,17 +1,17 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=15';
-import {chibi,SIDE_COL} from './chibi.js?v=15';
-import {isoTerrain,isoGeom} from './iso.js?v=15';
-import {leaves} from './fx.js?v=15';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=15';
-import {SCENARIOS} from './scenarios.js?v=15';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=15';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=17';
+import {chibi,SIDE_COL} from './chibi.js?v=17';
+import {isoTerrain,isoGeom} from './iso.js?v=17';
+import {leaves} from './fx.js?v=17';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=17';
+import {SCENARIOS} from './scenarios.js?v=17';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=17';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='15';
+const VER='17';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -70,7 +70,7 @@ setAudio(SET.audio||{});
 // 第一次載入這版時把舊存檔的選擇重設成新版（之前的預設是舊版）。
 if(!SET.v3){SET.v3=1;delete SET.engine;save()}
 {const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='classic'||e==='svg'){SET.engine=e==='phaser'?'phaser':'classic';save()}}
-const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=15').catch(e=>{console.error(e);return null}):null;
+const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=17').catch(e=>{console.error(e);return null}):null;
 let VIEW=null;
 const vid=u=>G.gid+':'+u.id;
 document.addEventListener('pointerdown',unlock);

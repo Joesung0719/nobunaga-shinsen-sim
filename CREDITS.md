@@ -15,7 +15,7 @@
 | 和風音樂與音效 | `slg/audio.js` | 本專案原創（WebAudio 即時合成，五聲音階自己寫的旋律） | 本專案 |
 | 字型 Noto Serif TC、Noto Sans TC、DotGothic16、霞鶩文楷 TC | 由 Google Fonts 載入，不放在 repo | Google／Fontworks／LXGW | SIL Open Font License 1.1 |
 
-| Kenney 素材 7 包（粒子、煙、UI 框、打擊／RPG／介面音效） | `assets/kenney/`（逐包明細見 `assets/kenney/CREDITS.md`） | Kenney Vleugels（https://kenney.nl），2026-10-31 Joe 以瀏覽器手動下載 | CC0 1.0；各資料夾附原包 `License.txt`。已放進 repo，尚未接進遊戲 |
+| Kenney 素材 7 包（粒子、煙、UI 框、打擊／RPG／介面音效） | `assets/kenney/`（逐包明細見 `assets/kenney/CREDITS.md`） | Kenney Vleugels（https://kenney.nl），2026-10-31 Joe 以瀏覽器手動下載 | CC0 1.0；各資料夾附原包 `License.txt`。已接進遊戲：`particle-pack`（星芒火花 star_06、煙 smoke_06、刀光 slash_03、火焰 flame_05、碎土 dirt_02，載入時縮小）、`ui-pack-rpg-expansion`（panel_brown 名牌框）、`impact-sounds` 與 `rpg-audio`（斬擊、受擊、腳步）、`interface-sounds`（點擊、確認）；其餘仍備用。程式在 `slg/board-phaser.js`、`slg/audio.js` |
 
 ## 候選素材（尚未下載）
 
