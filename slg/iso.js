@@ -1,7 +1,7 @@
 // 2.5D 斜視角地圖：程式畫的 SVG 地塊（戰場用 slg/board-phaser.js 轉成貼圖）（不使用遊戲素材）。
 // 每格是一塊有厚度的菱形地塊（頂面漸層＋細雜訊、受光邊、側面漸層）；山、森林、軍營、河、橋畫在地塊上，依 x+y 由後往前畫，前面的會遮住後面的。
 export const TW=96,TH=48;                       // 菱形的寬、高（SVG 單位）
-const LIFT={平:12,林:14,山:16,城:18,水:4,橋:6};    // 地塊厚度（水面較低）
+const LIFT={平:12,林:14,山:16,城:18,水:4,橋:6,寺:14,柵:12,田:8,村:12};    // 地塊厚度（水面較低）
 export function isoGeom(W,H){
   const OX=H*TW/2,OY=100;
   const vw=(W+H)*TW/2,vh=OY+(W+H-2)*TH/2+TH+24;
@@ -32,8 +32,29 @@ ${nobori(-30,-6,'#c8442c')}${nobori(26,-8,'#e3b75a')}
 <path d="M-7 13 L-5 -6 H5 L7 13Z" fill="#3b2a1c"/>
 <g class="fire" transform="translate(-20 20)"><path d="M-6 3 L6 -1 M-6 -1 L6 3" stroke="#5a3b22" stroke-width="2"/><path d="M0 -14 Q6 -6 3 0 Q0 3 -3 0 Q-6 -6 0 -14Z" fill="#ffb03a"/><path d="M0 -8 Q3 -3 1 0 Q0 1 -1 0 Q-3 -3 0 -8Z" fill="#fff2a8"/></g></g>`;
 };
+// ---- 新地形：馬防柵（長篠）、寺（本能寺）、田（水田）、村 ----
+const fence=(cx,cy)=>{let g=`<g transform="translate(${cx} ${cy})"><ellipse cx="0" cy="8" rx="38" ry="10" fill="#0003"/>`;
+  for(const row of[0,1]){const oy=row?10:-6,ox=row?-6:6;
+    for(let i=0;i<7;i++){const x=-36+i*10.5+ox,y=oy+i*2.2-6;g+=`<line x1="${x}" y1="${y+9}" x2="${x}" y2="${y-14}" stroke="#4a2f18" stroke-width="3" stroke-linecap="round"/><line x1="${x}" y1="${y+9}" x2="${x}" y2="${y-14}" stroke="#a8784a" stroke-width="1" stroke-linecap="round"/><path d="M${x-1.5} ${y-14} L${x} ${y-19} L${x+1.5} ${y-14}Z" fill="#7a5230"/>`}
+    g+=`<path d="M${-36+ox} ${oy-12} L${34+ox} ${oy+3.5} M${-36+ox} ${oy-3} L${34+ox} ${oy+12.5}" stroke="#6b4423" stroke-width="2" fill="none"/>`}
+  return g+'</g>'};
+const temple=(cx,cy)=>`<g transform="translate(${cx} ${cy})"><ellipse cx="0" cy="12" rx="38" ry="12" fill="#0003"/>
+<path d="M-30 6 L0 20 L30 6 L30 0 L0 14 L-30 0Z" fill="#8f8a78" stroke="#5e5a4c" stroke-width=".8"/><path d="M-30 0 L0 14 L30 0 L0 -14Z" fill="#d6d0b8" stroke="#6b6652" stroke-width=".8"/>
+<path d="M-18 -2 L-18 -22 L0 -14 L0 6Z" fill="#e8dcc0" stroke="#6b5a3e" stroke-width=".8"/><path d="M0 6 L0 -14 L18 -22 L18 -2Z" fill="#c9b894" stroke="#6b5a3e" stroke-width=".8"/>
+<path d="M-14 0 V-17 M-8 3 V-14 M8 3 V-14 M14 0 V-17" stroke="#9a2a1c" stroke-width="2.2"/><path d="M-4 5 L-4 -8 L4 -8 L4 5Z" fill="#3b2a1c"/>
+<path d="M-26 -20 Q-14 -18 0 -9 Q14 -18 26 -20 L16 -30 L0 -22 L-16 -30Z" fill="#3a3f4c" stroke="#1c1f28" stroke-width=".9"/><path d="M-26 -20 Q-14 -18 0 -9 Q14 -18 26 -20" stroke="#6a7084" stroke-width="1.4" fill="none"/>
+<path d="M-12 -30 L0 -38 L12 -30 L0 -24Z" fill="#c8442c" opacity=".0"/>
+<path d="M-17 -30 L0 -22 L17 -30 L10 -42 L0 -38 L-10 -42Z" fill="#454b5a" stroke="#1c1f28" stroke-width=".9"/><path d="M-17 -30 Q0 -20 17 -30" stroke="#7a8196" stroke-width="1.3" fill="none"/>
+<line x1="0" y1="-42" x2="0" y2="-52" stroke="#c9a23a" stroke-width="1.4"/><circle cx="0" cy="-47" r="2" fill="#c9a23a"/>
+<g transform="translate(-30 14)"><rect x="-1.4" y="-16" width="2.8" height="16" fill="#b8321f"/><rect x="-7" y="-17" width="14" height="2.6" fill="#b8321f"/><rect x="-5.5" y="-12.4" width="11" height="1.6" fill="#7a1f12"/></g></g>`;
+const paddy=(cx,cy,x,y)=>{let g='';for(let r=0;r<2;r++)for(let c=0;c<2;c++){const px=cx+(c-r)*20,py=cy+(c+r)*10-6;
+  g+=`<polygon points="${px},${py-9} ${px+20},${py+1} ${px},${py+11} ${px-20},${py+1}" fill="#7fc0d8" stroke="#8a6a3c" stroke-width="2"/>`;
+  for(let i=0;i<4;i++){const sx=px-12+i*7+rnd(x,y,i+r*4)*3,sy=py+1-(i<2?i:3-i)*2.6;g+=`<path d="M${sx} ${sy+3} l-1.4 -5 M${sx} ${sy+3} l0 -6 M${sx} ${sy+3} l1.4 -5" stroke="#5a9a3a" stroke-width="1" fill="none"/>`}}
+  return g};
+const village=(cx,cy,x,y)=>{const hut=(hx,hy,k)=>`<g transform="translate(${hx} ${hy}) scale(${k})"><path d="M-14 2 L0 8 L14 2 L14 -8 L0 -2 L-14 -8Z" fill="#e8dcc0" stroke="#6b5a3e" stroke-width=".8"/><path d="M0 8 L14 2 L14 -8 L0 -2Z" fill="#c9b894"/><path d="M-18 -6 L0 -26 L18 -6 L0 2Z" fill="#b89a52" stroke="#6b5a2a" stroke-width=".9"/><path d="M0 -26 L18 -6 L0 2Z" fill="#9a7e3c"/><path d="M-4 7 L-4 0 L3 -2 L3 5Z" fill="#3b2a1c" opacity=".8"/></g>`;
+  return`<ellipse cx="${cx}" cy="${cy+4}" rx="36" ry="11" fill="#0002"/>`+hut(cx-14,cy-2,.9)+hut(cx+15,cy+4,.8)+tree(cx+26,cy-4,.5)};
 // 地塊頂面漸層、側面漸層、細雜訊（整張地圖共用一份 defs）
-const TOP2={平:['#9cc85e','#6f9e3c'],林:['#7aab4a','#4f7f31'],山:['#a8ad78','#7c8456'],城:['#c9b58e','#9c8662'],水:['#5aa6d8','#2d6a9e'],橋:['#5aa6d8','#2d6a9e']};
+const TOP2={寺:['#c9c4b0','#9c9684'],柵:['#9cc85e','#6f9e3c'],田:['#8cc2d8','#4f8aa8'],村:['#b8c47a','#8a9a52'],平:['#9cc85e','#6f9e3c'],林:['#7aab4a','#4f7f31'],山:['#a8ad78','#7c8456'],城:['#c9b58e','#9c8662'],水:['#5aa6d8','#2d6a9e'],橋:['#5aa6d8','#2d6a9e']};
 const DEFS=`<defs><filter id="iTurb" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.18"/></filter>
 <pattern id="iGrain" width="120" height="120" patternUnits="userSpaceOnUse"><rect width="120" height="120" filter="url(#iTurb)"/></pattern>
 <linearGradient id="iPine" x1="0" x2="1"><stop offset="0" stop-color="#4f9a48"/><stop offset="1" stop-color="#2a5e2c"/></linearGradient>
@@ -81,6 +102,10 @@ export function isoTerrain(T){
     if(t==='橋')s+=`<polygon points="${cx-14},${ty+6} ${cx+34},${ty+30} ${cx+14},${ty+42} ${cx-34},${ty+18}" fill="#b98a55" stroke="#5a3b1e"/><path d="M${cx-24} ${ty+13} l48 24 M${cx-30} ${ty+20} l48 24" stroke="#6e4a2a" stroke-width="1.2"/><path d="M${cx-14} ${ty+4} l48 24" stroke="#8b2a1c" stroke-width="3"/>`;
     if(t==='林')s+=tree(cx-18,ty+TH/2+2,.9)+maple(cx+16,ty+TH/2-4,.8,rnd(x,y)>.5?'#d4462c':'#e48a2a')+tree(cx,ty+TH/2+12,1);
     if(t==='山')s+=mountain(cx,ty+TH/2+4);
+    if(t==='柵')s+=fence(cx,ty+TH/2);
+    if(t==='寺')s+=temple(cx,ty+TH/2+2);
+    if(t==='田')s+=paddy(cx,ty+TH/2,x,y);
+    if(t==='村')s+=village(cx,ty+TH/2,x,y);
     if(t==='城')s+=keeps.has(x+','+y)?honjin(cx,ty+TH/2):tent(cx+(rnd(x,y)-.5)*16,ty+TH/2+2,.8);
     if(t==='平'&&rnd(x,y,9)<.4){const fx=cx-14+rnd(x,y,3)*28,fy=ty+TH/2-6+rnd(x,y,4)*12;s+=`<circle cx="${fx}" cy="${fy}" r="1.8" fill="#fff"/><circle cx="${fx+6}" cy="${fy+3}" r="1.6" fill="#ffd34a"/><circle cx="${fx-5}" cy="${fy+4}" r="1.6" fill="#f08cb0"/>`}
     s+='</g>';

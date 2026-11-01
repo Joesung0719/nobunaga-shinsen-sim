@@ -1,11 +1,11 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=18';
-import {chibi,SIDE_COL} from './chibi.js?v=18';
-import {isoGeom} from './iso.js?v=18';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=18';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=18';
-import {SCENARIOS} from './scenarios.js?v=18';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=19';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=21';
+import {chibi,SIDE_COL} from './chibi.js?v=21';
+import {isoGeom} from './iso.js?v=21';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=21';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=21';
+import {SCENARIOS} from './scenarios.js?v=21';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=21';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -216,7 +216,7 @@ function renderSetup(){
 // ---- map ----
 let G=null;
 // 遊戲內地形不擋路也沒有攻防加成（Joe），目前地形只是裝飾；之後有數值（例如火炬）再加移動耗費
-const TER={平:{c:1},林:{c:1},山:{c:1},水:{c:1},橋:{c:1},城:{c:1}};
+const TER={平:{c:1},林:{c:1},山:{c:1},水:{c:1},橋:{c:1},城:{c:1},寺:{c:1},柵:{c:1},田:{c:1},村:{c:1}};
 function genMap(mode){
   for(let tries=0;tries<200;tries++){
     const T=Array.from({length:H},()=>Array(W).fill('平'));
@@ -232,18 +232,42 @@ function genMap(mode){
 }
 // skills for scenario generals: innate + 2 picked from the modelled pool by name (same every time)
 function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
+const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
+  team:battleTeam({arm:u.arm,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)});
+// 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
+//   say 對話；log 戰報文字；spawn 增援部隊（格子被占住就往旁邊找空格）；ai {部隊代號:{ai,r}} 改變行動；
+//   buff {side,dmg,days:[起,迄],arm?,label}：期間內該陣營（可限兵種）造成的傷害乘以 dmg；heal {side,pct} 補兵
+async function runEvents(on){
+  const sc=G.sc;
+  for(const ev of sc.events||[]){
+    const id=ev.id||JSON.stringify([ev.day,ev.on]);
+    if(G.fired.has(id)||(on==='day'?ev.day!==G.day:ev.on!==on))continue;
+    G.fired.add(id);
+    if(ev.log)addLog(ev.log);
+    for(const d of ev.spawn||[]){
+      const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!unitAt(x,y);
+      let[x,y]=[d.x,d.y];
+      if(!free(x,y)){const c=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1],[2,0],[-2,0],[0,2],[0,-2]].map(([a,b])=>[d.x+a,d.y+b]).find(([a,b])=>free(a,b));if(c)[x,y]=c}
+      G.units.push({...mkUnit({...d,x,y},Math.max(...G.units.map(u=>u.id))+1),acted:false,moved:false});
+    }
+    for(const[k,v]of Object.entries(ev.ai||{}))for(const u of G.units)if(u.key===k&&alive(u)){Object.assign(u,v);if(u.ai==='guard'&&!u.anchor)u.anchor=[u.x,u.y]}
+    if(ev.buff)G.buffs.push(ev.buff);
+    if(ev.heal)for(const u of G.units)if(u.side===ev.heal.side&&alive(u))for(const g of u.team.gens)if(g.troops>0)g.troops=Math.min(g.max,g.troops+Math.round(g.max*ev.heal.pct));
+    renderBoard();
+    if(ev.say)await talk(ev.say);
+  }
+}
 function startStory(){
   const sc=SCENARIOS.find(x=>x.id===SET.sc);let id=0;
   const T=sc.map.map(r=>[...r]);
-  const units=sc.units.map(u=>({id:id++,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-    team:battleTeam({arm:u.arm,gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t}))},u.side)}));
-  G={T,units,day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
-    st:{killDay:0,killRain:false,finisher:null,routed:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
+  const units=sc.units.map(u=>mkUnit(u,id++));
+  G={T,units,buffs:[],fired:new Set(),day:1,phase:0,sel:null,mode:'story',sc,foe:'ai',over:null,busy:false,log:[],
+    st:{killDay:0,killRain:false,finisher:null,routed:[],foeRouted:[],hitBy:{},said:new Set()},gid:Date.now()};play('map');
   $('setup').hidden=true;$('game').hidden=false;
   addLog(`劇本「${sc.name}」：${sc.brief}`);
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
-  talk(sc.talk.start);
+  talk(sc.talk.start).then(()=>runEvents('day'));
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
 function renderObj(){
@@ -372,7 +396,8 @@ async function tap(x,y){
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
-  a.team.mods=raining()&&a.side===0?{dmg:G.sc.surprise}:null;d.team.mods=null;
+  const mul=(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
+  a.team.mods=mul!==1?{dmg:mul}:null;d.team.mods=null;
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
   const st=G.st,lines=[];
@@ -381,6 +406,7 @@ async function fight(a,d){
     for(const u of[a,d])if(!alive(u)){
       if(u.target&&!st.killDay){st.killDay=G.day;st.killRain=raining();st.finisher=(u===d?a:d).key}
       if(u.side===0&&u.key&&!st.routed.includes(u.key))st.routed.push(u.key);
+      if(u.side===1&&u.key&&!st.foeRouted.includes(u.key))st.foeRouted.push(u.key);
       if(u.key)lines.push(...(G.sc.talk['rout_'+u.key]||[]));
     }
     const lord=G.units.find(u=>u.lord);
@@ -396,19 +422,22 @@ async function fight(a,d){
     if(r.res==='D'){d.drawUntil=G.day+DRAW_DAYS-1;addLog(`平局：${d.team.name} 保留剩餘兵力 ${DRAW_DAYS} 天，之後恢復滿兵。`)}
     else if(alive(d)){d.team.gens.forEach(g=>g.troops=g.max);d.drawUntil=null}   // garrison is full again after a loss
   }
-  if(a.team.mods)addLog(`豪雨奇襲：${a.team.name} 造成的傷害 ×${a.team.mods.dmg}`);
+  if(a.team.mods)addLog(`${raining()&&a.side===0?'豪雨奇襲':'戰場加成'}：${a.team.name} 造成的傷害 ×${+a.team.mods.dmg.toFixed(2)}`);
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   checkOver();renderBoard();
   if(VIEW)await VIEW.unfocus();
   if(!G.over&&lines.length)await talk(lines);
+  if(!G.over&&G.mode==='story')for(const u of[a,d])if(!alive(u)&&u.key)await runEvents('rout:'+u.key);
   G.busy=was;renderBoard();
 }
 function checkOver(){
   const left=s=>G.units.filter(u=>u.side===s&&alive(u)).length;
   if(G.mode==='story'){
-    const sc=G.sc,win=G.units.some(u=>u.target&&!alive(u)),lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
-    const lose=lordDown||!left(0)||timeUp;
+    const sc=G.sc,lordDown=G.units.some(u=>u.lord&&!alive(u)),timeUp=G.day>sc.days;
+    const win=G.units.some(u=>u.target&&!alive(u))||(sc.annihilate&&!left(1))||(sc.survive&&timeUp&&!lordDown&&left(0)>0);
+    const lose=!win&&(lordDown||!left(0)||timeUp);
+    if(win&&!G.st.killDay)G.st.killDay=sc.survive&&timeUp?sc.days:G.day;
     if(!win&&!lose)return;
     let lines,sub=[];
     if(win){
@@ -418,7 +447,7 @@ function checkOver(){
       sub=[`第 ${G.day} 天取勝・隱藏條件 ${n}/${got.length}`,...got.map(({h,ok})=>`${ok?'✓':'✗'} ${h.name}：${h.desc}`)];
       lines=[...sc.talk.win,...(rk?.ending||[])];
     }else{
-      G.over=`${sc.name}：敗北（${lordDown?'織田信長隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;
+      G.over=`${sc.name}：敗北（${lordDown?(sc.lordName||'總大將')+'隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;
       lines=(lordDown?sc.talk.loseLord:timeUp?sc.talk.loseTime:null)||sc.talk.lose;
     }
     addLog(G.over);sub.slice(1).forEach(x=>addLog(x));play(win?'win':'lose');
@@ -448,10 +477,11 @@ async function endTurn(){
   if(!G.over&&G.mode==='story'){
     if(raining()&&!wasRain){addLog('豪雨！敵軍無法移動，我方進攻傷害提高。');await talk(G.sc.talk.rain)}
     else if(!raining()&&wasRain){
-      addLog('雨停了，今川軍恢復行動。');
+      addLog(G.sc.rainEndLog||'雨停了，敵軍恢復行動。');
       for(const u of G.units)if(u.onRainEnd&&alive(u)){Object.assign(u,u.onRainEnd);if(u.ai==='guard'&&!u.anchor)u.anchor=[u.x,u.y];addLog(`${u.team.name} 開始${u.ai==='advance'?'出擊':'戒備'}。`)}
       await talk(G.sc.talk.rainEnd);
     }
+    if(!G.over)await runEvents('day');
   }
 }
 async function aiTurn(){
@@ -606,3 +636,5 @@ $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').clos
 $('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；地形不影響傷害。`;
 renderSetup();
 document.documentElement.dataset.slgReady='1';
+// 除錯／自動測試用（網址加 ?debug 才開）
+if(new URLSearchParams(location.search).has('debug'))window.SLG={get G(){return G},SET,startGame,endTurn,reach,targets,fight,alive,dist,save:()=>{},setSpeed:v=>{speed=v}};
