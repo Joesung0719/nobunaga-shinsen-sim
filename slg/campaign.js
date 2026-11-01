@@ -33,13 +33,18 @@ export const CHAIN=[
 export const TOTAL=13;   // 預定總關數（含關原、終章），經驗曲線以它為準
 
 // ---- 經驗與等級 ----
-export const expNeed=lv=>60+12*lv;                       // Lv lv → lv+1 所需經驗
+// 平衡（2026-11-01，tools/campaign-sim.mjs 自動模擬）：原本 60+12×lv，玩家拿 A 評價＋打盜賊時第 11 關就滿級，後段太簡單；
+// 改成 60+15×lv，A 評價路線約在關原前 Lv49、終章 Lv50
+export const expNeed=lv=>60+15*lv;                       // Lv lv → lv+1 所需經驗
 const RANK_M={S:1.5,A:1.2,B:1,C:.8};
 export const stageExp=(i,rank)=>Math.round((700+100*(i+1))*(RANK_M[rank]||1));
 export const routExp=i=>15+5*i;                          // 每擊潰一隊敵軍
-// 走到第 i 關開場時「預期」的玩家等級（全 B 評價）；敵軍等級據此訂，跟得上進度才打得贏
-export const LV_AT=(()=>{const a=[];let lv=1,ex=0;for(let i=0;i<TOTAL;i++){a.push(lv);ex+=stageExp(i,'B');while(lv<MAXLV&&ex>=expNeed(lv)){ex-=expNeed(lv);lv++}}return a})();
-export const enemyLv=i=>Math.min(MAXLV,(LV_AT[i]||MAXLV)+2);
+export const banditSilver=i=>400+100*(i+1);
+export const banditExp=i=>150+30*(i+1);
+// 走到第 i 關開場時「預期」的玩家等級：B 評價、每關擊潰 4 隊、六成機率打盜賊（原本只算 B 評價，低估了實際等級）。
+// 敵軍等級 = 預期 +1：拿 A 評價的玩家約比敵軍高 1～3 級，只拿 B 的約平手
+export const LV_AT=(()=>{const a=[];let lv=1,ex=0;for(let i=0;i<TOTAL;i++){a.push(lv);ex+=stageExp(i,'B')+routExp(i)*4+.6*banditExp(i);while(lv<MAXLV&&ex>=expNeed(lv)){ex-=expNeed(lv);lv++}}return a})();
+export const enemyLv=i=>Math.min(MAXLV,(LV_AT[i]||MAXLV)+1);
 
 // ---- 銀與商店（等級不賣，靠經驗；名將已滿紅，所以也不賣紅度）----
 export const SILVER0=1500;
@@ -59,7 +64,8 @@ export const STARTERS=['長野業盛','不破光治','河尻秀隆','林秀貞',
 export const JOIN={okehazama:'池田恆興',kawanaka_u:'甘粕景繼',kawanaka_t:'小山田信茂',kanegasaki:'脇坂安治',anegawa:'磯野員昌',mikatagahara:'大久保忠世',nagashino:'鳥居元忠',tedorigawa:'佐久間盛政',honnoji:'齋藤利三',yamazaki:'山內一豐',shizugatake:'栗山善助',komaki:'結城秀康',sekigahara:'吉川廣家'};
 // 5★ 招募名單：[名字, 第幾關通關後開放（0 起算）]
 export const RECRUIT=[['森可成',0],['蜂須賀小六',0],['柴田勝家',1],['前田利家',2],['宮部繼潤',2],['竹中半兵衛',3],['酒井忠次',4],['榊原康政',4],['本多忠勝',5],['馬場信春',5],['山本勘助',6],['加藤清正',8],['福島正則',8],['石川數正',9],['本多正信',10],['稻葉一鐵',10]];
-export const RECRUIT_PRICE=20000;
+// 平衡（2026-11-01）：原本 2 萬銀，不買任何裝備也要存到第 5～6 關才招得到第一位；改 1.2 萬，約第 3～4 關可招
+export const RECRUIT_PRICE=12000;
 export const recruitPrice=h=>Math.round(RECRUIT_PRICE*(1-Math.min(.15,.003*h.pts.魅)));
 export const PARTY_MAX=2;
 // 價格：下一級的基本價，特價 7 折，魅力折扣每點 0.3%（上限 15%）
@@ -268,8 +274,6 @@ export const generic=(lord)=>({
 
 // ---- 關間盜賊：限 4 回合的小戰，主角帶一隊村人義勇出陣，擊破頭目就贏 ----
 const BOSS=['黑風寨頭目','夜叉丸','赤鬼仁藏','山犬之助','鬼面源八'];
-export const banditSilver=i=>400+100*(i+1);
-export const banditExp=i=>150+30*(i+1);
 export function banditScenario(i,h){
   const T=Math.round(heroTroops(h)*.9),b=BOSS[i%BOSS.length],m1=b+'的弓手',m2=b+'的騎手';
   return{id:'bandit',name:'盜賊討伐',year:'關間',lordName:h.name,days:4,
