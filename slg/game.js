@@ -1,17 +1,17 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=17';
-import {chibi,SIDE_COL} from './chibi.js?v=17';
-import {isoTerrain,isoGeom} from './iso.js?v=17';
-import {leaves} from './fx.js?v=17';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=17';
-import {SCENARIOS} from './scenarios.js?v=17';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=17';
+import {battle,parseSkill,statsAt,innateOf,K,COUNTER,ST4} from './engine.js?v=18';
+import {chibi,SIDE_COL} from './chibi.js?v=18';
+import {isoGeom} from './iso.js?v=18';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=18';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=18';
+import {SCENARIOS} from './scenarios.js?v=18';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=18';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='17';
+const VER='18';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -66,11 +66,8 @@ const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},
 if(!SET.v2){SET.v2=1;SET.foe='2p';save()}
 for(const k of['mine','enemy'])for(let i=0;i<3;i++)if(!SET[k][i])SET[k][i]=randomTeam();
 setAudio(SET.audio||{});
-// 戰場畫面：新版 Phaser 是預設（Joe 2026-10-31）；舊版 SVG 用網址 ?engine=classic 或出陣設定切回。網址參數優先，並記住選擇。
-// 第一次載入這版時把舊存檔的選擇重設成新版（之前的預設是舊版）。
-if(!SET.v3){SET.v3=1;delete SET.engine;save()}
-{const e=new URLSearchParams(location.search).get('engine');if(e==='phaser'||e==='classic'||e==='svg'){SET.engine=e==='phaser'?'phaser':'classic';save()}}
-const PB=SET.engine!=='classic'?await import('./board-phaser.js?v=17').catch(e=>{console.error(e);return null}):null;
+// 戰場畫面：Phaser 畫布（slg/board-phaser.js）。舊版 SVG 戰場已移除（第四批）；舊存檔與舊網址的 engine 參數直接忽略。
+delete SET.engine;setPerf(SET.perf);
 let VIEW=null;
 const vid=u=>G.gid+':'+u.id;
 document.addEventListener('pointerdown',unlock);
@@ -183,11 +180,12 @@ function showSkill(n){
 }
 function renderSetup(){
   chips($('modeChips'),MODES,SET.mode,setMode);
-  {const u=new URL(location.href),e=SET.engine==='classic'?'classic':null;   // 新版是預設，網址不帶參數
-   if(u.searchParams.get('m')!==SET.mode||u.searchParams.get('engine')!==e){u.searchParams.set('m',SET.mode);if(e)u.searchParams.set('engine',e);else u.searchParams.delete('engine');history.replaceState(history.state,'',u)}}
-  chips($('engChips'),[['phaser','新版 Phaser'],['classic','舊版']],SET.engine==='classic'?'classic':'phaser',v=>{
-    if(v===(SET.engine==='classic'?'classic':'phaser'))return;
-    SET.engine=v;save();const u=new URL(location.href);u.searchParams.set('engine',v);location.href=u});
+  {const u=new URL(location.href);   // 網址只留模式；舊的 ?engine= 參數去掉
+   if(u.searchParams.get('m')!==SET.mode||u.searchParams.has('engine')){u.searchParams.set('m',SET.mode);u.searchParams.delete('engine');history.replaceState(history.state,'',u)}}
+  // 畫面效果：自動（手機等低階裝置用省電）／完整／省電（降解析度與幀率，關濾鏡、紅葉、雲影等裝飾）
+  chips($('perfChips'),[['auto','自動'],['full','完整'],['light','省電']],SET.perf||'auto',v=>{
+    SET.perf=v;save();setPerf(v);if(VIEW){VIEW.destroy();VIEW=null}renderSetup()});
+  $('perfNote').textContent=(SET.perf||'auto')==='auto'?(isLight()?'目前裝置偵測為低階，使用省電模式。':'目前裝置使用完整效果。'):'';
   document.dispatchEvent(new CustomEvent('slg:mode',{detail:SET.mode}));
   $('lvRow').hidden=$('garRow').hidden=SET.mode!=='land';$('foeRow').hidden=SET.mode!=='pvp';
   chips($('garChips'),[['hold','固守（同遊戲）'],['guard','出擊（練習用）']],SET.gar,v=>{SET.gar=v;save();renderSetup()});
@@ -326,45 +324,16 @@ function renderBoard(){
   if(sel)mark.set(sel.x+','+sel.y,'sel');
   const g=isoGeom(W,H);
   box.style.setProperty('--ar',`${g.vw}/${g.vh}`);
-  if(PB){
-    // 新版：盤面交給 Phaser 畫（slg/board-phaser.js），規則與點擊處理照舊
-    VIEW??=PB.createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});
-    VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
-      return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
-        cnt:u.team.gens.filter(g=>g.troops>0).length,done:!!u.acted,on:u===sel,tgt:!!u.target,lord:!!u.lord,draw:dn?u.drawUntil-G.day+1:0}})});
-  }else renderSvgBoard(box,g,sel,mark);
+  // 盤面交給 Phaser 畫（slg/board-phaser.js），規則與點擊處理在這裡
+  VIEW??=createPhaserBoard(box,{onTap:(x,y)=>tap(x,y)});
+  VIEW.render({gid:G.gid,T:G.T,rain:raining(),mark,units:G.units.map(u=>{const b=u.team.gens[0],dn=u.drawUntil&&u.drawUntil>=G.day;
+    return{id:vid(u),side:u.side,x:u.x,y:u.y,alive:alive(u),name:b.n,f:b.f,arm:u.team.arm,ratio:total(u.team)/totalMax(u.team),
+      cnt:u.team.gens.filter(g=>g.troops>0).length,done:!!u.acted,on:u===sel,tgt:!!u.target,lord:!!u.lord,draw:dn?u.drawUntil-G.day+1:0}})});
   const who=G.mode==='pvp'&&G.foe==='2p'?(G.phase?'紅方':'藍方'):G.phase?'敵軍':'我方';
   const lim=G.mode==='land'?DAYS:G.mode==='story'?G.sc.days:0;
   $('turn').innerHTML=`第 <b>${G.day}</b> 天${lim?` / ${lim}`:''}${raining()?'・<span class="wx">豪雨</span>':''}・<span style="color:${SIDE_COL[G.phase]}">${who}行動</span>`;
   $('endTurn').disabled=G.busy||!!G.over;
   renderInfo();
-}
-// 舊版戰場：地形一張 SVG，部隊是疊在上面的 HTML
-function renderSvgBoard(box,g,sel,mark){
-  // keep the unit elements between renders so a move slides instead of jumping
-  const old=new Map([...box.querySelectorAll('.unit')].map(e=>[e.dataset.id,e]));
-  const svg=`<svg class="iso" viewBox="0 0 ${g.vw} ${g.vh}" xmlns="http://www.w3.org/2000/svg">${isoTerrain(G.T,mark)}</svg>`;
-  const map=box.querySelector('svg.iso');if(map)map.outerHTML=svg;else box.insertAdjacentHTML('afterbegin',svg);
-  if(!box.querySelector('.leaves')){box.insertAdjacentHTML('beforeend','<div class="cloudsh"></div><div class="vig"></div><canvas class="leaves"></canvas>')}
-  leaves(box.querySelector('.leaves'));
-  box.querySelector('svg.iso').onclick=e=>{const t=e.target.closest('.tl');if(t)tap(+t.dataset.x,+t.dataset.y)};
-  const pct=(v,of)=>`${v/of*100}%`;
-  for(const u of G.units){
-    const prev=old.get(String(u.id));old.delete(String(u.id));
-    if(!alive(u)){prev?.remove();continue}
-    const b=u.team.gens[0],tot=total(u.team),mx=totalMax(u.team);
-    const dn=u.drawUntil&&u.drawUntil>=G.day;
-    const[cx,cy]=g.at(u.x,u.y,G.T);
-    const pos=`--x:${u.x};--y:${u.y};--w:${pct(64,g.vw)};--h:${pct(82,g.vh)};--l:${pct(cx-32,g.vw)};--t:${pct(cy+10-82,g.vh)};z-index:${10+u.x+u.y};--d:-${(u.id*.37%1.8).toFixed(2)}s;`;
-    const n=el('div',{class:'unit'+(u.acted?' done':'')+(u===sel?' on':'')+(u.target?' tgt':'')+(u.lord?' lord':''),style:`${pos}--side:${SIDE_COL[u.side]}`,'data-id':u.id,
-      html:chibi({n:b.n,f:b.f},{arm:u.team.arm,side:u.side,boss:true})+
-        `<i class="base"></i><b class="arm">${u.team.arm[0]}</b><b class="nm">${b.n}</b><i class="hp"><i style="width:${tot/mx*100}%"></i></i><b class="cnt">${u.team.gens.filter(g=>g.troops>0).length}</b>`+(dn?`<b class="dw">平${u.drawUntil-G.day+1}</b>`:'')});
-    n.onclick=()=>tap(u.x,u.y);
-    if(prev){prev.className=n.className;prev.setAttribute('style',n.getAttribute('style'));prev.innerHTML=n.innerHTML}else box.append(n);
-    (prev||n).onclick=n.onclick;
-  }
-  for(const e of old.values())e.remove();
-  box.classList.toggle('rain',raining());
 }
 function renderInfo(){
   const u=G.sel||G.peek;const box=$('info');
@@ -533,24 +502,13 @@ async function playBattle(a,d,before,r){
   const dlg=$('bt');
   const sides=[a.side===0?a:d,a.side===0?d:a];   // blue on the left
   const pre=t=>t===a?before[0]:before[1];
-  const cards={};let stage;
-  const col=(u,right)=>el('div',{class:'bcol'+(right?' r':'')},...u.team.gens.map((g,i)=>{
-    const c=el('div',{class:'bline'+(pre(u)[i]<=0?' out':''),style:`--side:${SIDE_COL[u.side]}`},
-      el('div',{class:'fig',html:chibi({n:g.n,f:g.f},{arm:u.team.arm,side:u.side,boss:i===0,flip:right})}),
-      el('div',{class:'bi'},el('div',{class:'bn'},el('b',{},g.n),i===0?el('span',{class:'tag'},'大將'):null),
-        el('small',{class:'tv'},fmt(pre(u)[i])),el('i',{class:'hp big'},el('i',{class:'gh',style:`width:${pre(u)[i]/g.max*100}%`}),el('i',{class:'now',style:`width:${pre(u)[i]/g.max*100}%`}))));
-    cards[u.side+'-'+i]=c;c._max=g.max;c._right=right;return c}));
-  const banner=el('div',{class:'banner'}),rd=el('div',{class:'rd'},'戰鬥開始'),res=el('div',{class:'bres'});
-  let PV=null;   // 新版：中間的武將列是 Phaser 畫布（slg/board-phaser.js 的 createBattleStage）；舊版或載入失敗時用 HTML 列
-  const field=el('div',{class:'field'});
-  const fillDom=()=>field.replaceChildren(col(sides[0],false),el('div',{class:'mid'},banner,res),col(sides[1],true));
-  if(PB)field.classList.add('pfield');else fillDom();
-  const setBanner=(t,bg)=>{if(PV){PV.banner(t,bg);return}banner.textContent=t;if(bg)banner.style.background=bg};
-  const setRes=(t,cls)=>{if(PV){PV.result(t,cls);return}res.textContent=t;res.className='bres '+cls};
+  const rd=el('div',{class:'rd'},'戰鬥開始');
+  let PV=null;   // 中間的武將列是 Phaser 畫布（createBattleStage）；建立失敗時整塊隱藏，只剩說話框與戰報
+  const field=el('div',{class:'field pfield'});
+  const setBanner=(t,bg)=>PV?.banner(t,bg);
+  const setRes=(t,cls)=>PV?.result(t,cls);
   const closeDlg=()=>{PV?.destroy();PV=null;dlg.close()};
   const face=el('div',{class:'face'}),msg=el('div',{class:'msgtx'});
-  // 戰法 cut-in：畫面變暗，斜帶從側面切入，帶武將卡圖與戰法名
-  const cutWho=el('div',{class:'who'}),cutName=el('b',{}),cut=el('div',{class:'cutin'},el('div',{class:'dim'}),el('div',{class:'band'},el('div',{class:'lines'}),cutWho,el('div',{class:'csk'},el('small',{},'戰法發動'),cutName)));
   const logBox=el('ol',{class:'blog'}),statBox=el('div',{class:'bstat',hidden:''});
   const sp=el('div',{class:'row'});
   const drawSp=()=>chips(sp,SPEEDS.map(s=>[s[0],s[2]?`×${s[0]} ${s[1]}`:s[1]]),String(speed),v=>{speed=+v;SET.speed=speed;save();drawSp()});drawSp();
@@ -558,17 +516,17 @@ async function playBattle(a,d,before,r){
   const skipB=el('button',{type:'button',class:'btn ghost'},'跳過');skipB.onclick=()=>{skip=true};
   const done=el('button',{type:'button',class:'btn',hidden:''},'返回地圖');
   dlg.replaceChildren(el('div',{class:'bt'},
-    stage=el('div',{class:'stage',html:BATTLE_BG},
+    el('div',{class:'stage',html:BATTLE_BG},
       el('div',{class:'shd'},el('b',{style:`color:${SIDE_COL[sides[0].side]}`},sides[0].team.name),rd,el('b',{style:`color:${SIDE_COL[sides[1].side]}`},sides[1].team.name)),
       field,
-      el('div',{class:'msg'},face,msg),cut),
+      el('div',{class:'msg'},face,msg)),
     el('div',{class:'row',style:'justify-content:space-between'},sp,el('div',{class:'row'},skipB,done)),
     statBox,el('details',{},el('summary',{},'戰報'),logBox)));
   dlg.showModal();
-  if(PB){
-    try{PV=await PB.createBattleStage(field,{faceSrc:n=>ART.has(n)?artSrc(ART.get(n)):null,
+  {
+    try{PV=await createBattleStage(field,{faceSrc:n=>ART.has(n)?artSrc(ART.get(n)):null,
       units:sides.flatMap((u,si)=>u.team.gens.map((g,i)=>({side:u.side,i,n:g.n,f:g.f,arm:u.team.arm,boss:i===0,max:g.max,troops:pre(u)[i],left:si===0})))})}
-    catch(e){console.error(e);PV=null;field.classList.remove('pfield');field.replaceChildren();fillDom()}
+    catch(e){console.error(e);PV=null;field.hidden=true}
   }
   play('battle');sfx('start');
   const nm=(s,i)=>(s===a.side?a:d).team.gens[i].n;
@@ -580,20 +538,14 @@ async function playBattle(a,d,before,r){
     const put=k=>{msg.replaceChildren(head?el('b',{},head):'',body.slice(0,k),el('span',{class:'cur'},'▼'))};
     if(skip||speed>1||REDUCE){put(body.length);return}
     let k=0;put(0);typing=setInterval(()=>{k+=2;put(k);if(k>=body.length)clearInterval(typing)},16)};
-  const slash=(side,i,mo)=>{if(PV){if(!skip&&!REDUCE)PV.slash(side,i,mo);return}const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;
-    const sv=el('div',{class:'slash',html:`<svg viewBox="0 0 84 84"><path d="M8 70 Q40 40 78 10" stroke="${mo?'#c79bff':'#ffe08a'}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M14 78 Q48 46 80 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`});
-    c.append(sv);setTimeout(()=>sv.remove(),500);
-    for(let k=0;k<7;k++){const p=el('i',{class:'spark'}),an=Math.random()*Math.PI*2,dd=22+Math.random()*24;p.style.setProperty('--dx',`${Math.cos(an)*dd}px`);p.style.setProperty('--dy',`${Math.sin(an)*dd}px`);c.append(p);setTimeout(()=>p.remove(),520)}};
-  const cutin=async(side,i,name)=>{const g=gen(side,i);
-    if(PV){sfx('skill');await PV.cutin(side,i,name,speed>1?560:980);return}
-    cut.className='cutin on '+(side===sides[0].side?'l':'r');cutWho.innerHTML=ART.has(g.n)?portrait(g.n,''):chibi({n:g.n,f:g.f},{arm:(side===a.side?a:d).team.arm,side,boss:i===0,flip:side!==sides[0].side});
-    cutName.textContent=`【${name}】`;sfx('skill');await sleep(speed>1?560:980);cut.className='cutin'};
-  const healFx=(side,i)=>{if(PV){if(!skip&&!REDUCE)PV.heal(side,i);return}const c=cards[side+'-'+i];if(!c||skip||REDUCE)return;const fx=el('div',{class:'healfx',html:Array.from({length:8},(_,k)=>`<i style="left:${8+k*11}%;animation-delay:${k*40}ms"></i>`).join('')});c.append(fx);setTimeout(()=>fx.remove(),1100)};
-  const bigRound=n=>{if(REDUCE)return;if(PV){PV.bigRound(n);return}const r=el('div',{class:'rbig'},el('span',{},`第 ${n} 回合`));stage.append(r);setTimeout(()=>r.remove(),1000)};
+  const slash=(side,i,mo)=>{if(!skip&&!REDUCE)PV?.slash(side,i,mo)};
+  const cutin=async(side,i,name)=>{sfx('skill');if(PV)await PV.cutin(side,i,name,speed>1?560:980)};
+  const healFx=(side,i)=>{if(!skip&&!REDUCE)PV?.heal(side,i)};
+  const bigRound=n=>{if(!REDUCE)PV?.bigRound(n)};
   speak(a.side,0,`${a.team.gens[0].n}：「全軍，突擊！」`);
-  const setT=(side,i,v)=>{if(PV){PV.setT(side,i,v);return}const c=cards[side+'-'+i];if(!c)return;for(const b of c.querySelectorAll('.hp>i'))b.style.width=`${Math.max(0,v)/c._max*100}%`;c.querySelector('.tv').textContent=fmt(Math.max(0,v));if(v<=0)c.classList.add('out')};
-  const float=(side,i,txt,cls,sub)=>{if(PV){if(!skip)PV.float(side,i,txt,cls,sub);return}const c=cards[side+'-'+i];if(!c||skip)return;const f=el('span',{class:'fl '+cls},sub?el('small',{},sub):null,txt);c.append(f);setTimeout(()=>f.remove(),1000)};
-  const flash=(side,i,cls)=>{if(PV){if(!skip&&!REDUCE){if(cls==='shake')PV.shake(side,i);else PV.lunge(side,i)}return}const c=cards[side+'-'+i];if(!c||skip)return;c.classList.remove(cls);void c.offsetWidth;c.classList.add(cls)};
+  const setT=(side,i,v)=>PV?.setT(side,i,v);
+  const float=(side,i,txt,cls,sub)=>{if(!skip)PV?.float(side,i,txt,cls,sub)};
+  const flash=(side,i,cls)=>{if(!skip&&!REDUCE){if(cls==='shake')PV?.shake(side,i);else PV?.lunge(side,i)}};
   const lg=s=>logBox.append(el('li',{},s));
   const ms=()=>SPEEDS.find(s=>+s[0]===speed)[2];
   for(const e of r.log){
@@ -603,15 +555,15 @@ async function playBattle(a,d,before,r){
     if(e.type==='stun'){float(e.side,e.i,e.why,'st');lg(`${who} ${e.why}，無法行動`);if(!skip){speak(e.side,e.i,`${who} ${e.why}，無法行動！`);sfx('stun')}}
     if(e.type==='prep'){setBanner(`【${e.skill}】準備中`,'#555555');lg(`${who} 準備【${e.skill}】`);if(!skip)speak(e.side,e.i,`${who} 正在準備【${e.skill}】……`)}
     if(e.type==='atk'||e.type==='skill'){
-      flash(e.side,e.i,cards[e.side+'-'+e.i]?._right?'lunge-l':'lunge-r');
+      flash(e.side,e.i,'lunge');
       if(e.type==='skill'&&!skip&&speed<4&&(e.kind==='主動'||e.kind==='突擊')&&e.tg.some(t=>t.v!=null||t.heal))await cutin(e.side,e.i,e.skill);
-      if(e.type==='skill'){setBanner(`【${e.skill}】${e.guess?'（推估）':''}`,KCOL[e.kind]||'#666666');if(!PV){banner.classList.remove('pop');void banner.offsetWidth;banner.classList.add('pop')}if(!skip){stage.classList.remove('flashw');void stage.offsetWidth;stage.classList.add('flashw')}}
+      if(e.type==='skill'){setBanner(`【${e.skill}】${e.guess?'（推估）':''}`,KCOL[e.kind]||'#666666');if(!skip&&!REDUCE)PV?.whiteFlash()}
       else setBanner('');
       const parts=[];let snd=e.type==='skill'?'skill':'hit',rout=false;
       for(const t of e.tg){
         const tn=nm(t.side,t.i);
         if(t.evade){float(t.side,t.i,'規避','st');parts.push(`${tn} 規避`);continue}
-        if(t.v!=null){setT(t.side,t.i,t.left);slash(t.side,t.i,t.dtype==='謀略');float(t.side,t.i,'-'+fmt(t.v),(t.dtype==='謀略'?'mo':'hit')+(t.crit?' crit':''),t.crit?(t.dtype==='謀略'?'奇謀':'會心'):'');flash(t.side,t.i,'shake');if(t.crit&&!skip){stage.classList.remove('quake');void stage.offsetWidth;stage.classList.add('quake')}parts.push(`${tn} -${fmt(t.v)}${t.crit?'（'+(t.dtype==='謀略'?'奇謀':'會心')+'）':''}${t.rout?'（潰敗）':''}`);if(t.rout)rout=true;if(e.type==='atk'&&t.dtype==='謀略')snd='mou'}
+        if(t.v!=null){setT(t.side,t.i,t.left);slash(t.side,t.i,t.dtype==='謀略');float(t.side,t.i,'-'+fmt(t.v),(t.dtype==='謀略'?'mo':'hit')+(t.crit?' crit':''),t.crit?(t.dtype==='謀略'?'奇謀':'會心'):'');flash(t.side,t.i,'shake');if(t.crit&&!skip&&!REDUCE)PV?.quake(true);parts.push(`${tn} -${fmt(t.v)}${t.crit?'（'+(t.dtype==='謀略'?'奇謀':'會心')+'）':''}${t.rout?'（潰敗）':''}`);if(t.rout)rout=true;if(e.type==='atk'&&t.dtype==='謀略')snd='mou'}
         if(t.heal){setT(t.side,t.i,t.left);float(t.side,t.i,'+'+fmt(t.heal),'heal');healFx(t.side,t.i);parts.push(`${tn} +${fmt(t.heal)}`);if(e.type!=='skill')snd='heal'}
         if(t.status){float(t.side,t.i,t.status,'st');parts.push(`${tn} ${t.status}`)}
       }
