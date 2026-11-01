@@ -1,18 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=31';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=31';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=31';
-import {isoGeom} from './iso.js?v=31';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=31';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=31';
-import {SCENARIOS} from './scenarios.js?v=31';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=31';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=32';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=32';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=32';
+import {FAV_NEED,FAVS,spotTile,dirText} from './favor.js?v=32';
+import {isoGeom} from './iso.js?v=32';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=32';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=32';
+import {SCENARIOS} from './scenarios.js?v=32';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=32';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='22';
+const VER='23';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -423,7 +424,13 @@ function startStory(scId,bandit){
   renderObj();renderBoard();
   $('board').scrollIntoView({behavior:'smooth',block:'start'});
   const scene=hero&&!bandit?(SCENES[sc.id]||generic(sc.lordName)):null;
-  talk([...(scene?.pre||[]),...(sc.talk.start||[])]).then(()=>runEvents('day'));
+  const fv=hero&&!bandit?FAVS[sc.id]:null;
+  if(fv&&!hero.roster.includes(fv.n)&&fv.how==='spot'){
+    const hu=G.units.find(u=>u.hero),t=hu&&spotTile(sc.id,T,G.units,hu);
+    if(t){G.spot={x:t[0],y:t[1],fv,done:false};G.favHint=`${fv.hint}（大概在主角的${dirText(hu,t)}方向）`;renderObj()}
+  }else if(fv&&!hero.roster.includes(fv.n))G.favHint=fv.hint;
+  if(G.favHint)renderObj();
+  talk([...(scene?.pre||[]),...(fv&&fv.how==='talk'&&!hero.roster.includes(fv.n)?fv.pre:[]),...(sc.talk.start||[])]).then(()=>runEvents('day'));
 }
 // 勝敗條件與隱藏條件（隱藏條件開打時只給提示）
 function renderObj(){
@@ -433,7 +440,8 @@ function renderObj(){
     el('div',{},el('b',{class:'ok'},'勝利'),' '+(sc.win||[]).join('、')),
     el('div',{},el('b',{class:'ng'},'敗北'),' '+(sc.lose||[]).join('、')),
     sc.hidden?.length?el('details',{},el('summary',{},`隱藏條件 ×${sc.hidden.length}（結算時揭曉，達成越多評價越高）`),
-      el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'');
+      el('ul',{},...sc.hidden.map(h=>el('li',{},'？？？ ',el('span',{class:'muted'},h.hint))))):'',
+    G.favHint?el('div',{class:'muted'},'？？？ 人物傳聞：'+G.favHint):'');
 }
 const raining=()=>G.mode==='story'&&G.sc.rain&&G.day>=G.sc.rain[0]&&G.day<=G.sc.rain[1];
 // story dialogue: one line per tap。{choose:[…]} 是選擇點（戰役主角的選項，選了加屬性）；who '我' 是主角、'旁白' 沒有人像
@@ -441,7 +449,7 @@ async function talk(lines){
   if(!lines?.length)return;
   const dlg=$('talk'),hn=SET.hero?.name||'你',sub=t=>t.replaceAll('{名}',hn);
   for(const ln of lines){
-    if(ln.choose){await choose(ln.choose,sub);continue}
+    if(ln.choose){await choose(ln.choose,sub,ln.fav);continue}
     const who=ln.who==='我'?hn:ln.who,nar=who==='旁白';
     const f=facOf(who),side=G?.units?.find(u=>u.team.gens.some(g=>g.n===who))?.side??0;
     dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:nar?'':portrait(who,chibi({n:who,f},{side,boss:true}))}),
@@ -453,7 +461,7 @@ async function talk(lines){
   }
   dlg.close();
 }
-async function choose(opts,sub){
+async function choose(opts,sub,favN){
   const dlg=$('talk');
   const k=await new Promise(res=>{
     dlg.onclick=null;dlg.oncancel=e=>e.preventDefault();
@@ -463,8 +471,10 @@ async function choose(opts,sub){
   });
   const o=opts[k],h=SET.hero,p=o.pts||1;
   if(h){h.pts[o.a]+=p;save();if(G)addLog(`選擇「${o.a}」：${ATTR_NAME[o.a]} +${p}`)}
+  let tag=`${ATTR_NAME[o.a]} +${p}`;
+  if(h&&favN&&o.fav){h.fav[favN]=(h.fav[favN]||0)+o.fav;save();tag+=`・${favN}好感度 +${o.fav}`}
   sfx('select');
-  await talk([{who:'我',text:o.text,tag:`${ATTR_NAME[o.a]} +${p}`},...(o.reply||[])]);
+  await talk([{who:'我',text:o.text,tag},...(o.reply||[])]);
 }
 function startGame(){
   if(SET.mode==='camp'){if(!SET.hero)return;if(CHAIN[campIdx()].finale&&!(G?.camp?.bandit&&SET.hero.bandit))return startFinale();return G?.camp?.bandit&&SET.hero.bandit?startStory(null,true):startStory(campStageId())}
@@ -561,11 +571,28 @@ async function tap(x,y){
   const u=unitAt(x,y),s=G.sel,me=ctrl();
   if(aiPhase())return;
   if(s&&u&&u.side!==s.side&&targets(s).includes(u)){await fight(s,u);autoEnd();return}
-  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();autoEnd();return}}
+  if(s&&!s.moved&&!u){const R=reach(s);if(R.has(x+','+y)){s.x=x;s.y=y;s.moved=true;sfx('move');if(!targets(s).length){s.acted=true;G.sel=null}renderBoard();if(G.spot&&!G.spot.done&&s.side===0&&x===G.spot.x&&y===G.spot.y){spotMeet();return}autoEnd();return}}
   if(u&&u.side===me&&!u.acted){G.sel=u===s?null:u;G.peek=null;sfx('select');renderBoard();return}
   G.sel=null;G.peek=u||null;renderBoard();
 }
 
+async function spotMeet(){
+  const sp=G.spot,h=SET.hero,fv=sp.fv;sp.done=true;G.busy=true;
+  h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED;save();addLog(`遇見了 ${fv.n}！好感度 +${FAV_NEED}`);
+  await talk(fv.say);G.busy=false;autoEnd();
+}
+// 結算時：好感度夠高、或達成條件，就讓隱藏武將加入
+function favEnd(win,lines,sub){
+  const sc=G.sc,fv=FAVS[sc.id],h=G.camp.h;
+  if(!fv||h.roster.includes(fv.n))return;
+  if(fv.how==='win'&&win&&fv.cond(G.st)){h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED;sub.push(`隱藏人物條件達成：${fv.text}`)}
+  if(fv.how==='lose'&&!win){h.fav[fv.n]=(h.fav[fv.n]||0)+FAV_NEED}
+  if((h.fav[fv.n]||0)>=FAV_NEED){
+    h.roster.push(fv.n);if(h.party.length<PARTY_MAX)h.party.push(fv.n);save();
+    lines.push(...fv.join);sub.push(`隱藏夥伴加入：${fv.n}（${starsOf(fv.n)}）`);
+  }else if((h.fav[fv.n]||0)>0&&fv.how==='talk')sub.push('似乎有人對你有些好感……也許再來一次，會有不一樣的答案。');
+  save();
+}
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
@@ -645,11 +672,13 @@ function checkOver(){
           lines.push({who:jn,text:'{名}，這一仗我都看在眼裡。若不嫌棄，請讓我也加入你的隊伍。'});
           sub.push(`夥伴加入：${jn}（${starsOf(jn)}）`);
         }
+        favEnd(true,lines,sub);
         if(h.bandit)sub.push('路上有盜賊出沒！回戰役畫面可以選擇討伐，不理會的話下一關開場會被偷走 5% 的銀。');
       }
     }else{
       G.over=`${sc.name}：敗北（${lordDown?(sc.lordName||'總大將')+'隊潰走':timeUp?`${sc.days} 天內沒有擊破目標`:'全軍潰走'}）`;
-      lines=(lordDown?sc.talk.loseLord:timeUp?sc.talk.loseTime:null)||sc.talk.lose;
+      lines=[...((lordDown?sc.talk.loseLord:timeUp?sc.talk.loseTime:null)||sc.talk.lose||[])];
+      if(G.camp&&!G.camp.bandit)favEnd(false,lines,sub);
     }
     addLog(G.over);sub.slice(1).forEach(x=>addLog(x));play(win?'win':'lose');
     overButtons(win);
@@ -844,4 +873,4 @@ $('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (
 renderSetup();
 document.documentElement.dataset.slgReady='1';
 // 除錯／自動測試用（網址加 ?debug 才開）
-if(new URLSearchParams(location.search).has('debug'))window.SLG={get G(){return G},SET,startGame,endTurn,reach,targets,fight,alive,dist,save:()=>{},setSpeed:v=>{speed=v}};
+if(new URLSearchParams(location.search).has('debug'))window.SLG={get G(){return G},SET,tap,startGame,endTurn,reach,targets,fight,alive,dist,save:()=>{},setSpeed:v=>{speed=v}};
