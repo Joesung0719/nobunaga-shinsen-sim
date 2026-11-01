@@ -1,12 +1,12 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=29';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=29';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp} from './campaign.js?v=29';
-import {isoGeom} from './iso.js?v=29';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=29';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=29';
-import {SCENARIOS} from './scenarios.js?v=29';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=29';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=30';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=30';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp} from './campaign.js?v=30';
+import {isoGeom} from './iso.js?v=30';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=30';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=30';
+import {SCENARIOS} from './scenarios.js?v=30';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=30';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -191,7 +191,7 @@ const NEWH={name:'',arm:'騎',color:COLORS[0][0],lean:'武'};
 const heroFig=h=>chibi({n:h.name,f:''},{arm:h.arm,side:0,boss:true});
 function renderCamp(){
   const box=$('campRow'),h=SET.hero;
-  $('start').hidden=!h||h.stage>=CHAIN.length;
+  $('start').hidden=!h;
   if(!h){
     const name=el('input',{type:'text',maxlength:'6',placeholder:'你的名字（最多 6 字）',value:NEWH.name,'aria-label':'主角名字'});
     name.oninput=()=>{NEWH.name=name.value};
@@ -233,11 +233,11 @@ function renderCamp(){
   reset.onclick=()=>{if(confirm('刪除目前的主角與戰役進度，重新開始？')){delete SET.hero;delete SET.campSel;save();renderSetup()}};
   const sel=campIdx();
   const stages=CHAIN.map((c,i)=>{
-    const id=c.ids.length>1?(h.pick[i]&&c.ids.includes(h.pick[i])?h.pick[i]:c.ids[0]):c.ids[0],sc=SCENARIOS.find(x=>x.id===id);
+    const id=c.ids.length>1?(h.pick[i]&&c.ids.includes(h.pick[i])?h.pick[i]:c.ids[0]):c.ids[0],sc=c.finale?{name:c.name,year:`${c.era}年`,brief:c.brief}:SCENARIOS.find(x=>x.id===id);
     const locked=i>h.stage,done=h.done[i];
     const b=el('button',{type:'button',class:'scard',disabled:locked,'aria-pressed':String(sel===i)},
       el('b',{},`第 ${i+1} 關・${sc.name}`,done?el('span',{class:'tag'},`${done.rank}`):i===h.stage?el('span',{class:'tag'},'下一關'):null),
-      el('small',{},locked?`${c.era}年　尚未解鎖`:`${sc.year}　敵軍 Lv${enemyLv(i)}`),
+      el('small',{},locked?`${c.era}年　尚未解鎖`:c.finale?`${sc.year}　劇情終章`:`${sc.year}　敵軍 Lv${enemyLv(i)}`),
       locked?'':el('p',{},sc.brief));
     b.onclick=()=>{SET.campSel=i;save();renderCamp()};
     if(c.ids.length>1&&!locked&&sel===i){
@@ -267,7 +267,7 @@ function renderCamp(){
         b.onclick=()=>{if(h.silver<p)return;h.silver-=p;h.shop[it.k]++;save();sfx('select');renderCamp()};
         return el('div',{class:'shopRow'},el('b',{},it.n),el('span',{class:'muted'},`Lv${lv}/${it.max}`),el('small',{class:'muted'},it.fx),
           h.sale===it.k&&!maxed?el('span',{class:'tag'},'特價 7 折'):el('span'),b)})),
-    done?el('p',{class:'ok'},'已打完目前所有關卡。關原之戰與終章（家康開幕府）製作中。'):'',
+    done?el('p',{class:'ok'},'戰役通關！你見證了戰國的終結、江戶時代的開始。可以回頭重打舊關，賺銀買裝備。'):'',
     el('div',{class:'teams',style:'margin-top:12px'},...stages));
 }
 function renderSetup(){
@@ -356,6 +356,18 @@ async function runEvents(on){
     if(ev.say)await talk(ev.say);
   }
 }
+// 終章：只有劇情，沒有戰鬥。看完拿一筆經驗，戰役通關
+async function startFinale(){
+  const h=SET.hero,i=campIdx(),first=i>=h.stage;
+  G=null;$('setup').hidden=true;$('game').hidden=true;play('title');
+  await talk([...SCENES.edo.pre,...SCENES.edo.post]);
+  const gain=first?stageExp(i,'A'):0,lv0=h.lv,up=addExp(h,gain);
+  if(first){h.stage=CHAIN.length;h.done[i]={rank:'S'};h.silver+=stageSilver(i,'A',0)}
+  save();
+  $('overMsg').textContent='戰役通關！';
+  $('overSub').replaceChildren(el('div',{},first?`終章：獲得經驗 ${gain}${up?`，Lv${lv0} → Lv${h.lv}`:''}、${fmt(stageSilver(i,'A',0))} 銀`:'重溫終章'),el('div',{},`${h.name} Lv${h.lv}・走完了從桶狹間到江戶開幕的路。`));
+  $('again').hidden=true;$('toSetup').textContent='回戰役畫面';$('over').hidden=false;
+}
 function startStory(scId,bandit){
   const hero=SET.mode==='camp'?SET.hero:null,ci=hero?(bandit?hero.bandit.i:campIdx()):0;
   const sc=bandit?banditScenario(ci,hero):SCENARIOS.find(x=>x.id===(scId||SET.sc));let id=0;
@@ -403,7 +415,7 @@ async function talk(lines){
   for(const ln of lines){
     if(ln.choose){await choose(ln.choose,sub);continue}
     const who=ln.who==='我'?hn:ln.who,nar=who==='旁白';
-    const f=facOf(who),side=G.units.find(u=>u.team.gens.some(g=>g.n===who))?.side??0;
+    const f=facOf(who),side=G?.units?.find(u=>u.team.gens.some(g=>g.n===who))?.side??0;
     dlg.replaceChildren(el('div',{class:'tk'},el('div',{class:'fig',html:nar?'':portrait(who,chibi({n:who,f},{side,boss:true}))}),
       el('div',{class:'tx'},el('b',{style:`color:${nar?'var(--muted)':SIDE_COL[side]}`},nar?'':who),el('p',{},sub(ln.text)),
         ln.tag?el('small',{class:'ok'},ln.tag):null,el('small',{class:'muted'},'點一下繼續'))));
@@ -422,12 +434,12 @@ async function choose(opts,sub){
     if(!dlg.open)dlg.showModal();
   });
   const o=opts[k],h=SET.hero,p=o.pts||1;
-  if(h){h.pts[o.a]+=p;save();addLog(`選擇「${o.a}」：${ATTR_NAME[o.a]} +${p}`)}
+  if(h){h.pts[o.a]+=p;save();if(G)addLog(`選擇「${o.a}」：${ATTR_NAME[o.a]} +${p}`)}
   sfx('select');
   await talk([{who:'我',text:o.text,tag:`${ATTR_NAME[o.a]} +${p}`},...(o.reply||[])]);
 }
 function startGame(){
-  if(SET.mode==='camp')return SET.hero?(G?.camp?.bandit&&SET.hero.bandit?startStory(null,true):startStory(campStageId())):undefined;
+  if(SET.mode==='camp'){if(!SET.hero)return;if(CHAIN[campIdx()].finale&&!(G?.camp?.bandit&&SET.hero.bandit))return startFinale();return G?.camp?.bandit&&SET.hero.bandit?startStory(null,true):startStory(campStageId())}
   if(SET.mode==='story')return startStory();
   const m=genMap(SET.mode);let id=0;
   const units=[];
