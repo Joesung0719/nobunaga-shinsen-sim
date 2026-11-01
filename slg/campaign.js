@@ -39,9 +39,22 @@ export const routExp=i=>15+5*i;                          // 每擊潰一隊敵�
 export const LV_AT=(()=>{const a=[];let lv=1,ex=0;for(let i=0;i<TOTAL;i++){a.push(lv);ex+=stageExp(i,'B');while(lv<MAXLV&&ex>=expNeed(lv)){ex-=expNeed(lv);lv++}}return a})();
 export const enemyLv=i=>Math.min(MAXLV,(LV_AT[i]||MAXLV)+2);
 
+// ---- 銀與商店（等級不賣，靠經驗；名將已滿紅，所以也不賣紅度）----
+export const SILVER0=1500;
+export const SHOP=[
+  {k:'weapon',n:'武器',max:5,base:2400,fx:'武勇、智略 +2%／級'},
+  {k:'armor',n:'防具',max:5,base:2400,fx:'統率、速度 +2%／級'},
+  {k:'camp',n:'兵種營',max:5,base:3000,fx:'全屬性 +2%／級（全軍）'},
+  {k:'supply',n:'兵力補給',max:10,base:1600,fx:'每位武將兵力 +1000／級（全軍）'},
+];
+export const ensureHero=h=>{if(!h.shop){h.silver=SILVER0;h.shop={weapon:0,armor:0,camp:0,supply:0};h.sale=null}return h};
+// 價格：下一級的基本價，特價 7 折，魅力折扣每點 0.3%（上限 15%）
+export const price=(h,it)=>Math.round(it.base*(h.shop[it.k]+1)*(h.sale===it.k?.7:1)*(1-Math.min(.15,.003*h.pts.魅)));
+export const gearMul=h=>{const s=h.shop;return{武勇:1+.02*(s.weapon+s.camp),智略:1+.02*(s.weapon+s.camp),統率:1+.02*(s.armor+s.camp),速度:1+.02*(s.armor+s.camp)}};
+export const stageSilver=(i,rank,foes)=>Math.round((2000+300*(i+1))*(RANK_M[rank]||1)+(300+50*(i+1))*foes);
 export function newHero({name,arm='騎',color=COLORS[0][0],lean='武'}){
   const pts=Object.fromEntries(ATTRS.map(a=>[a,0]));pts[lean]=3;
-  return{v:1,name:name.trim().slice(0,6)||'無名',arm,color,lean,lv:1,exp:0,pts,free:0,stage:0,pick:{},done:{}};
+  return ensureHero({v:1,name:name.trim().slice(0,6)||'無名',arm,color,lean,lv:1,exp:0,pts,free:0,stage:0,pick:{},done:{}});
 }
 // 加經驗，回傳升了幾級；每升一級得 1 點自由點數（Lv50 共 49 點）
 export function addExp(h,n){
@@ -52,10 +65,10 @@ export function addExp(h,n){
 }
 // 玩家的四項戰鬥數值（魅不直接影響數值）。點數每點 ×1.5，與名將 Lv50 的數值量級相當
 export function heroStats(h){
-  const g=h.lv-1,p=h.pts;
-  return{武勇:Math.round(85+1.9*g+1.5*p.武),智略:Math.round(85+1.9*g+1.5*p.智),統率:Math.round(90+2*g+1.5*p.統),速度:Math.round(50+1.3*g+1.5*p.速)};
+  const g=h.lv-1,p=h.pts,m=gearMul(ensureHero(h));
+  return{武勇:Math.round((85+1.9*g+1.5*p.武)*m.武勇),智略:Math.round((85+1.9*g+1.5*p.智)*m.智略),統率:Math.round((90+2*g+1.5*p.統)*m.統率),速度:Math.round((50+1.3*g+1.5*p.速)*m.速度)};
 }
-export const heroTroops=h=>3000+200*(h.lv-1);
+export const heroTroops=h=>3000+200*(h.lv-1)+1000*ensureHero(h).shop.supply;
 // 魅力光環：主角在場時，我方全軍傷害 +0.4%／點（上限 +30%）
 export const charmDmg=h=>1+Math.min(.3,.004*h.pts.魅);
 
