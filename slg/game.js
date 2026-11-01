@@ -1,18 +1,18 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=26';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=26';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic} from './campaign.js?v=26';
-import {isoGeom} from './iso.js?v=26';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=26';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=26';
-import {SCENARIOS} from './scenarios.js?v=26';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=26';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=27';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=27';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver} from './campaign.js?v=27';
+import {isoGeom} from './iso.js?v=27';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=27';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=27';
+import {SCENARIOS} from './scenarios.js?v=27';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=27';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='19';
+const VER='20';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -20,7 +20,7 @@ if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').repl
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const CARDS=await (await fetch('data.json',{cache:'no-cache'})).json();
 const $=id=>document.getElementById(id);
-const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e[k]=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
+const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e[k]=v;else if(v===false)continue;else e.setAttribute(k,v===true?'':v)}for(const c of kids)if(c!=null)e.append(c);return e};
 const fmt=n=>Math.round(n).toLocaleString('en-US');
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -63,7 +63,7 @@ function builderTeam(){
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
 }
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
-if(SET.hero)setSpec(SET.hero.name,heroSpec(SET.hero));   // 戰役主角的外觀
+if(SET.hero){ensureHero(SET.hero);setSpec(SET.hero.name,heroSpec(SET.hero))}   // 戰役主角的外觀
 // 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）
 const RANKV={S:4,A:3,B:2,C:1};
 const carryOk=c=>(RANKV[SET.camp?.[c.from]?.rank]||0)>=RANKV[c.min||'B'];
@@ -258,6 +258,13 @@ function renderCamp(){
       attrs,
       el('small',{class:'muted'},`帶兵 ${fmt(heroTroops(h))}；我方名將的等級跟著你走（Lv${h.lv}），敵軍每關固定。`),
       el('div',{class:'row',style:'margin-top:8px'},reset))),
+    el('div',{class:'shop'},el('h3',{},'商店',el('small',{class:'muted'},`　銀 ${fmt(h.silver)}${h.pts.魅?`・魅力折扣 ${Math.min(15,h.pts.魅*.3).toFixed(1)}%`:''}`)),
+      ...SHOP.map(it=>{
+        const lv=h.shop[it.k],maxed=lv>=it.max,p=price(h,it);
+        const b=el('button',{type:'button',class:'btn',disabled:maxed||h.silver<p},maxed?'已滿級':`購買 ${fmt(p)} 銀`);
+        b.onclick=()=>{if(h.silver<p)return;h.silver-=p;h.shop[it.k]++;save();sfx('select');renderCamp()};
+        return el('div',{class:'shopRow'},el('b',{},it.n),el('span',{class:'muted'},`Lv${lv}/${it.max}`),el('small',{class:'muted'},it.fx),
+          h.sale===it.k&&!maxed?el('span',{class:'tag'},'特價 7 折'):el('span'),b)})),
     done?el('p',{class:'ok'},'已打完目前所有關卡。關原之戰與終章（家康開幕府）製作中。'):'',
     el('div',{class:'teams',style:'margin-top:12px'},...stages));
 }
@@ -320,8 +327,9 @@ function genMap(mode){
 function fixedSkills(n){const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]}
 const armOfUnit=u=>bestArm(D,u.gens)||u.arm;   // 劇本的兵種：以隊伍滿紅時自帶的兵種為主，沒有兵種特性才用劇本寫的
 let CAMP=null;   // 戰役進行中：{h 玩家, i 關卡序, lvA 我方等級, lvB 敵方等級}
+const gearSt=(st,side)=>{if(!CAMP||side!==0)return st;const m=gearMul(CAMP.h);return Object.fromEntries(Object.entries(st).map(([k,v])=>[k,Math.round(v*(m[k]||1)*10)/10]))};
 const mkUnit=(u,id)=>({id,side:u.side,key:u.key,x:u.x,y:u.y,ai:u.ai,anchor:u.anchor,r:u.r,lord:u.lord,target:u.target,onRainEnd:u.onRainEnd,
-  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t,st:fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50)}))},u.side)});   // 劇本的武將一律滿紅
+  team:battleTeam({arm:armOfUnit(u),gens:u.gens.map(n=>({n,s:u.s?.[n]||fixedSkills(n),t:u.t+(CAMP&&u.side===0?1000*CAMP.h.shop.supply:0),st:gearSt(fullRedStats(D,n,u.gens,armOfUnit(u),CAMP?(u.side===0?CAMP.lvA:CAMP.lvB):50),u.side)}))},u.side)});   // 劇本的武將一律滿紅
 const mkHero=(h,id,x,y)=>({id,side:0,key:'hero',hero:true,x,y,team:battleTeam({arm:h.arm,gens:[{n:h.name,s:fixedSkills(h.name),t:heroTroops(h),st:heroStats(h)}]},0)});
 // 劇本事件：ev.day 到了那天（我方回合開始）或 ev.on='rout:部隊代號'（該隊潰走）時觸發一次。
 //   say 對話；log 戰報文字；spawn 增援部隊（格子被占住就往旁邊找空格）；ai {部隊代號:{ai,r}} 改變行動；
@@ -574,7 +582,10 @@ function checkOver(){
         const gain=Math.round((stageExp(i,rank)+routExp(i)*foes)*(first?1:.25)),lv0=h.lv,up=addExp(h,gain);
         if(first)h.stage=Math.min(CHAIN.length,i+1);
         const od=h.done[i];if(!od||RANKV[rank]>RANKV[od.rank])h.done[i]={rank};
+        const ag=first?1:.25,silver=Math.round(stageSilver(i,rank,foes)*ag);h.silver+=silver;
+        const open=SHOP.filter(it=>h.shop[it.k]<it.max);h.sale=open.length?pick(open).k:null;
         save();
+        sub.splice(1,0,`戰役：獲得 ${fmt(silver)} 銀${h.sale?`；商店本期特價：${SHOP.find(x=>x.k===h.sale).n}（7 折）`:''}`);
         sub.splice(1,0,`戰役：獲得經驗 ${gain}（擊潰敵軍 ${foes} 隊${first?'':'，重打舊關只拿 25%'}）${up?`，Lv${lv0} → Lv${h.lv}，自由點數 +${up}`:''}`);
         lines.push(...(SCENES[sc.id]||generic(sc.lordName)).post);
       }
