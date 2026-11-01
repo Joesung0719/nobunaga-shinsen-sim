@@ -99,6 +99,23 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 .trait p{margin:4px 0 0;font-size:.78rem;line-height:1.6;color:var(--paper)}
 .trait p.unk{color:var(--muted)}
 .note{font-size:.8rem;color:var(--muted);line-height:1.7;margin:0}
+/* 兵學 */
+.bg-rule{font-size:.78rem;color:var(--muted);line-height:1.7;margin:0 0 8px;padding-left:1.2em}
+.bg-rule b{color:var(--paper)}
+.bg-dirs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px;max-width:520px}
+.bg-dirs .chip{display:flex;flex-direction:column;align-items:flex-start;border-radius:8px;padding:5px 8px;line-height:1.3;min-width:0}
+.bg-dirs .chip small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bg-dirs .chip small{font-size:.66rem;opacity:.8}
+.bg-dirs .chip[aria-pressed="true"]{color:#fff;background:var(--dc);border-color:var(--dc)}
+.bg-sub{font-size:.78rem;color:var(--muted);margin:10px 0 6px}
+.bg-sub b{font-family:var(--display);color:var(--paper);font-size:.88rem;margin-right:6px}
+.bg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.bg-it{border:1px solid var(--line);border-left:3px solid var(--dc,var(--line));border-radius:6px;padding:7px 10px;background:#171412}
+.bg-it b{font-family:var(--display);font-size:.88rem}
+.bg-it p{margin:3px 0 0;font-size:.76rem;line-height:1.6}
+.bg-it p i{font-style:normal;color:var(--gold);margin-right:4px;font-size:.7rem}
+.bg-it .est{font-size:.66rem;color:var(--muted);margin-left:6px}
+.bg-miss{border:1px dashed var(--line);border-radius:6px;padding:10px 12px;font-size:.8rem;color:var(--muted);line-height:1.7}
 </style>
 </head>
 <body>
@@ -126,6 +143,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 <dialog class="sheet" id="sheet"></dialog>
 
 <script type="module">
+import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
 const [D,CARDS]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json())]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
@@ -222,6 +240,35 @@ function renderSkills(){
   $('list').replaceChildren(list.length?box:empty);
 }
 
+// ---- 兵學 (slg/bingaku.js：規則與已收錄的兵學樹，和戰棋配點共用) ----
+let bgDir=DIRS[0].id;
+function bingakuBox(g){
+  const box=el('div',{},el('h4',{},'兵學'));
+  const cap=capOf(g.r);
+  if(!cap){box.append(el('p',{class:'note'},'3★以下武將沒有兵學。'));return box}
+  const tree=TREES[g.n];
+  box.append(el('ul',{class:'bg-rule',html:
+    `<li>武將 <b>Lv20</b> 開啟（不需紅度）；${g.r}★ 最多 <b>${cap} 點</b>，四個方向<b>只能選 1 個</b>。</li>`+
+    `<li>選定方向後：${BASE_TEXT}（進階＝紅度，5紅為 ±${RULE.perRed*5}%）。</li>`+
+    `<li>「兵學・奇」3 項擇 1、「兵學・正」6 項各 ${RULE.zMax} 級、每級 1 點（推估，待確認）。每位武將的奇與正都不同。</li>`+
+    `<li>開啟需 10 個四星武將心得＋6萬銀，每點再 6萬銀；模擬器直接給滿點。</li>`}));
+  const dirs=el('div',{class:'bg-dirs',role:'group','aria-label':'兵學方向'}),body=el('div');
+  const draw=()=>{
+    dirs.replaceChildren(...DIRS.map(d=>{const b=el('button',{class:'chip',type:'button',style:`--dc:${d.col}`,'aria-pressed':String(d.id===bgDir)},d.id,el('small',{},d.sub));b.onclick=()=>{bgDir=d.id;draw()};return b}));
+    const d=dirOf(bgDir,g.n);
+    if(!tree){body.replaceChildren(el('div',{class:'bg-miss'},`${g.n}的兵學樹尚未收錄。目前可在戰棋裡選方向（套用紅度加成），奇與正的內容需要遊戲內「兵學」畫面截圖或文字才能補上。`));return}
+    body.replaceChildren(
+      el('div',{class:'bg-sub'},el('b',{},'兵學・奇'),'3 項擇 1'),
+      el('div',{class:'bg-grid'},...d.qi.map(q=>el('div',{class:'bg-it',style:`--dc:${d.col}`},el('b',{},q.n),el('p',{},q.t)))),
+      el('div',{class:'bg-sub'},el('b',{},'兵學・正'),`每項 ${RULE.zMax} 級，共 ${cap} 點可分配`),
+      el('div',{class:'bg-grid'},...d.zheng.map(z=>el('div',{class:'bg-it',style:`--dc:${d.col}`},
+        el('b',{},z.n),z.g2?el('span',{class:'est',title:'截圖文字被截斷，第 2 級數值為推估'},'第2級推估'):null,
+        ...z.t.map((t,i)=>el('p',{},el('i',{},`Lv${i+1}`),t))))));
+  };
+  draw();box.append(dirs,body);
+  return box;
+}
+
 // ---- general sheet ----
 const dlg=$('sheet');
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
@@ -254,7 +301,8 @@ function openGeneral(n){
     el('div',{class:'sh-body'},
       el('div',{},el('h4',{},'特性'),traits),
       el('div',{},el('h4',{},'固有戰法'),inn?skillCard(inn,{withHolders:false}):el('p',{class:'note'},'尚未收集')),
-      el('div',{},el('h4',{},'傳授戰法'),teach?skillCard(teach):el('p',{class:'note'},'尚未收集'))));
+      el('div',{},el('h4',{},'傳授戰法'),teach?skillCard(teach):el('p',{class:'note'},'尚未收集')),
+      bingakuBox(g)));
   if(!dlg.open)dlg.showModal();
   dlg.scrollTop=0;
 }
