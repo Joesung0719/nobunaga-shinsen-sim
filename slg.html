@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DotGothic16&family=LXGW+WenKai+TC:wght@400;700&display=swap">
 <style>
 /* Same lacquer + gold look as the other pages. Setup → 7×9 board → battle playback dialog. */
-:root{--slg-ver:'31';
+:root{--slg-ver:'32';
   --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
   --gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;--steel:#7fa3d6;
   --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
@@ -282,7 +282,8 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 
 
 .msg{border:0;border-radius:4px;background:linear-gradient(#141c30f2,#0a0f1cf2);box-shadow:inset 0 0 0 1px #fff3,0 0 0 2px #c9a253,0 0 0 3px #000;margin:2px}
-.face{border:0;border-radius:3px;box-shadow:0 0 0 2px #f3d48a,0 0 0 3px #000}
+.face{border:0;border-radius:3px;box-shadow:0 0 0 2px #f3d48a,0 0 0 3px #000;background:radial-gradient(circle at 50% 38%,#55688c,#26324a 70%)}   /* 頭像底提亮（Joe：臉太黑） */
+.face img.pt{filter:brightness(1.15) saturate(1.05)}   /* 卡圖頭像也稍微提亮 */
 .msgtx b{font-family:var(--brush);color:#ffd27a;font-weight:700}
 .msgtx .cur{display:inline-block;margin-left:4px;color:#f3d48a;animation:cur .8s steps(2) infinite}
 @keyframes cur{to{opacity:0}}
@@ -330,7 +331,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
     <div class="row" id="perfRow" style="margin-top:8px"><span class="lbl">畫面效果</span><div class="row" id="perfChips"></div><small class="muted" id="perfNote"></small></div>
     <div id="campRow" style="margin-top:12px" hidden></div>
     <div id="storyRow" style="margin-top:12px"><div class="teams" id="storyList"></div></div>
-    <div id="mineWrap"><h2 style="margin-top:14px" id="mineTitle">我方部隊（藍）</h2>
+    <div id="mineWrap"><div class="row" style="margin-top:14px;justify-content:space-between;align-items:baseline"><h2 style="margin:0" id="mineTitle">我方部隊（藍）</h2><a class="btn ghost" href="formation.html" id="toForm">出陣設定（拖曳組隊）</a></div>
     <div class="teams" id="mine"></div></div>
     <div id="enemyWrap"><h2 style="margin-top:14px" id="enemyTitle">對方部隊（紅）</h2><div class="teams" id="enemy"></div></div>
     <div class="legend" id="legend"><span class="sk t">依說明</span>從戰法說明讀出數值<span class="sk g">推估</span>沒有說明，用通用值<span class="sk n">未模擬</span>效果還沒算進去（點戰法看說明）</div>
@@ -363,7 +364,7 @@ img.pt{display:block;width:100%;height:100%;object-fit:cover;object-position:50%
 <dialog id="bt" aria-label="戰鬥"></dialog>
 <dialog id="skDlg" aria-label="戰法說明"></dialog>
 <dialog id="talk" class="talk" aria-label="對話"></dialog>
-<script type="module" src="slg/game.js?v=40"></script>
+<script type="module" src="slg/game.js?v=41"></script>
 <script src="site-nav.js?v=4" data-page="slg"></script>
 </body>
 </html>

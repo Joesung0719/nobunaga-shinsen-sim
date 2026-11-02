@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>出陣設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 出陣設定／組隊：左三隊、右武將名冊；拖曳或點選放進隊伍格。外觀沿用本站的漆黑＋金色。 */
+:root{
+  --ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;
+  --gold:#e3b75a;--violet:#b77cff;--steel:#7fa3d6;--vermilion:#c8442c;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+nav.site{display:flex;gap:6px;flex-wrap:wrap}
+nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem}
+nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:14px}
+.chip{cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:inherit;font-size:.85rem;white-space:nowrap}
+.chip[aria-pressed="true"]{color:#fff2dc;background:#8a2f1e;border-color:var(--vermilion)}
+.btn{cursor:pointer;font:inherit;font-weight:700;border-radius:4px;border:1px solid var(--gold);background:var(--gold);color:var(--ink);padding:8px 16px;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--paper);border-color:var(--line);font-weight:500;padding:6px 12px;font-size:.85rem}
+:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+
+.f-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.fTitle{margin:0;font-family:var(--display);font-size:1.15rem;color:var(--paper)}
+.fMain{display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);gap:16px;align-items:start}
+@media (max-width:860px){.fMain{grid-template-columns:1fr}}
+.fTeams{display:flex;flex-direction:column;gap:12px}
+.fTeam{border:1px solid var(--line);border-radius:4px;background:rgba(0,0,0,.25);padding:10px 14px;transition:border-color .2s,box-shadow .2s}
+.fTeam.on{border-color:var(--gold);box-shadow:0 0 12px rgba(227,183,90,.25)}
+.fTh{display:flex;align-items:baseline;justify-content:space-between}
+.fTh b{font-family:var(--display);font-size:1.15rem}
+.fTh span{font-size:.85rem;color:var(--muted)}
+.fSlots{display:flex;align-items:center;gap:clamp(10px,3vw,28px);margin-top:8px;flex-wrap:wrap}
+.fSlot{background:none;border:0;padding:0;cursor:grab;display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;touch-action:none;color:inherit;font:inherit;border-radius:4px}
+.fSlot .face{width:80px;height:80px}
+.fSlot .pos{font-size:.75rem;color:var(--muted)}
+.fSlot .nm{font-size:.82rem;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.fSlot[aria-pressed=true] .face,.fSlot.over .face{box-shadow:0 0 0 3px var(--paper),0 0 18px rgba(255,240,200,.7)}
+.fSlot.over .face{transform:scale(1.08)}
+.isDrag .fSlot .face{outline:1px dashed rgba(227,183,90,.6);outline-offset:4px}
+.fStat{margin-left:auto;display:flex;flex-direction:column;gap:3px;font-size:.85rem;color:var(--muted);min-width:90px}
+.fStat b{font-family:var(--display);font-size:1rem;color:var(--gold)}
+/* 圓形頭像：外框顏色＝星級（5★金、4★紫、3★藍） */
+.face{display:block;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 38%,#4a3a2c,#1d1510 72%);border:2px solid #7a6a55;transition:transform .15s}
+.face svg{width:100%;height:100%;display:block}
+.face.r5{border-color:var(--gold)}.face.r4{border-color:var(--violet)}.face.r3{border-color:var(--steel)}
+.fRoster{display:flex;flex-direction:column;height:min(78vh,640px)}
+.fRh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.fRh h2{margin:0;font-family:var(--display);font-size:1.15rem;color:var(--gold);white-space:nowrap}
+.fFilters{display:flex;gap:5px;flex-wrap:wrap}
+.fGrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;align-content:start;padding:2px;scrollbar-width:thin}
+.fCard{position:relative;cursor:grab;border-radius:4px;border:1px solid var(--line);background:rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;padding:10px 2px 8px;gap:3px;touch-action:pan-y;color:inherit;font:inherit}
+.fCard.r5{border-color:var(--gold)}.fCard.r4{border-color:var(--violet)}.fCard.r3{border-color:var(--steel)}
+.fCard .face{width:66px;height:66px}
+.fCard .nm{font-size:.82rem;white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
+.fCard .st{font-size:.68rem;letter-spacing:-.05em}
+.fCard.r5 .st{color:var(--gold)}.fCard.r4 .st{color:var(--violet)}.fCard.r3 .st{color:var(--steel)}
+.fCard.used{opacity:.55}
+.fCard .tag{position:absolute;right:3px;top:3px;font-size:.65rem;background:#8a2f1e;color:#fff2dc;padding:0 4px;border-radius:2px}
+.fCard[aria-pressed=true]{opacity:1;box-shadow:0 0 0 2px var(--paper),0 0 14px rgba(255,240,200,.5)}
+.fCard.dragging,.fSlot.dragging{opacity:.35}
+.fEmpty{grid-column:1/-1;text-align:center;color:var(--muted);line-height:1.9;margin-top:60px}
+.fFoot{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.fHint{margin:0;font-size:.85rem;color:var(--muted);flex:1;min-width:240px}
+.fGo{font-family:var(--display);font-size:1.25rem;letter-spacing:.2em;padding:10px 48px;background:linear-gradient(#e0623f,#b23a22 60%,#7c2414);border-color:#c8442c;color:#fff2dc}
+.fGo small{display:block;font-family:var(--body);font-size:.75rem;letter-spacing:.1em;font-weight:500;opacity:.85}
+.fGhost{position:fixed;left:0;top:0;z-index:99;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.7)}
+</style>
+</head>
+<body>
+<div class="wrap" id="formation">
+  <header class="top">
+    <div><h1>出陣設定</h1><p>把武將拖進三支隊伍，主將決定兵種；編好的隊伍就是 Q版戰棋「打地」的我方部隊</p></div>
+    <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="slg.html" aria-current="page">Q版戰棋</a><a href="generals.html">武將資料庫</a></nav>
+  </header>
+  <div class="f-top"><a class="btn ghost" href="slg.html?m=land">← 回打地設定</a><h2 class="fTitle"></h2></div>
+  <div class="fMain">
+    <div class="panel fTeams" aria-label="我方隊伍"></div>
+    <section class="panel fRoster" aria-label="武將名冊">
+      <div class="fRh"><h2>武將名冊</h2><div class="fFilters" role="group" aria-label="篩選"></div></div>
+      <div class="fGrid"></div>
+    </section>
+  </div>
+  <div class="fFoot"><p class="fHint"></p><button class="btn fGo" type="button">出陣！<small>進入戰棋</small></button></div>
+</div>
+<script type="module">
+import {mountFormation} from './formation.js?v=1';
+const W=await (await fetch('land.json',{cache:'no-cache'})).json();
+const POOL=await (await fetch('data.json',{cache:'no-cache'})).json();
+// 名冊只列登用模擬抽到的武將（localStorage shinsen-gacha-v2 的 own，以武將 id 記）
+const owned=()=>{let S=null;try{S=JSON.parse(localStorage.getItem('shinsen-gacha-v2')||'null')}catch(e){}return new Set(POOL.filter(g=>S?.own?.[g.id]).map(g=>g.n))};
+const F=mountFormation({root:document.getElementById('formation'),W,POOL,owned});
+F.show();
+addEventListener('pageshow',e=>{if(e.persisted)F.show()});
+if(new URLSearchParams(location.search).has('debug'))window.FORM=F;
+</script>
+<script src="site-nav.js?v=4" data-page="slg"></script>
+</body>
+</html>
