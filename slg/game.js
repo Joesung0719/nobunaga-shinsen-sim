@@ -1,19 +1,19 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=40';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=40';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=40';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=40';
-import {isoGeom} from './iso.js?v=40';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=40';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=40';
-import {SCENARIOS} from './scenarios.js?v=40';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=40';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=41';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=41';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=41';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=41';
+import {isoGeom} from './iso.js?v=41';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=41';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=41';
+import {SCENARIOS} from './scenarios.js?v=41';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=41';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
 // slg.html 的 --slg-ver 與 script 的 ?v=、這裡的 VER、以及 game.js／engine.js 的 import 網址 ?v=。
 // 網址帶版本號，新頁面一定抓到新程式，不會配到瀏覽器快取裡的舊 js。
-const VER='31';
+const VER='32';
 if(getComputedStyle(document.documentElement).getPropertyValue('--slg-ver').replace(/['"\s]/g,'')!==VER){
   let n=0;try{n=+sessionStorage.getItem('slg-reload')||0;sessionStorage.setItem('slg-reload',n+1)}catch{}
   if(n<2){location.reload();await new Promise(()=>{})}
@@ -149,7 +149,7 @@ function teamCard(spec,side,i,list){
   const cost=spec.gens.reduce((a,g)=>a+costOf(g.n),0);
   const figs=el('div',{class:'figs'},...spec.gens.map((g,j)=>el('div',{class:'fig',html:chibi({n:g.n,f:facOf(g.n)},{arm:spec.arm,side,boss:j===0})+`<span>${g.n}</span>`})));
   const arms=el('div',{class:'row arms'});
-  chips(arms,ARMS.map(([k,l])=>[k,l]),spec.arm,v=>{spec.arm=v;if(spec.my)spec.my.arm=v;save();renderSetup()});
+  chips(arms,ARMS.map(([k,l])=>[k,l]),spec.arm,v=>{spec.arm=v;save();renderSetup()});
   // 兵學是每位武將各自的配點，在打地頁組隊設定（按「編輯這隊」）
   const bgl=spec.gens.map(g=>[g.n,bgSummary(g.bg,ROSTER.get(g.n)?.r,g.n)]).filter(x=>x[1]);
   const bg=el('small',{class:'muted'},bgl.length?'兵學：'+bgl.map(x=>`${x[0]} ${x[1]}`).join('｜'):'兵學：未設定（按「編輯這隊」配點）');
@@ -329,6 +329,7 @@ function renderSetup(){
   const n=SET.mode==='pvp'?1:3;
   $('setup').classList.toggle('duel',SET.mode==='pvp');
   $('mineTitle').textContent=SET.mode==='pvp'?'藍方部隊':'我方部隊（藍）';
+  $('toForm').hidden=SET.mode==='pvp';   // 出陣設定頁（formation.html）編的是打地三隊
   $('mine').replaceChildren(...SET.mine.slice(0,n).map((t,i)=>teamCard(t,0,i,SET.mine)));
   $('enemyWrap').hidden=SET.mode!=='pvp';
   $('enemyTitle').textContent=SET.foe==='ai'?'紅方部隊（NPC）':'紅方部隊';

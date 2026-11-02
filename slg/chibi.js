@@ -4,7 +4,7 @@
 export const FAC_COL={織田:'#b8473a',豐臣:'#c99a2e',德川:'#3e8a5c',武田:'#a3352f',上杉:'#3d6db8',群雄:'#7b6650'};
 export const SIDE_COL=['#3f7fd9','#d24a3a'];
 const HAIR=['#2a211c','#3b2a20','#1d1d24','#4a3526','#5a4a42'];
-const SKIN=['#f6d6b6','#f1cba6','#f8dcc2'];
+const SKIN=['#f6d9bd','#f4d3b4','#f8dfc8'];   // 2026-11 提亮（Joe：戰棋頭像臉太黑）
 function hash(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.codePointAt(0),16777619);return h>>>0}
 
 // 勢力家紋（簡化自繪，畫在以 0,0 為中心、半徑約 5 的範圍）
@@ -106,7 +106,7 @@ export function chibi(g,o={}){
   const eyeK=sp.eye||['round','smile','fierce'][(h>>>9)%3];
   const ink='#221a16',aL=lite(ar),aD=dark(ar),aid='a'+uid,sid='s'+uid,hid='h'+uid;
   const defs=`<defs><linearGradient id="${aid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${aL}"/><stop offset=".55" stop-color="${ar}"/><stop offset="1" stop-color="${aD}"/></linearGradient>`+
-    `<radialGradient id="${sid}" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="${lerpHex(skin,'#ffffff',.35)}"/><stop offset=".6" stop-color="${skin}"/><stop offset="1" stop-color="${lerpHex(skin,'#a8643c',.45)}"/></radialGradient>`+
+    `<radialGradient id="${sid}" cx=".4" cy=".28" r=".9"><stop offset="0" stop-color="${lerpHex(skin,'#ffffff',.45)}"/><stop offset=".7" stop-color="${skin}"/><stop offset="1" stop-color="${lerpHex(skin,'#d29a74',.18)}"/></radialGradient>`+
     `<linearGradient id="${hid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a5e6a"/><stop offset=".5" stop-color="#2e2a2c"/><stop offset="1" stop-color="#15131a"/></linearGradient></defs>`;
   const E=(x,w=2.1,hh=2.7)=>`<ellipse cx="${x}" cy="${ey}" rx="${w}" ry="${hh}" fill="${ink}"/><circle cx="${x+.7}" cy="${ey-1}" r=".85" fill="#fff"/>`;
   const eye={
@@ -163,7 +163,8 @@ export function chibi(g,o={}){
     torso+shoulder(18)+shoulder(46)+weapon(arm,48+dy)+
     `<circle cx="14" cy="${50+dy}" r="3.2" fill="${skin}" stroke="#00000033" stroke-width=".6"/><circle cx="48" cy="${52+dy}" r="3" fill="${skin}" stroke="#00000033" stroke-width=".6"/>`+
     hairBack+
-    `<circle cx="32" cy="${29+dy}" r="${faceR}" fill="url(#${sid})" stroke="#00000038" stroke-width=".9"/>`+
+    `<circle cx="32" cy="${29+dy}" r="${faceR}" fill="url(#${sid})" stroke="#fff3e2" stroke-width="1" stroke-opacity=".9"/>`+   // 臉：提亮底色＋淺色描邊
+    `<ellipse cx="30" cy="${24.6+dy}" rx="6.5" ry="2.4" fill="#fff" opacity=".32"/>`+   // 頭頂打光（暗場地也看得清）
     (sp.old?`<path d="M22 ${27+dy} q2 1 4 0 M38 ${27+dy} q2 1 4 0" stroke="#00000030" stroke-width=".6" fill="none"/>`:'')+
     eye+brow+
     `<ellipse cx="23" cy="${35.5+dy}" rx="2.6" ry="1.5" fill="#f08c8c" opacity="${fem?.7:.5}"/><ellipse cx="41" cy="${35.5+dy}" rx="2.6" ry="1.5" fill="#f08c8c" opacity="${fem?.7:.5}"/>`+
