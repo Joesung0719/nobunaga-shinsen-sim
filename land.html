@@ -358,7 +358,7 @@ ul.note{padding-left:1.2em}
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,BASE_TEXT} from './slg/bingaku.js?v=10';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
-const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
+const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
 const RES={W:'勝利',D:'平局',L:'敗北'};
 const GRADE={5:'S',4:'A',3:'B'};
