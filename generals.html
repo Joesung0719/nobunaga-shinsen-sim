@@ -147,7 +147,7 @@ import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
 const [D,CARDS]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json())]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
-const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp`;
+const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const ST6=['武勇','智略','統率','速度','政務','魅力'];
 const KINDS=['指揮','主動','突擊','被動','兵種','內政'];
 const KLABEL={兵種:'兵種＆陣型'};
