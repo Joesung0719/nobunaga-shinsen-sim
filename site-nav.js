@@ -6,7 +6,7 @@
   const page=document.currentScript?.dataset.page||'';
   const TABS=[['gacha','./','登用模擬'],['slg','slg.html','Q版戰棋'],['generals','generals.html','武將資料庫']];
   const SUB=[['pvp','對戰模擬'],['land','打地'],['camp','戰役']];
-  const inSlg=page==='slg'||page==='land';
+  const inSlg=page==='slg'||page==='land'||page==='rec';
 
   const css=`
 nav.site{display:flex;gap:6px;flex-wrap:wrap}
@@ -27,7 +27,7 @@ nav.site a:focus-visible,nav.sub a:focus-visible{outline:2px solid var(--paper);
   document.head.append(Object.assign(document.createElement('style'),{textContent:css}));
 
   const a=(href,label,cur)=>{const e=document.createElement('a');e.href=href;e.textContent=label;if(cur)e.setAttribute('aria-current','page');return e};
-  const cur=page==='land'?'slg':page;
+  const cur=page==='land'||page==='rec'?'slg':page;
   for(const nav of document.querySelectorAll('nav.site'))
     nav.replaceChildren(...TABS.map(([k,h,l])=>a(h,l,k===cur)));
   if(!inSlg)return;
@@ -37,7 +37,7 @@ nav.site a:focus-visible,nav.sub a:focus-visible{outline:2px solid var(--paper);
   const sub=document.createElement('nav');sub.className='sub';sub.setAttribute('aria-label','Q版戰棋');
   const links=SUB.map(([m,l])=>{const e=a(`slg.html?m=${m}`,l,false);e.dataset.m=m;return e});
   const sep=document.createElement('span');sep.className='sep';
-  sub.append(...links,sep,a('land.html','組隊・戰報估算',page==='land'));
+  sub.append(...links,sep,a('land.html','組隊・戰報估算',page==='land'),a('recommend.html','開荒推薦',page==='rec'));
   header.after(sub);
 
   if(page!=='slg')return;
