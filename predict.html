@@ -59,8 +59,8 @@ th{color:var(--muted);font-weight:500}
   </section>
 
   <section class="panel">
-    <h2>對手隊伍</h2>
-    <div class="row"><select id="oppPreset" style="flex:none;max-width:100%"></select><span class="note">選推薦榜隊伍當對手，或在下方自己配（對手紅度、戰法預設滿配）。</span></div>
+    <h2>對戰預設（對手隊伍）</h2>
+    <div class="row"><select id="oppPreset" style="flex:none;max-width:100%"></select><span class="note">選推薦榜隊伍當對手（對戰預設），或在下方自己配。戰法由系統依武將特性推薦，同隊戰法不重複（數量2的戰法可兩人用）。</span></div>
     <div class="grid" id="opp"></div>
   </section>
 
@@ -75,24 +75,22 @@ th{color:var(--muted);font-weight:500}
       <span class="note">排名來自 tools/team-rank.mjs 的循環賽（對戰引擎內的平均勝率）。資源 = 登用期望抽數：每個武將 1 張＋紅度每 +1 再 1 張，傳授戰法的來源武將也各算 1 張。</span></div>
     <div class="scroll"><table id="rank"></table></div>
   </section>
-  <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
+  <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法（每招有「數量」：多數只有 1 份，同隊只能一人用；34 招數量2可兩人用；自選的照用，沒選的由推薦補滿，理由見「開荒推薦」）；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
 </div>
 <script type="module">
 import{battle,parseSkill,innateOf,fullRedStats,bestArm}from'./slg/engine.js?v=44';
-const[D,CARDS,RANK]=await Promise.all(['land.json','data.json','rank.json'].map(f=>fetch(f,{cache:'no-cache'}).then(r=>r.json())));
+import{makeKit}from'./slg/teamlib.js?v=1';
+const[D,CARDS,RANK,POWER,FIELD,EX]=await Promise.all(['land.json','data.json','rank.json','skillpower.json','field.json','generals_extra.json'].map(f=>fetch(f,{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))));
 const $=id=>document.getElementById(id);
 const CARD=new Map(CARDS.map(c=>[c.n,c]));
 const ALL=Object.keys(D.stats).filter(n=>D.stats[n].c).sort((a,b)=>D.stats[a].c-D.stats[b].c||a.localeCompare(b,'zh-Hant'));
 const cost=n=>D.stats[n].c;
 const PS=new Map(),ps=n=>{if(!PS.has(n))PS.set(n,parseSkill(n,D));return PS.get(n)};
-const val=s=>{const x=ps(s);if(x.modeled!=='text'||!['主動','突擊','指揮','被動'].includes(x.kind))return 0;
-  return(x.rate||0)*((x.dmg||0)*(x.n?(x.n[0]+x.n[1])/2:1)+(x.heal||0)*.5+(x.status?.p||0)*.6)*(x.prep?.8:1)};
-const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
-const SKILLS=Object.keys(D.skillText).filter(s=>!INN.has(s)&&val(s)>0).sort((a,b)=>val(b)-val(a));
-const autoSk=n=>SKILLS.filter(s=>s!==innateOf(D,n)).slice(0,2);
+const TAGS=Object.fromEntries(Object.entries(EX).map(([k,v])=>[k,v.tags||[]]));
 // 登用期望抽數
 const rate=n=>{const c=CARD.get(n);return c?.s1||({5:.16,4:.9,3:3.44}[c?.r??5])};
 const pulls=n=>100/rate(n);
+const KIT=makeKit(D,{power:POWER,tags:TAGS,pulls:n=>pulls(n),field:FIELD});
 const TEACH={};for(const[g,s]of Object.entries(D.teach))(TEACH[s]??=[]).push(g);
 const srcPull=s=>Math.min(...(TEACH[s]||[]).map(pulls),Infinity);
 function resource(team){ // team:[{n,red,s:[..]}]
@@ -103,47 +101,61 @@ function resource(team){ // team:[{n,red,s:[..]}]
   return{tot,parts};
 }
 const fmt=x=>x>=1000?Math.round(x/10)*10:Math.round(x);
-function build(team,side,lv,troops){
-  const names=team.map(g=>g.n),arm=bestArm(D,names)||'槍',red=Object.fromEntries(team.map(g=>[g.n,g.red]));
-  return{name:names[0],side,arm,terrain:'平',gens:team.map(g=>({n:g.n,st:fullRedStats(D,g.n,names,arm,lv,red),troops,max:troops,
-    skills:[innateOf(D,g.n),...(g.s.length?g.s:autoSk(g.n))].filter(Boolean).map(ps),bg:null}))};
+// 這一隊實際使用的戰法：自選的照用，其餘由「推薦戰法」補滿（同隊戰法依數量不重複）
+function plan(team,lv){
+  const f=team.filter(g=>g.n);if(f.length<3)return{sel:team.map(g=>g.s.filter(Boolean)),why:team.map(()=>[])};
+  const names=f.map(g=>g.n),arm=bestArm(D,names)||'槍',red=Object.fromEntries(f.map(g=>[g.n,g.red]));
+  const t=team.map(g=>({n:g.n,red:g.red,st:fullRedStats(D,g.n,names,arm,lv,red)}));
+  return KIT.pick(t,team.map(g=>g.s.filter(Boolean)));
 }
+function build(team,side,lv,troops){
+  const names=team.map(g=>g.n),arm=bestArm(D,names)||'槍',red=Object.fromEntries(team.map(g=>[g.n,g.red])),pl=plan(team,lv);
+  return{name:names[0],side,arm,terrain:'平',gens:team.map((g,i)=>({n:g.n,st:fullRedStats(D,g.n,names,arm,lv,red),troops,max:troops,
+    skills:[innateOf(D,g.n),...pl.sel[i]].filter(Boolean).map(KIT.ps),bg:null}))};
+}
+// 戰法選單只列這位武將還能用的：別人已用掉的不能再選（數量 2 的戰法可兩人用）
+function skillOpts(team,i){return KIT.options(team.map(g=>({n:g.n,s:g.s.filter(Boolean)})),i).sort((a,b)=>KIT.pw(b,'phys')+KIT.pw(b,'mag')-KIT.pw(a,'phys')-KIT.pw(a,'mag'))}
+function fixSkills(team){   // 清掉超過數量或與固有重複的自選
+  const used={};team.forEach(g=>{g.s=g.s.filter(Boolean).filter(s=>{if(!g.n||s===innateOf(D,g.n)||!KIT.POOL.includes(s)||(used[s]||0)>=KIT.count(s))return false;used[s]=(used[s]||0)+1;return true});while(g.s.length<2)g.s.push('')})}
 // 畫一組隊伍選單
 function slotUI(root,state,onChange){
   root.innerHTML='';
   state.forEach((g,i)=>{
     const d=document.createElement('div');d.className='slot';
+    const sl=x=>KIT.count(x)>1?x+'（數量2）':x;
     const opt=(arr,sel,label=x=>x)=>arr.map(x=>`<option value="${x}"${x===sel?' selected':''}>${label(x)}</option>`).join('');
     d.innerHTML=`<label><span>武將</span><select data-k="n"><option value="">（空）</option>${opt(ALL,g.n,n=>`${n}　C${cost(n)}`)}</select></label>
       <label><span>紅度</span><select data-k="red">${opt([0,1,2,3,4,5],g.red)}</select></label>
-      <label><span>戰法1</span><select data-k="s0"><option value="">自動（最強）</option>${opt(SKILLS,g.s[0]||'')}</select></label>
-      <label><span>戰法2</span><select data-k="s1"><option value="">自動（最強）</option>${opt(SKILLS,g.s[1]||'')}</select></label>
+      <label><span>戰法1</span><select data-k="s0"><option value="">自動（推薦）</option>${opt(skillOpts(state,i),g.s[0]||'',sl)}</select></label>
+      <label><span>戰法2</span><select data-k="s1"><option value="">自動（推薦）</option>${opt(skillOpts(state,i),g.s[1]||'',sl)}</select></label>
       <div class="note" data-k="info"></div>`;
     d.addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;
       if(k==='n')g.n=e.target.value;else if(k==='red')g.red=+e.target.value;
-      else{const j=+k[1];const s=[g.s[0]||'',g.s[1]||''];s[j]=e.target.value;g.s=s.filter(Boolean).length===0?[]:s}
-      onChange()});
+      else{const j=+k[1];const s=[g.s[0]||'',g.s[1]||''];s[j]=e.target.value;g.s=s}
+      fixSkills(state);if(k==='n'||k[0]==='s')slotUI(root,state,onChange);onChange()});
     root.append(d);
   });
 }
-const blank=()=>[0,1,2].map(()=>({n:'',red:0,s:[]}));
+const blank=()=>[0,1,2].map(()=>({n:'',red:0,s:['','']}));
 const mine=blank(),opp=blank();
 function info(root,team){
+  const PL=plan(team,+$('lv').value);
   [...root.children].forEach((d,i)=>{const g=team[i],e=d.querySelector('[data-k=info]');
-    e.textContent=g.n?`${D.stats[g.n].f}・${D.stats[g.n].season}・固有：${innateOf(D,g.n)||'—'}・自動戰法：${autoSk(g.n).join('、')}`:''});
+    e.textContent=g.n?`${D.stats[g.n].f}・${D.stats[g.n].season}・固有：${innateOf(D,g.n)||'—'}・實際使用：${(PL.sel[i]||[]).join('、')||'—'}`:''});
 }
 function refresh(){
   const filled=mine.filter(g=>g.n),c=filled.reduce((a,g)=>a+cost(g.n),0),cap=+$('cap').value;
-  const r=resource(filled);
+  const PL=filled.length===3?plan(mine,+$('lv').value):null;
+  const r=resource(filled.map((g,i)=>({n:g.n,red:g.red,s:PL?PL.sel[i]:[]})));
   $('costInfo').innerHTML=`Cost <b class="${c>cap?'neg':''}">${c}</b>/${cap}　登用期望抽數 ≈ <b>${fmt(r.tot)}</b>`;
   info($('mine'),mine);info($('opp'),opp);
 }
-function setTeam(team,names,red,skills){names.forEach((n,i)=>{team[i]={n,red,s:(skills?.[n]||[]).slice()}})}
+function setTeam(team,names,red){names.forEach((n,i)=>{team[i]={n,red,s:['','']}})}
 slotUI($('mine'),mine,refresh);slotUI($('opp'),opp,refresh);
 // 預設：榜首 vs 榜 6 名
-{const R0=RANK['0'];setTeam(mine,R0[0].team,0,R0[0].skills);setTeam(opp,R0[5].team,5,R0[5].skills);slotUI($('mine'),mine,refresh);slotUI($('opp'),opp,refresh)}
+{const R0=RANK['0'];setTeam(mine,R0[0].team,0);setTeam(opp,R0[5].team,5);slotUI($('mine'),mine,refresh);slotUI($('opp'),opp,refresh)}
 $('oppPreset').innerHTML='<option value="">對手：自訂（下方）</option>'+['0','5'].flatMap(k=>RANK[k].slice(0,10).map((t,i)=>`<option value="${k}:${i}">${k} 紅榜 #${i+1}：${t.team.join('、')}</option>`)).join('');
-$('oppPreset').onchange=e=>{const v=e.target.value;if(!v)return;const[k,i]=v.split(':'),t=RANK[k][+i];setTeam(opp,t.team,+k,t.skills);slotUI($('opp'),opp,refresh);refresh()};
+$('oppPreset').onchange=e=>{const v=e.target.value;if(!v)return;const[k,i]=v.split(':'),t=RANK[k][+i];setTeam(opp,t.team,+k);slotUI($('opp'),opp,refresh);refresh()};
 ['cap','lv','troops'].forEach(id=>$(id).addEventListener('change',refresh));
 refresh();
 
@@ -180,7 +192,7 @@ $('sug').onclick=async()=>{
     const res=[];let k=0;
     for(const n of cands){
       if(mine.some(g=>g.n===n))continue;
-      const t=mine.map((g,j)=>j===i?{n,red:g.red,s:[]}:g);
+      const t=mine.map((g,j)=>j===i?{n,red:g.red,s:['','']}:{...g,s:['','']});
       if(t.reduce((a,g)=>a+cost(g.n),0)>cap)continue;
       res.push({n,sc:simulate(t,opp,16).score,res:resource(t).tot});
       if(++k%12===0){$('prog').textContent=`分析第 ${i+1} 位…`;await pause()}
@@ -196,10 +208,10 @@ function drawRank(){
   $('rank').innerHTML='<tr><th>#</th><th>隊伍（Cost）</th><th>兵種</th><th>榜內勝率</th><th>期望抽數</th><th></th></tr>'+rows.map((t,i)=>{
     const r=resource(t.team.map(n=>({n,red,s:t.skills[n]||[]})));
     return`<tr><td>${i+1}</td><td>${t.team.map(n=>`${n}(${cost(n)})`).join('、')}</td><td>${t.arm}</td><td>${pct(t.winRate)}</td><td>${fmt(r.tot)}</td><td><button class="ghost" data-i="${i}">載入</button></td></tr>`}).join('');
-  $('rank').querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=rows[+b.dataset.i];setTeam(mine,t.team,red,t.skills);slotUI($('mine'),mine,refresh);refresh();scrollTo({top:0,behavior:'smooth'})});
+  $('rank').querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=rows[+b.dataset.i];setTeam(mine,t.team,red);slotUI($('mine'),mine,refresh);refresh();scrollTo({top:0,behavior:'smooth'})});
 }
 $('rankRed').onchange=drawRank;$('cap').addEventListener('change',drawRank);drawRank();
 </script>
-<script src="site-nav.js?v=6" data-page="predict"></script>
+<script src="site-nav.js?v=7" data-page="predict"></script>
 </body>
 </html>

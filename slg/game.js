@@ -131,7 +131,7 @@ function garrisonTeam(k,lv){
 }
 
 // ---- setup UI ----
-const MODES=[['pvp','對戰模擬'],['land','打地'],['camp','戰役']];   // 劇本資料（scenarios.js）只給戰役用，不再有獨立分頁
+const MODES=[['camp','戰役']];   // 劇本資料（scenarios.js）只給戰役用，不再有獨立分頁
 // 模式由頁首的子分頁（site-nav.js）切換：網址 ?m=pvp|land|story|camp 可直接開到該模式
 {const m=new URLSearchParams(location.search).get('m');if(MODES.some(([k])=>k===m))SET.mode=m;if(!MODES.some(([k])=>k===SET.mode))SET.mode='camp'}   // 舊存檔停在「劇本」的，改回戰役
 function setMode(v){

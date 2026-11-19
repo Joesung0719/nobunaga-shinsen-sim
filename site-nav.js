@@ -1,15 +1,16 @@
 // 全站共用導覽：頂端四項（登用模擬／武將資料庫／組隊分析／Q版戰棋）。
-// 「組隊分析」底下是子分頁：組隊戰報估算、隊伍預測、開荒推薦、打地模擬、對戰模擬；「Q版戰棋」只留戰役。
-// 打地／對戰模擬的引擎仍在 slg.html（用 ?m=land / ?m=pvp 開），所以在那兩個模式下導覽會標示為「組隊分析」。
+// 「組隊分析」底下是子分頁：組隊戰報估算、隊伍預測、開荒推薦（打地已併入開荒推薦，對戰預設在隊伍預測）；「Q版戰棋」只留戰役。
+// 舊網址 slg.html?m=land 導向開荒推薦、?m=pvp 導向隊伍預測。
 // 每頁在 <nav class="site"> 裡留著同樣四個連結當備援（這支沒載入也能切頁）。
-// 用法：<script src="site-nav.js?v=6" data-page="gacha|slg|land|rec|predict|generals"></script>（放在 </body> 前）。
+// 用法：<script src="site-nav.js?v=7" data-page="gacha|slg|land|rec|predict|generals"></script>（放在 </body> 前）。
 // 改動這支要把各頁 script 網址的 ?v= 一起加 1，避免瀏覽器拿到快取裡的舊版。
 (()=>{
   const page=document.currentScript?.dataset.page||'';
   const TABS=[['gacha','./','登用模擬'],['generals','generals.html','武將資料庫'],['team','land.html','組隊分析'],['slg','slg.html?m=camp','Q版戰棋']];
   // 子分頁：[key, 網址, 名稱, 在戰棋頁內切換的模式]
-  const SUB=[['land','land.html','組隊戰報估算'],['predict','predict.html','隊伍預測'],['rec','recommend.html','開荒推薦'],['sim','slg.html?m=land','打地模擬','land'],['pvp','slg.html?m=pvp','對戰模擬','pvp']];
+  const SUB=[['land','land.html','組隊戰報估算'],['predict','predict.html','隊伍預測'],['rec','recommend.html','開荒推薦']];
   const inTeam=p=>['land','predict','rec'].includes(p);
+  {const m=new URLSearchParams(location.search).get('m');if(page==='slg'&&(m==='land'||m==='pvp')){location.replace(m==='land'?'recommend.html':'predict.html');return}}
   const css=`
 nav.site{display:flex;gap:6px;flex-wrap:wrap}
 nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem;white-space:nowrap}
@@ -37,7 +38,7 @@ nav.site a:focus-visible,nav.sub a:focus-visible{outline:2px solid var(--paper);
   sub.append(...subs);header?.after(sub);
 
   const h1=header?.querySelector('h1'),desc=header?.querySelector('p');
-  const TITLES={team:['組隊分析','組隊、戰報估算、隊伍預測、開荒推薦，以及打地／對戰模擬'],slg:['Q版戰棋','戰役關卡：每格一支部隊，接觸就打 8 回合自動戰鬥']};
+  const TITLES={team:['組隊分析','組隊、戰報估算、隊伍預測（含對戰預設）、開荒推薦（含打地）'],slg:['Q版戰棋','戰役關卡：每格一支部隊，接觸就打 8 回合自動戰鬥']};
   // mode：戰棋頁目前的模式（camp 屬於 Q版戰棋，land／pvp 屬於組隊分析）
   const mark=mode=>{
     const group=page==='slg'?(mode==='land'||mode==='pvp'?'team':'slg'):inTeam(page)?'team':page;
