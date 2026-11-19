@@ -60,7 +60,7 @@ th{color:var(--muted);font-weight:500}
 
   <section class="panel">
     <h2>對戰預設（對手隊伍）</h2>
-    <div class="row"><select id="oppPreset" style="flex:none;max-width:100%"></select><span class="note">選推薦榜隊伍當對手（對戰預設），或在下方自己配。戰法由系統依武將特性推薦，同隊戰法不重複（數量2的戰法可兩人用）。</span></div>
+    <div class="row"><select id="oppPreset" style="flex:none;max-width:100%"></select><span class="note">選推薦榜隊伍當對手（對戰預設），或在下方自己配。戰法由系統依武將特性推薦，戰法依庫存數量限制（多數只能一人用）。</span></div>
     <div class="grid" id="opp"></div>
   </section>
 
@@ -75,11 +75,11 @@ th{color:var(--muted);font-weight:500}
       <span class="note">排名來自 tools/team-rank.mjs 的循環賽（對戰引擎內的平均勝率）。資源 = 登用期望抽數：每個武將 1 張＋紅度每 +1 再 1 張，傳授戰法的來源武將也各算 1 張。</span></div>
     <div class="scroll"><table id="rank"></table></div>
   </section>
-  <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法（每招有「數量」：多數只有 1 份，同隊只能一人用；34 招數量2可兩人用；自選的照用，沒選的由推薦補滿，理由見「開荒推薦」）；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
+  <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法（戰法是全帳號共用庫存：百煉成鋼、奮鬥 2、B 級 3、其餘 1，這裡以「同隊」為單位限制；多隊的庫存扣數在「開荒推薦」；自選的照用，沒選的由推薦補滿，理由見「開荒推薦」）；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
 </div>
 <script type="module">
 import{battle,parseSkill,innateOf,fullRedStats,bestArm}from'./slg/engine.js?v=44';
-import{makeKit}from'./slg/teamlib.js?v=1';
+import{makeKit}from'./slg/teamlib.js?v=2';
 const[D,CARDS,RANK,POWER,FIELD,EX]=await Promise.all(['land.json','data.json','rank.json','skillpower.json','field.json','generals_extra.json'].map(f=>fetch(f,{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))));
 const $=id=>document.getElementById(id);
 const CARD=new Map(CARDS.map(c=>[c.n,c]));
@@ -122,7 +122,7 @@ function slotUI(root,state,onChange){
   root.innerHTML='';
   state.forEach((g,i)=>{
     const d=document.createElement('div');d.className='slot';
-    const sl=x=>KIT.count(x)>1?x+'（數量2）':x;
+    const sl=x=>KIT.count(x)>1?x+`（數量${KIT.count(x)}）`:x;
     const opt=(arr,sel,label=x=>x)=>arr.map(x=>`<option value="${x}"${x===sel?' selected':''}>${label(x)}</option>`).join('');
     d.innerHTML=`<label><span>武將</span><select data-k="n"><option value="">（空）</option>${opt(ALL,g.n,n=>`${n}　C${cost(n)}`)}</select></label>
       <label><span>紅度</span><select data-k="red">${opt([0,1,2,3,4,5],g.red)}</select></label>

@@ -141,5 +141,5 @@ python3 -m http.server 8000
 
 ## 開荒推薦 v3（2026-11-20）
 - `recommend.html`：挑目標土地與總 Cost（15～20 可調），可「AI 一鍵組隊」、編輯隊伍並直接模擬打守軍（原打地模擬併入）；推薦戰法附理由。
-- `slg/teamlib.js`：戰法「數量」規則（來源武將人數；數量2可兩人用）與推薦戰法評分。
+- `slg/teamlib.js`：戰法「數量」規則（全帳號庫存：百煉成鋼、奮鬥 2、B 級 3、其餘 1，跨隊扣數）與推薦戰法評分。
 - `tools/skill-power.mjs` → `skillpower.json`；`tools/mine-reports.py` → `field.json`（戰報彙總，不含玩家名）；`tools/recommend.mjs` → `recommend.json`。重跑順序：skill-power → mine-reports → recommend。

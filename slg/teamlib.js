@@ -1,7 +1,7 @@
 // 組隊共用：戰法使用規則（數量）與「推薦戰法」評估。瀏覽器與 node 都能用（不碰 fs）。
 //
-// 戰法規則（Joe 2026-11-20）：每個可傳授戰法只有「來源武將」那麼多份，一份只能裝在一位武將身上；
-// 絕大多數戰法數量 1（同隊只能有一人用），來源有 2 位武將的戰法是「數量2」（同隊最多兩人用）。
+// 戰法規則（Joe 2026-11-20）：每個可傳授戰法有「數量」，一份只能裝在一位武將身上，同隊最多用到「數量」個人。
+// 庫存：百煉成鋼、奮鬥 2，B 級 3，其餘 1，跨隊共用（reserved 參數＝其他隊已用掉的份數）。
 // 固有戰法只有該武將自己有，不能傳授。這裡的數量 = D.teach 裡「以這招當傳授戰法的武將」人數。
 //
 // 推薦戰法（全部是推估，不是遊戲官方算法）：
@@ -15,7 +15,11 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
   const PS=new Map(),ps=n=>{if(!PS.has(n))PS.set(n,parseSkill(n,D));return PS.get(n)};
   const SRC={};for(const[g,s]of Object.entries(D.teach))(SRC[s]??=[]).push(g);
   const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
-  const count=s=>(SRC[s]||[]).length||1;
+  // 數量＝全帳號共用的戰法庫存（Joe 2026-11-20）：A 級百煉成鋼、奮鬥 2，B 級全部 3，其餘所有戰法 1。
+  // 不論有幾隊、每隊三人，只要有人裝上，庫存就減 1，用完就不能再裝給別人（跨隊也算）；固有戰法不受此限。
+  const grade=s=>D.skillText?.[s]?.g||D.skills?.[s];
+  const A2=new Set(['百煉成鋼','奮鬥']);
+  const count=s=>{const g=grade(s);return g==='B'?3:A2.has(s)?2:1};
   const usable=s=>{const p=ps(s);return p.modeled==='text'&&['主動','突擊','指揮','被動'].includes(p.kind)&&!INN.has(s)};
   const POOL=Object.keys(SRC).filter(usable);
   const fallback=s=>{const x=ps(s);return((x.rate||0)*((x.dmg||0)*(x.n?(x.n[0]+x.n[1])/2:1)+(x.heal||0)*.5+(x.status?.p||0)*.6))*.1};
@@ -27,9 +31,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
   const tagsOf=n=>tags[n]||[];
 
   // team: [{n, red, st:{武勇,智略,統率,速度}}]  picks: [[skill..],..]（已選，其餘由評估補滿到每人 2 個）
-  function pick(team,picks=null){
+  function pick(team,picks=null,reserved={}){
     const N=team.length,sel=team.map((_,i)=>[...(picks?.[i]||[])].filter(Boolean).slice(0,2));
-    const used=s=>sel.reduce((a,l)=>a+l.filter(x=>x===s).length,0);
+    const used=s=>(reserved[s]||0)+sel.reduce((a,l)=>a+l.filter(x=>x===s).length,0);
     const sts=team.map(g=>g.st),avg=k=>sts.reduce((a,x)=>a+x[k],0)/N;
     const fastest=sts.reduce((b,x,i)=>x.速度>sts[b].速度?i:b,0);
     const statusKinds=()=>new Set(sel.flat().flatMap(s=>ps(s).status?.k||[]));
@@ -88,12 +92,12 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
       const fit=(p.dtype==='兵刃')===(role==='phys');
       out.push(fit?`${g.n}${role==='phys'?'武勇':'智略'}偏高，吃${p.dtype}傷害`:`${p.dtype}傷害與${g.n}的${role==='phys'?'武勇':'智略'}偏向不同，但模擬仍有增益`);
     }
-    if(count(s)>1)out.push('數量2戰法');
+    if(count(s)>1)out.push(`數量${count(s)}戰法`);
     return`${bits.join('・')}：${[...out,...tips.filter(t=>t!=='自選')].join('；')||'模擬增益最高'}`+(tips.includes('自選')?'（自選）':'');
   }
   // 驗證／篩選用：某位武將目前的選單能列哪些戰法（排除其他人已用完數量的）
-  function options(team,i){
-    const used=s=>team.reduce((a,g,j)=>a+(j===i?0:(g.s||[]).filter(x=>x===s).length),0);
+  function options(team,i,reserved={}){
+    const used=s=>(reserved[s]||0)+team.reduce((a,g,j)=>a+(j===i?0:(g.s||[]).filter(x=>x===s).length),0);
     return POOL.filter(s=>s!==innateOf(D,team[i].n)&&used(s)<count(s));
   }
   // 戰報實戰分：每位武將勝率（勝 1 平 .5，先驗 6 場 0.5 收縮）＋同隊兩兩搭配勝率；n = 最少樣本場數。樣本通常很少，只當參考。
@@ -107,5 +111,5 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
     const tr=field.trio?.[[...names].sort().join('|')];
     return{score:base+pb*.5+(tr?(shr(tr)-.5)*.5:0),n:Math.min(...gs.map(x=>x[0])),each:gs.map(x=>x[0]),pairs,trio:tr||null};
   }
-  return{ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1)};
+  return{ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
 }
