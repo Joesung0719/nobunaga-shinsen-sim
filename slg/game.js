@@ -1,13 +1,13 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=42';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=42';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=42';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=42';
-import {isoGeom} from './iso.js?v=42';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=42';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=42';
-import {SCENARIOS} from './scenarios.js?v=42';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=42';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=43';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=43';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=43';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=43';
+import {isoGeom} from './iso.js?v=43';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=43';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=43';
+import {SCENARIOS} from './scenarios.js?v=43';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=43';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
