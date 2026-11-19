@@ -4,7 +4,7 @@
 // 改動這支要把各頁 script 網址的 ?v= 一起加 1，避免瀏覽器拿到快取裡的舊版。
 (()=>{
   const page=document.currentScript?.dataset.page||'';
-  const TABS=[['gacha','./','登用模擬'],['slg','slg.html','Q版戰棋'],['generals','generals.html','武將資料庫']];
+  const TABS=[['gacha','./','登用模擬'],['slg','slg.html','Q版戰棋'],['generals','generals.html','武將資料庫'],['predict','predict.html','隊伍預測']];
   const SUB=[['pvp','對戰模擬'],['land','打地'],['camp','戰役']];
   const inSlg=page==='slg'||page==='land'||page==='rec';
 
