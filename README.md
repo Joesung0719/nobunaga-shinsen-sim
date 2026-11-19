@@ -1,9 +1,9 @@
 # 真戰模擬器
 
 - `index.html`：登用（抽卡）模擬器
-- `slg.html`：Q版戰棋（對戰模擬、打地、戰役三種模式，逐回合自動戰鬥；`slg.html?m=pvp|land|camp` 直接開到該模式；劇本資料只給戰役用）
+- `slg.html`：Q版戰棋（只剩戰役模式，逐回合自動戰鬥；舊網址 `slg.html?m=land` 會導向開荒推薦、`?m=pvp` 導向隊伍預測）
 - `land.html`：Q版戰棋底下的「組隊・戰報估算」（自由組隊，Lv3–Lv10 土地守軍依實戰戰報抽樣估算；原「打地模擬」，網址不變）
-- `site-nav.js`：全站共用導覽。主分頁只有三個：登用模擬／Q版戰棋／武將資料庫；在戰棋與組隊頁多一排子分頁（對戰模擬／打地／戰役・組隊・戰報估算）。改這支要把各頁 `site-nav.js?v=` 加 1
+- `site-nav.js`：全站共用導覽。主分頁只有三個：登用模擬／Q版戰棋／武將資料庫；在組隊頁多一排子分頁（組隊戰報估算／隊伍預測〔含對戰預設〕／開荒推薦〔含打地〕）。改這支要把各頁 `site-nav.js?v=` 加 1
 - `recommend.html`、`recommend.json`、`tools/recommend.mjs`、`tools/recommend-lib.mjs`：開荒隊伍推薦（Q版戰棋子分頁）。`node tools/recommend.mjs [Cost上限=15]` 把所有 3 人、總 Cost 上限內的組合用戰鬥引擎模擬打 Lv5–10 土地，輸出 `recommend.json`（假設寫在檔內 assumptions）；頁面可依目標土地、養成、戰法來源、Cost 上限、勝率門檻篩選，列出最省資源與勝率最高的隊伍。
 - `generals.html`：武將資料庫（武將頁可依兵種、Cost、季度、勢力、稀有度篩選）（武將圖卡、屬性與成長、特性、固有與傳授戰法；戰法一覽可依分類篩選，並列出帶這個戰法的武將）。資料全部來自 `land.json` 與 `data.json`，不另存一份；網址加 `#武將名` 可直接開啟該武將。
 - `proto/phaser/`：Q版戰棋改用 Phaser 4 的原型（桶狹間），和遷移計畫；正式版不受影響
@@ -138,3 +138,8 @@ python3 -m http.server 8000
 ## 版權
 
 武將卡圖與家徽取自遊戲畫面，版權屬於 KOEI TECMO GAMES 及營運商；動畫為本專案自製。本專案為非商業粉絲作品，與官方無關。
+
+## 開荒推薦 v3（2026-11-20）
+- `recommend.html`：挑目標土地與總 Cost（15～20 可調），可「AI 一鍵組隊」、編輯隊伍並直接模擬打守軍（原打地模擬併入）；推薦戰法附理由。
+- `slg/teamlib.js`：戰法「數量」規則（全帳號庫存：百煉成鋼、奮鬥 2、B 級 3、其餘 1，跨隊扣數）與推薦戰法評分。
+- `tools/skill-power.mjs` → `skillpower.json`；`tools/mine-reports.py` → `field.json`（戰報彙總，不含玩家名）；`tools/recommend.mjs` → `recommend.json`。重跑順序：skill-power → mine-reports → recommend。
