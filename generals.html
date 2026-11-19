@@ -134,6 +134,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
     <div class="row" id="f1"></div>
     <div class="row" id="f2"></div>
     <div class="row" id="f3"></div>
+    <div class="row" id="f4"></div>
     <div class="count" id="count"></div>
   </section>
 
@@ -145,7 +146,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 
 <script type="module">
 import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
-const [D,CARDS]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json())]);
+const [D,CARDS,EXTRA]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json()),fetch('generals_extra.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -155,22 +156,28 @@ const KLABEL={兵種:'兵種＆陣型'};
 const KCOL={指揮:'#5b8fd8',主動:'#d0573c',突擊:'#e3923a',被動:'#4fae7f',兵種:'#a771f0',內政:'#8d8370'};
 const FACTIONS=['織田','豐臣','德川','武田','上杉','群雄'];
 const RED_AT=[0,1,3,5];
-// 兵種：由特性讀出（X術N、部隊的X兵等級上升…），沒有兵種特性的武將算「無」
-const ARM_CH={馬:'騎兵',弓:'弓兵',槍:'足輕',炮:'鐵炮',器:'器械'},ARM_NAMES=['騎兵','弓兵','足輕','鐵炮','器械'];
-function armsOf(n){
-  const o=new Set();
-  for(const t of D.stats[n]?.traits||[]){
-    const m=t.match(/^([馬弓槍炮器]+)術/);if(m)for(const c of m[1])o.add(ARM_CH[c]);
-    const x=(D.traitText?.[n]?.[t]||'').match(/^部隊的(.+?)等級上升/);if(x)for(const w of x[1].split('、'))if(ARM_NAMES.includes(w))o.add(w);
-  }
-  return[...o];
-}
 
 // ---- one roster: 5★ with stats, plus pool cards without stats yet ----
 const G=new Map();
 for(const c of CARDS)G.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f,img:c.id});
 for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:x.r??5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
 const innOf=n=>D.stats[n]?.inn||D.innate?.[n]||null;
+// 兵種：由武將特性推出（「X術」「某兵大將」＝部隊的X兵等級上升 N 級）。同 slg/engine.js 的 traitFx。
+const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'};
+const ARMS=['騎','槍','弓','鐵炮','器械'];
+function armsOf(n){
+  const o={};
+  for(const t of D.stats[n]?.traits||[]){
+    const txt=D.traitText?.[n]?.[t];let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
+    if(m){for(const w of m[1].split('、'))if(ARM_WORD[w])o[ARM_WORD[w]]=(o[ARM_WORD[w]]||0)+ +m[2];continue}
+    m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
+    if(m)for(const c of m[1])o[ARM_CH[c]]=(o[ARM_CH[c]]||0)+m[2].length;
+  }
+  return o;
+}
+const armStr=n=>{const o=armsOf(n);return ARMS.filter(a=>o[a]).map(a=>a+o[a]).join(' ')};
+const tagsOf=n=>(EXTRA[n]?.tags||[]).filter(t=>!t.startsWith('?'));
+const TAGS=[...new Set(Object.keys(EXTRA).flatMap(tagsOf))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
 const teachOf=n=>D.teach?.[n]||null;
 const kindOf=s=>D.kind?.[s]||null;
 const kindBadge=s=>{const k=kindOf(s);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
@@ -183,7 +190,7 @@ const SKILLS=[...new Set([...Object.keys(D.skillText||{}),...HOLD.keys()])];
 
 // ---- state (remembered per viewer) ----
 const KEY='shinsen-db-v1';
-const S=Object.assign({tab:'g',season:'',arm:'',cost:'',fac:'',r:'5',kind:'',src:'',sort:'cost'},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}})());
+const S=Object.assign({tab:'g',season:'',fac:'',r:'5',kind:'',src:'',sort:'cost',arm:'',cost:'',tag:''},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}})());
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
 function chips(box,label,opts,key){
   box.replaceChildren(el('span',{class:'lbl'},label));
@@ -205,11 +212,13 @@ function renderGenerals(){
   const f2=$('f2');chips(f2,'勢力',[['','全部'],...FACTIONS.map(f=>[f,f])],'fac');
   f2.append(el('span',{class:'lbl',style:'margin-left:8px'},'稀有度'));
   for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['2','2★'],['1','1★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}
-  const f3=$('f3');chips(f3,'兵種',[['','全部'],...ARM_NAMES.map(a=>[a,a])],'arm');
-  f3.append(el('span',{class:'lbl',style:'margin-left:8px'},'Cost'));
-  for(const[k,t]of[['','全部'],...[2,3,4,5,6,7].map(c=>[String(c),String(c)])]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.cost===k)},t);b.onclick=()=>{S.cost=k;save();render()};f3.append(b)}
+  chips($('f3'),'兵種',[['','全部'],...ARMS.map(a=>[a,a])],'arm');
+  const costs=[...new Set([...G.values()].map(g=>g.c).filter(c=>c!=null))].sort((a,b)=>a-b);
+  const f3=$('f3');f3.append(el('span',{class:'lbl',style:'margin-left:8px'},'Cost'));
+  for(const[k,t]of[['','全部'],...costs.map(c=>[String(c),String(c)])]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.cost===k)},t);b.onclick=()=>{S.cost=k;save();render()};f3.append(b)}
+  if(TAGS.length)chips($('f4'),'標籤',[['','全部'],...TAGS.map(t=>[t,t])],'tag');else $('f4').replaceChildren();
   const q=$('q').value.trim();
-  const list=[...G.values()].filter(g=>(!S.arm||armsOf(g.n).includes(S.arm))&&(!S.cost||g.c===+S.cost)&&(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)));
+  const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!S.arm||armsOf(g.n)[S.arm]>0)&&(!S.cost||String(g.c)===S.cost)&&(!S.tag||tagsOf(g.n).includes(S.tag))&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)||tagsOf(g.n).some(t=>t.includes(q))));
   const key=S.sort;
   list.sort((a,b)=>key==='name'?a.n.localeCompare(b.n,'zh-Hant'):key==='cost'?b.r-a.r||(b.c||0)-(a.c||0)||a.n.localeCompare(b.n,'zh-Hant'):(b.x?lv(b.x,key,50):-1)-(a.x?lv(a.x,key,50):-1));
   $('count').textContent=`${list.length} 名武將（${list.filter(g=>g.x).length} 名有屬性資料）`;
@@ -220,7 +229,7 @@ function renderGenerals(){
       el('div',{class:'im'},g.img!=null?el('img',{src:artSrc(g.img),alt:'',loading:'lazy'}):g.n[0]),
       el('div',{class:'c'},String(g.c??'?')),g.x?.season?el('div',{class:'s'},g.x.season):null,
       el('div',{class:'n'},g.n),
-      el('div',{class:'m'},inn?kindBadge(inn):null,el('span',{},g.f||''),v!=null?el('span',{class:'v'},String(v)):null));
+      el('div',{class:'m'},inn?kindBadge(inn):null,el('span',{},g.f||''),v!=null?el('span',{class:'v'},String(v)):null),g.x?el('div',{class:'m',style:'opacity:.8'},armStr(g.n)||'兵種—'):null);
     b.onclick=()=>openGeneral(g.n);grid.append(b);
   }
   $('list').replaceChildren(list.length?grid:el('div',{class:'empty'},'沒有符合的武將'));
@@ -237,7 +246,7 @@ function skillCard(s,{withHolders=true}={}){
     t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
 }
 function renderSkills(){
-  $('f3').replaceChildren();
+  $('f3').replaceChildren();$('f4').replaceChildren();
   chips($('f1'),'分類',[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],'kind');
   chips($('f2'),'來源',[['','全部'],['固有','固有'],['傳授','傳授'],['事件','事件']],'src');
   const q=$('q').value.trim();
@@ -311,7 +320,7 @@ function openGeneral(n){
     el('div',{class:'sh-top'},close,
       el('div',{class:`sh-pic r${g.r}`},g.img!=null?el('img',{src:artSrc(g.img),alt:n}):n[0]),
       el('div',{},el('h2',{class:'sh-name'},n),
-        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null),
+        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null,armStr(n)?el('span',{class:'badge'},`兵種 ${armStr(n)}`):null,...tagsOf(n).map(t=>el('span',{class:'badge'},t))),
         x?el('div',{class:'lvsw'},'等級',lvIn,lvB):null,bars)),
     el('div',{class:'sh-body'},
       el('div',{},el('h4',{},'特性'),traits),
@@ -325,6 +334,6 @@ function openGeneral(n){
 render();
 const h=decodeURIComponent(location.hash.slice(1));if(h&&G.has(h))openGeneral(h);
 </script>
-<script src="site-nav.js?v=5" data-page="generals"></script>
+<script src="site-nav.js?v=4" data-page="generals"></script>
 </body>
 </html>
