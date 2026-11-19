@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>真戰隊伍預測</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{--ink:#121010;--lacquer:#1d1917;--line:#3a322b;--paper:#efe3c8;--muted:#a39882;--gold:#e3b75a;--vermilion:#c8442c;--jade:#5fb58a;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;--body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);margin:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.08em;color:var(--gold)}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+nav.site{display:flex;gap:6px;flex-wrap:wrap}
+nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem}
+nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.panel{background:var(--lacquer);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--display);font-size:1.05rem;margin:0;color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.slot{border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;background:var(--ink)}
+.slot label{display:flex;gap:6px;align-items:center;font-size:.8rem;color:var(--muted)}
+.slot label>span{min-width:3.4em}
+select,input[type=number]{background:var(--lacquer);color:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-size:.88rem;min-width:0;flex:1}
+button{cursor:pointer;background:var(--gold);color:var(--ink);border:0;border-radius:999px;padding:7px 18px;font:inherit;font-weight:700}
+button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:400;padding:4px 12px;font-size:.8rem}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{color:var(--muted);font-size:.78rem;line-height:1.6;margin:0}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+.scroll{overflow-x:auto}
+.bar{display:flex;height:22px;border-radius:4px;overflow:hidden;font-size:.75rem;line-height:22px;text-align:center;color:var(--ink)}
+.bar>div{min-width:0}
+.w{background:var(--jade)}.d{background:#8d8370}.l{background:var(--vermilion);color:var(--paper)}
+.big{font-family:var(--display);font-size:1.5rem;color:var(--gold)}
+.pos{color:var(--jade)}.neg{color:var(--vermilion)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>真戰隊伍預測</h1><p>輸入隊伍看預估勝率、搭配建議與登用資源；用戰報回測校正過的戰鬥引擎，數值是估計不是保證。</p></div>
+    <nav class="site"><a href="./">登用模擬</a><a href="slg.html">Q版戰棋</a><a href="generals.html">武將資料庫</a><a href="predict.html" aria-current="page">隊伍預測</a></nav>
+  </header>
+
+  <section class="panel">
+    <h2>我的隊伍</h2>
+    <div class="row">
+      <label>Cost 上限 <input type="number" id="cap" value="15" min="3" max="30" style="width:5em;flex:none"></label>
+      <label>等級 <input type="number" id="lv" value="50" min="1" max="50" style="width:5em;flex:none"></label>
+      <label>每人兵力 <input type="number" id="troops" value="10000" min="1000" step="1000" style="width:7em;flex:none"></label>
+      <span id="costInfo" class="note"></span>
+    </div>
+    <div class="grid" id="mine"></div>
+  </section>
+
+  <section class="panel">
+    <h2>對手隊伍</h2>
+    <div class="row"><select id="oppPreset" style="flex:none;max-width:100%"></select><span class="note">選推薦榜隊伍當對手，或在下方自己配（對手紅度、戰法預設滿配）。</span></div>
+    <div class="grid" id="opp"></div>
+  </section>
+
+  <section class="panel">
+    <div class="row"><button id="run">預測勝率</button><button id="sug" class="ghost">搭配建議（換掉一人）</button><label class="note"><input type="checkbox" id="lim"> 候選含限定／PK 武將</label><span id="prog" class="note"></span></div>
+    <div id="out"></div>
+  </section>
+
+  <section class="panel">
+    <h2>開荒推薦隊伍（Cost ≤ 上限，戰法滿）</h2>
+    <div class="row"><select id="rankRed" style="flex:none"><option value="0">0 紅（資源最省）</option><option value="5">5 紅（滿紅）</option></select>
+      <span class="note">排名來自 tools/team-rank.mjs 的循環賽（對戰引擎內的平均勝率）。資源 = 登用期望抽數：每個武將 1 張＋紅度每 +1 再 1 張，傳授戰法的來源武將也各算 1 張。</span></div>
+    <div class="scroll"><table id="rank"></table></div>
+  </section>
+  <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
+</div>
+<script type="module">
+import{battle,parseSkill,innateOf,fullRedStats,bestArm}from'./slg/engine.js?v=1';
+const[D,CARDS,RANK]=await Promise.all(['land.json','data.json','rank.json'].map(f=>fetch(f,{cache:'no-cache'}).then(r=>r.json())));
+const $=id=>document.getElementById(id);
+const CARD=new Map(CARDS.map(c=>[c.n,c]));
+const ALL=Object.keys(D.stats).filter(n=>D.stats[n].c).sort((a,b)=>D.stats[a].c-D.stats[b].c||a.localeCompare(b,'zh-Hant'));
+const cost=n=>D.stats[n].c;
+const PS=new Map(),ps=n=>{if(!PS.has(n))PS.set(n,parseSkill(n,D));return PS.get(n)};
+const val=s=>{const x=ps(s);if(x.modeled!=='text'||!['主動','突擊','指揮','被動'].includes(x.kind))return 0;
+  return(x.rate||0)*((x.dmg||0)*(x.n?(x.n[0]+x.n[1])/2:1)+(x.heal||0)*.5+(x.status?.p||0)*.6)*(x.prep?.8:1)};
+const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
+const SKILLS=Object.keys(D.skillText).filter(s=>!INN.has(s)&&val(s)>0).sort((a,b)=>val(b)-val(a));
+const autoSk=n=>SKILLS.filter(s=>s!==innateOf(D,n)).slice(0,2);
+// 登用期望抽數
+const rate=n=>{const c=CARD.get(n);return c?.s1||({5:.16,4:.9,3:3.44}[c?.r??5])};
+const pulls=n=>100/rate(n);
+const TEACH={};for(const[g,s]of Object.entries(D.teach))(TEACH[s]??=[]).push(g);
+const srcPull=s=>Math.min(...(TEACH[s]||[]).map(pulls),Infinity);
+function resource(team){ // team:[{n,red,s:[..]}]
+  let tot=0;const parts=[];
+  for(const g of team){if(!g.n)continue;const own=pulls(g.n)*(1+g.red);tot+=own;
+    let sk=0;for(const s of g.s){if(!s)continue;const p=srcPull(s);if(isFinite(p))sk+=p}
+    tot+=sk;parts.push([g.n,own,sk])}
+  return{tot,parts};
+}
+const fmt=x=>x>=1000?Math.round(x/10)*10:Math.round(x);
+function build(team,side,lv,troops){
+  const names=team.map(g=>g.n),arm=bestArm(D,names)||'槍',red=Object.fromEntries(team.map(g=>[g.n,g.red]));
+  return{name:names[0],side,arm,terrain:'平',gens:team.map(g=>({n:g.n,st:fullRedStats(D,g.n,names,arm,lv,red),troops,max:troops,
+    skills:[innateOf(D,g.n),...(g.s.length?g.s:autoSk(g.n))].filter(Boolean).map(ps),bg:null}))};
+}
+// 畫一組隊伍選單
+function slotUI(root,state,onChange){
+  root.innerHTML='';
+  state.forEach((g,i)=>{
+    const d=document.createElement('div');d.className='slot';
+    const opt=(arr,sel,label=x=>x)=>arr.map(x=>`<option value="${x}"${x===sel?' selected':''}>${label(x)}</option>`).join('');
+    d.innerHTML=`<label><span>武將</span><select data-k="n"><option value="">（空）</option>${opt(ALL,g.n,n=>`${n}　C${cost(n)}`)}</select></label>
+      <label><span>紅度</span><select data-k="red">${opt([0,1,2,3,4,5],g.red)}</select></label>
+      <label><span>戰法1</span><select data-k="s0"><option value="">自動（最強）</option>${opt(SKILLS,g.s[0]||'')}</select></label>
+      <label><span>戰法2</span><select data-k="s1"><option value="">自動（最強）</option>${opt(SKILLS,g.s[1]||'')}</select></label>
+      <div class="note" data-k="info"></div>`;
+    d.addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;
+      if(k==='n')g.n=e.target.value;else if(k==='red')g.red=+e.target.value;
+      else{const j=+k[1];const s=[g.s[0]||'',g.s[1]||''];s[j]=e.target.value;g.s=s.filter(Boolean).length===0?[]:s}
+      onChange()});
+    root.append(d);
+  });
+}
+const blank=()=>[0,1,2].map(()=>({n:'',red:0,s:[]}));
+const mine=blank(),opp=blank();
+function info(root,team){
+  [...root.children].forEach((d,i)=>{const g=team[i],e=d.querySelector('[data-k=info]');
+    e.textContent=g.n?`${D.stats[g.n].f}・${D.stats[g.n].season}・固有：${innateOf(D,g.n)||'—'}・自動戰法：${autoSk(g.n).join('、')}`:''});
+}
+function refresh(){
+  const filled=mine.filter(g=>g.n),c=filled.reduce((a,g)=>a+cost(g.n),0),cap=+$('cap').value;
+  const r=resource(filled);
+  $('costInfo').innerHTML=`Cost <b class="${c>cap?'neg':''}">${c}</b>/${cap}　登用期望抽數 ≈ <b>${fmt(r.tot)}</b>`;
+  info($('mine'),mine);info($('opp'),opp);
+}
+function setTeam(team,names,red,skills){names.forEach((n,i)=>{team[i]={n,red,s:(skills?.[n]||[]).slice()}})}
+slotUI($('mine'),mine,refresh);slotUI($('opp'),opp,refresh);
+// 預設：榜首 vs 榜 6 名
+{const R0=RANK['0'];setTeam(mine,R0[0].team,0,R0[0].skills);setTeam(opp,R0[5].team,5,R0[5].skills);slotUI($('mine'),mine,refresh);slotUI($('opp'),opp,refresh)}
+$('oppPreset').innerHTML='<option value="">對手：自訂（下方）</option>'+['0','5'].flatMap(k=>RANK[k].slice(0,10).map((t,i)=>`<option value="${k}:${i}">${k} 紅榜 #${i+1}：${t.team.join('、')}</option>`)).join('');
+$('oppPreset').onchange=e=>{const v=e.target.value;if(!v)return;const[k,i]=v.split(':'),t=RANK[k][+i];setTeam(opp,t.team,+k,t.skills);slotUI($('opp'),opp,refresh);refresh()};
+['cap','lv','troops'].forEach(id=>$(id).addEventListener('change',refresh));
+refresh();
+
+const pause=()=>new Promise(r=>setTimeout(r));
+function simulate(a,b,N){
+  const lv=+$('lv').value,tr=+$('troops').value;let W=0,Dr=0,L=0,fa=0,fb=0;
+  for(let i=0;i<N;i++){
+    const A=build(a,0,lv,tr),B=build(b,1,+$('lv').value,tr),r=battle(A,B);
+    if(r.res==='W')W++;else if(r.res==='D')Dr++;else L++;
+    fa+=A.gens.reduce((x,g)=>x+Math.max(0,g.troops),0)/(tr*A.gens.length);fb+=B.gens.reduce((x,g)=>x+Math.max(0,g.troops),0)/(tr*B.gens.length);
+  }
+  return{w:W/N,d:Dr/N,l:L/N,ra:fa/N,rb:fb/N,score:(W+Dr/2)/N};
+}
+const pct=x=>Math.round(x*100)+'%';
+function ready(t){const f=t.filter(g=>g.n);return f.length===3&&new Set(f.map(g=>g.n)).size===3}
+$('run').onclick=async()=>{
+  if(!ready(mine)||!ready(opp)){$('out').innerHTML='<p class="note">雙方都要選滿 3 位不同武將。</p>';return}
+  $('prog').textContent='模擬中…';await pause();
+  const r=simulate(mine,opp,300),lv=+$('lv').value,tr=+$('troops').value;
+  const A=build(mine,0,lv,tr),B=build(opp,1,lv,tr);
+  const stat=t=>t.gens.map(g=>`<tr><td>${g.n}</td><td>${g.st.武勇}</td><td>${g.st.智略}</td><td>${g.st.統率}</td><td>${g.st.速度}</td><td>${g.skills.map(s=>s.name+(s.modeled==='text'?'':'*')).join('、')}</td></tr>`).join('');
+  $('out').innerHTML=`<div class="row"><span class="big">${pct(r.w)}</span><span class="note">勝　${pct(r.d)} 平　${pct(r.l)} 敗（300 場模擬）　平均剩餘兵力：我方 ${pct(r.ra)}／對手 ${pct(r.rb)}</span></div>
+   <div class="bar"><div class="w" style="width:${r.w*100}%">${r.w>.08?'勝':''}</div><div class="d" style="width:${r.d*100}%">${r.d>.08?'平':''}</div><div class="l" style="width:${r.l*100}%">${r.l>.08?'敗':''}</div></div>
+   <div class="scroll"><table><tr><th>我方（${A.arm}）</th><th>武勇</th><th>智略</th><th>統率</th><th>速度</th><th>戰法（*＝推估）</th></tr>${stat(A)}</table></div>
+   <div class="scroll"><table><tr><th>對手（${B.arm}）</th><th>武勇</th><th>智略</th><th>統率</th><th>速度</th><th>戰法</th></tr>${stat(B)}</table></div>`;
+  $('prog').textContent='';
+};
+$('sug').onclick=async()=>{
+  if(!ready(mine)||!ready(opp)){$('out').innerHTML='<p class="note">雙方都要選滿 3 位不同武將。</p>';return}
+  const cap=+$('cap').value,lim=$('lim').checked,base=simulate(mine,opp,60).score,baseRes=resource(mine).tot;
+  const cands=ALL.filter(n=>lim||!['限定','PK'].includes(D.stats[n].season));
+  let html=`<p class="note">目前勝率（含平局半勝）≈ ${pct(base)}，登用期望抽數 ≈ ${fmt(baseRes)}。逐一把一位換成其他武將（Cost 不超過上限），每個候選模擬 16 場，列出前 5 名：</p>`;
+  for(let i=0;i<3;i++){
+    const res=[];let k=0;
+    for(const n of cands){
+      if(mine.some(g=>g.n===n))continue;
+      const t=mine.map((g,j)=>j===i?{n,red:g.red,s:[]}:g);
+      if(t.reduce((a,g)=>a+cost(g.n),0)>cap)continue;
+      res.push({n,sc:simulate(t,opp,16).score,res:resource(t).tot});
+      if(++k%12===0){$('prog').textContent=`分析第 ${i+1} 位…`;await pause()}
+    }
+    res.sort((a,b)=>b.sc-a.sc);
+    html+=`<div class="scroll"><table><tr><th>換掉 ${mine[i].n}</th><th>勝率</th><th>變化</th><th>Cost</th><th>期望抽數</th></tr>${res.slice(0,5).map(x=>{const dl=x.sc-base;return`<tr><td>${x.n}</td><td>${pct(x.sc)}</td><td class="${dl>=0?'pos':'neg'}">${dl>=0?'+':''}${Math.round(dl*100)}%</td><td>${cost(x.n)}</td><td>${fmt(x.res)}</td></tr>`}).join('')}</table></div>`;
+  }
+  $('out').innerHTML=html+'<p class="note">每個候選只模擬 16 場，差距在 ±15% 內視為相近。</p>';$('prog').textContent='';
+};
+function drawRank(){
+  const k=$('rankRed').value,cap=+$('cap').value,red=+k;
+  const rows=RANK[k].filter(t=>t.team.reduce((a,n)=>a+cost(n),0)<=cap).slice(0,15);
+  $('rank').innerHTML='<tr><th>#</th><th>隊伍（Cost）</th><th>兵種</th><th>榜內勝率</th><th>期望抽數</th><th></th></tr>'+rows.map((t,i)=>{
+    const r=resource(t.team.map(n=>({n,red,s:t.skills[n]||[]})));
+    return`<tr><td>${i+1}</td><td>${t.team.map(n=>`${n}(${cost(n)})`).join('、')}</td><td>${t.arm}</td><td>${pct(t.winRate)}</td><td>${fmt(r.tot)}</td><td><button class="ghost" data-i="${i}">載入</button></td></tr>`}).join('');
+  $('rank').querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=rows[+b.dataset.i];setTeam(mine,t.team,red,t.skills);slotUI($('mine'),mine,refresh);refresh();scrollTo({top:0,behavior:'smooth'})});
+}
+$('rankRed').onchange=drawRank;$('cap').addEventListener('change',drawRank);drawRank();
+</script>
+<script src="site-nav.js?v=5" data-page="predict"></script>
+</body>
+</html>
