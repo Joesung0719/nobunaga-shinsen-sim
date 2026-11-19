@@ -176,7 +176,8 @@ function armsOf(n){
   return o;
 }
 const armStr=n=>{const o=armsOf(n);return ARMS.filter(a=>o[a]).map(a=>a+o[a]).join(' ')};
-const TAGS=[...new Set(Object.values(EXTRA).flatMap(x=>x.tags||[]))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+const tagsOf=n=>(EXTRA[n]?.tags||[]).filter(t=>!t.startsWith('?'));
+const TAGS=[...new Set(Object.keys(EXTRA).flatMap(tagsOf))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
 const teachOf=n=>D.teach?.[n]||null;
 const kindOf=s=>D.kind?.[s]||null;
 const kindBadge=s=>{const k=kindOf(s);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
@@ -217,7 +218,7 @@ function renderGenerals(){
   for(const[k,t]of[['','全部'],...costs.map(c=>[String(c),String(c)])]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.cost===k)},t);b.onclick=()=>{S.cost=k;save();render()};f3.append(b)}
   if(TAGS.length)chips($('f4'),'標籤',[['','全部'],...TAGS.map(t=>[t,t])],'tag');else $('f4').replaceChildren();
   const q=$('q').value.trim();
-  const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!S.arm||armsOf(g.n)[S.arm]>0)&&(!S.cost||String(g.c)===S.cost)&&(!S.tag||EXTRA[g.n]?.tags?.includes(S.tag))&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)||EXTRA[g.n]?.tags?.some(t=>t.includes(q))));
+  const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!S.arm||armsOf(g.n)[S.arm]>0)&&(!S.cost||String(g.c)===S.cost)&&(!S.tag||tagsOf(g.n).includes(S.tag))&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)||tagsOf(g.n).some(t=>t.includes(q))));
   const key=S.sort;
   list.sort((a,b)=>key==='name'?a.n.localeCompare(b.n,'zh-Hant'):key==='cost'?b.r-a.r||(b.c||0)-(a.c||0)||a.n.localeCompare(b.n,'zh-Hant'):(b.x?lv(b.x,key,50):-1)-(a.x?lv(a.x,key,50):-1));
   $('count').textContent=`${list.length} 名武將（${list.filter(g=>g.x).length} 名有屬性資料）`;
@@ -245,6 +246,7 @@ function skillCard(s,{withHolders=true}={}){
     t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
 }
 function renderSkills(){
+  $('f3').replaceChildren();$('f4').replaceChildren();
   chips($('f1'),'分類',[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],'kind');
   chips($('f2'),'來源',[['','全部'],['固有','固有'],['傳授','傳授'],['事件','事件']],'src');
   const q=$('q').value.trim();
@@ -318,7 +320,7 @@ function openGeneral(n){
     el('div',{class:'sh-top'},close,
       el('div',{class:`sh-pic r${g.r}`},g.img!=null?el('img',{src:artSrc(g.img),alt:n}):n[0]),
       el('div',{},el('h2',{class:'sh-name'},n),
-        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null,armStr(n)?el('span',{class:'badge'},`兵種 ${armStr(n)}`):null,...(EXTRA[n]?.tags||[]).map(t=>el('span',{class:'badge'},t))),
+        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null,armStr(n)?el('span',{class:'badge'},`兵種 ${armStr(n)}`):null,...tagsOf(n).map(t=>el('span',{class:'badge'},t))),
         x?el('div',{class:'lvsw'},'等級',lvIn,lvB):null,bars)),
     el('div',{class:'sh-body'},
       el('div',{},el('h4',{},'特性'),traits),
