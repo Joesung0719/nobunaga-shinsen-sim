@@ -45,7 +45,8 @@ const conf=rows.filter(r=>Math.max(r.pW,r.pL)>=.8),chit=conf.filter(r=>pick(r)==
 const m=a=>a.reduce((x,y)=>x+y,0)/a.length;
 const corr=(x,y)=>{const mx=m(x),my=m(y);let s=0,a=0,b=0;x.forEach((v,i)=>{s+=(v-mx)*(y[i]-my);a+=(v-mx)**2;b+=(y[i]-my)**2});return s/Math.sqrt(a*b)};
 const dl=rows.map(r=>r.pl-r.pr),da=rows.map(r=>r.al-r.ar);
-console.log(JSON.stringify({K:{base:K.base,statDiv:K.statDiv},lv:LV,N,battles:B.length,used:rows.length,skipped,
+const dirHit=dl.filter((v,i)=>Math.sign(v)===Math.sign(da[i])).length,big=da.map((v,i)=>[v,dl[i]]).filter(([a])=>Math.abs(a)>=.3);
+console.log(JSON.stringify({directionAccuracy:+(dirHit/rows.length).toFixed(3),directionAccuracyDecisive:{n:big.length,acc:+(big.filter(([a,p])=>Math.sign(a)===Math.sign(p)).length/big.length).toFixed(3)},K:{base:K.base,statDiv:K.statDiv},lv:LV,N,battles:B.length,used:rows.length,skipped,
   outcomeAccuracy:+(hit/rows.length).toFixed(3),brier:+brier.toFixed(3),
   confident:{n:conf.length,acc:conf.length?+(chit/conf.length).toFixed(3):null},
   remainDiffCorr:+corr(dl,da).toFixed(3),
