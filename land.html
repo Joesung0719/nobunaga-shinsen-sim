@@ -576,7 +576,12 @@ function renderTab(){
       const avgLoss=p2.length?p2.reduce((a,r)=>a+r.loss,0)/p2.length:null;
       return[`Lv${lv}`,`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3)+(wavesOf(lv)>1?` ×${wavesOf(lv)}`:''):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
     });
+    const lands=Object.entries(D.lands||{}).map(([k,v])=>[k==='空地'?'空地':`Lv${k}`,fmt(v.troops),'+'+v.prestige,v.silver?(v.approx?'≈':'')+fmt(v.silver):'—',v.food?(v.approx?'≈':'')+fmt(v.food):'—']);
+    const bandits=Object.entries(D.bandits||{}).map(([k,v])=>[`Lv${k} 野盜`,fmt(v.troops),v.teams,v.labor]);
     body.replaceChildren(table(['土地','守將等級','每人兵力','總兵力','守軍組數','戰報數','勝/平/敗','平均戰損率','最高戰損率','PK2 平均戰損（兵）'],rows,[2,3,4,5,7,8,9]),
+      el('h4',{style:'margin:16px 0 6px'},'低階土地與野盜（Joe 的遊戲截圖，數值待回遊戲核對）'),
+      table(['土地','守軍兵力（1 隊）','威信','銀產量','兵糧產量'],lands,[1,2,3,4]),
+      table(['野盜','每隊兵力','隊數','勞力'],bandits,[1,2,3]),
       el('p',{class:'note',style:'margin-top:10px'},'戰損率 =（陣亡 + 傷兵）÷ 出征兵力，只用 PK2 戰報計算（PK1 的部隊常是連戰後的殘兵，算不準）。Lv3 與 Lv10 沒有 PK2 戰報，標 ≈ 的數字是用每人 9500 滿兵反推。Lv6–9 有 2 隊守軍、Lv10 有 3 隊，一次出征會依序打完，中途沒贏就停下；勝率與戰損是每一隊各自抽樣。Lv8 起開始出現平局（大將撐過全部回合），Lv9 PK1 有一場被守軍全滅。'));
   }else if(S.tab==='teams'){
     const rows=teamsAt(S.lv).map(k=>{

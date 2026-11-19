@@ -1,13 +1,13 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=40';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=40';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=40';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=40';
-import {isoGeom} from './iso.js?v=40';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=40';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=40';
-import {SCENARIOS} from './scenarios.js?v=40';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=40';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=41';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=41';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=41';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=41';
+import {isoGeom} from './iso.js?v=41';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=41';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=41';
+import {SCENARIOS} from './scenarios.js?v=41';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=41';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -40,7 +40,7 @@ const costOf=n=>+ROSTER.get(n)?.c||0;
 const POOL5=Object.entries(D.stats).filter(([,x])=>x.season).map(([n])=>n);
 const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
 const PSK=new Map();const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));return PSK.get(n)};
-const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
+const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&!ps(n).buffOnly&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
 const ARMS=[['騎','騎兵'],['弓','弓兵'],['槍','足輕'],['鐵炮','鐵炮'],['器械','器械']];
 const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2};
 let W=7,H=9;const DAYS=20,DRAW_DAYS=3;   // 戰役地圖 9×11（scenarios.js 放大），打地／對戰／盜賊 7×9：開場時依地圖設定
@@ -177,6 +177,10 @@ function showSkill(n){
   if(s.heal)parts.push(`治療率 ${Math.round(s.heal*100)}%`);
   if(s.status)parts.push(`${Math.round(s.status.p*100)}% 使目標${s.status.k.join('、')} ${s.status.dur} 回合`);
   if(s.self)parts.push(`自身${s.self.ks.join('、')} +${s.self.v}`);
+  if(s.buf){const L={dmg:'造成傷害',dmgBlade:'兵刃傷害',dmgStrat:'謀略傷害',taken:'受到傷害',takenBlade:'受到兵刃傷害',takenStrat:'受到謀略傷害',weak:'造成傷害',crit:'會心',healIn:'受到治療',rateAct:'主動戰法發動率',rushRate:'突擊戰法發動率'},W={self:'自身',team:'我軍全體',grp:'友軍群體'};
+    for(const b of s.buf){const nm=b.k.startsWith('stat:')?b.k.slice(5)+' +'+b.v+' 點':`${L[b.k]||b.k} ${/^(taken|weak)/.test(b.k)?'−':'+'}${b.v}%`;parts.push(`${W[b.to]}${b.to==='grp'?'（隨機 '+b.n+' 人）':''}${nm}${b.r<99?`（前 ${b.r} 回合）`:''}`)}}
+  if(s.regen)parts.push(`每回合治療${s.regen.self?'自身':'我軍兵力最低 '+s.regen.n+' 人'}（治療率 ${Math.round(s.regen.rate*100)}%）`);
+  if(s.partial)parts.push('另有條件式效果尚未模擬');
   if(s.prep)parts.push('準備 1 回合後發動');
   $('skDlg').replaceChildren(el('div',{class:'skd'},
     el('h3',{},n,el('small',{},` ${s.kind}・${s.g}・${l}`)),

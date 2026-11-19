@@ -18,7 +18,7 @@ for(const n of Object.keys(D.stats))ROSTER.set(n,Object.assign({n,r:5},ROSTER.ge
 for(const t of Object.values(D.teams))for(const g of t)if(!ROSTER.has(g.n))ROSTER.set(g.n,{n:g.n,r:g.r});
 const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
 const PSK=new Map();const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));return PSK.get(n)};
-const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
+const GOOD=Object.keys(D.skillText).filter(n=>!INNATE.has(n)&&ps(n).modeled==='text'&&!ps(n).buffOnly&&['主動','突擊','指揮','被動'].includes(ps(n).kind));
 const fixedSkills=n=>{const h=[...n].reduce((a,c)=>(a*31+c.codePointAt(0))>>>0,7);return[GOOD[h%GOOD.length],GOOD[(h>>>7)%GOOD.length]]};
 const MOVE={騎:3,器械:1},RANGE={弓:2,鐵炮:2};let W=7,H=9;
 const RANKV={S:4,A:3,B:2,C:1};

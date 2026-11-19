@@ -28,6 +28,38 @@ function targetCount(s){
   const m=s.match(/(\d)(?:-(\d))?人/);if(m)return[+m[1],+(m[2]||m[1])];
   return[1,1];
 }
+// 指揮／被動戰法裡「戰鬥中／戰鬥前N回合，自身／我軍…造成傷害提高、受到傷害降低、會心、屬性增加、發動率增加、每回合治療」這類單純的增益，
+// 以句子為單位解析；含「若／機率／累計／每次受到…時／敵軍」等條件的句子整句略過（partial=true），不亂猜。
+// 結果 buf: [{k, v, to:'self'|'team'|'grp', n, r}]，k 是兵學同一套 fx 鍵（dmg dmgBlade dmgStrat taken takenBlade takenStrat weak crit critS healIn rateAct rushRate），
+// 或 'stat:武勇' 等（直接加屬性）。r = 持續到第幾回合（99＝整場）。
+const SUBJ=/(自身|自己|我軍全體|我軍群體（([\d-]+)人）|友軍群體（([\d-]+)人）)/;
+const BLOCK=/每次|每當|每累計|累計|受到[^，。]{0,8}時|若|有[\d.]+%(?:→[\d.]+%)?(?:的)?機率|疊加|第[\d、]+回合|冷卻|敵軍|其中|優先|之後|傭兵|援護/;
+const VV='([\\d.]+)%?(?:→([\\d.]+)%?)?';
+function parseBuffs(x){
+  const buf=[];let regen=null,partial=false;
+  for(let sen of x.replace(/（受[^）]*影響）/g,'').split(/。|，但|但/)){
+    sen=sen.trim();if(!sen)continue;
+    const sm=sen.match(SUBJ),r=+(sen.match(/戰鬥前(\d)回合/)?.[1]||99);
+    const rg=sen.match(new RegExp('每回合治療(我軍群體|友軍群體)（(\\d)人，治療率'+VV));
+    if(rg&&!/若|機率.*機率/.test(sen.replace(/，有[^，。]*機率治療我軍全體/,''))){regen={n:+rg[2],rate:hi(rg[3],rg[4])/100};continue}
+    if(/獲得休養狀態/.test(sen)){const m=sen.match(new RegExp('治療率'+VV));if(m){regen={n:1,rate:hi(m[1],m[2])/100,self:true};continue}}
+    if(!sm||BLOCK.test(sen)){if(/提高|降低|增加|獲得|治療|傷害/.test(sen))partial=true;continue}
+    const to=sm[1]==='自身'||sm[1]==='自己'?'self':/全體/.test(sm[1])?'team':'grp';
+    const n=to==='grp'?+(sm[2]||sm[3]).split('-').pop():0;
+    const put=(k,v)=>buf.push({k,v,to,n,r});
+    let m,got=0;
+    if(m=sen.match(new RegExp('造成(兵刃|謀略)?傷害(?:提高|提升|增加)'+VV))){put(m[1]==='兵刃'?'dmgBlade':m[1]==='謀略'?'dmgStrat':'dmg',hi(m[2],m[3]));got++}
+    if(m=sen.match(new RegExp('造成(?:的)?傷害降低'+VV))){put('weak',hi(m[1],m[2]));got++}
+    if(m=sen.match(new RegExp('受到(兵刃與謀略|兵刃|謀略)?(?:的)?傷害(?:降低|減少)'+VV))){put(m[1]==='兵刃'?'takenBlade':m[1]==='謀略'?'takenStrat':'taken',hi(m[2],m[3]));got++}
+    if(m=sen.match(new RegExp('獲得'+VV+'會心狀態'))){put('crit',hi(m[1],m[2]));got++}
+    if(m=sen.match(new RegExp('受到治療(?:效果)?提高'+VV))){put('healIn',hi(m[1],m[2]));got++}
+    if(m=sen.match(new RegExp('((?:武勇|智略|統率|速度)(?:、(?:武勇|智略|統率|速度))*)增加'+VV+'(?!%)'))){for(const k of m[1].split('、'))put('stat:'+k,hi(m[2],m[3]));got++}
+    if(m=sen.match(new RegExp('主動戰法的?發動機率增加'+VV))){put('rateAct',hi(m[1],m[2]));got++}
+    if(m=sen.match(new RegExp('突擊戰法的?發動機率增加'+VV))){put('rushRate',hi(m[1],m[2]));got++}
+    if(!got&&/提高|降低|增加|獲得/.test(sen))partial=true;
+  }
+  return{buf,regen,partial};
+}
 // one skill → what the engine can run
 export function parseSkill(name,D){
   const t=D.skillText?.[name],kind=t?.kind||D.kind?.[name]||(t?'?':'主動'),g=t?.g||D.skills?.[name]||'B';
@@ -59,12 +91,18 @@ export function parseSkill(name,D){
     sk.status={p:cm[1]?hi(cm[1],cm[2])/100:1,k:[cm[4],cm[5]].filter(Boolean),dur:+(cm[3]||dd?.[1]||1)}}
   const sm=x.match(/使自己的((?:武勇|智略|統率|速度)(?:、(?:武勇|智略|統率|速度))*)增加([\d.]+)(?:→([\d.]+))?點/);
   if(sm)sk.self={ks:sm[1].split('、'),v:hi(sm[2],sm[3])};
+  let bf=null;
   if(kind==='指揮'||kind==='被動'){
+    bf=parseBuffs(x);
+    if(bf.buf.length)sk.buf=bf.buf;
+    if(bf.regen)sk.regen=bf.regen;
+    if(bf.partial||(pm&&!dm))sk.partial=true;
     if(pm&&dm){rate=hi(pm[1],pm[2])/100;sk.each=true}
-    else if(!sm){return sk}
+    else if(!sm&&!sk.buf&&!sk.regen){return sk}
   }
   sk.rate=rate;
-  if(sk.dmg||sk.heal||sk.status||sk.self)sk.modeled='text';
+  if(sk.dmg||sk.heal||sk.status||sk.self||sk.buf||sk.regen)sk.modeled='text';
+  if(sk.modeled==='text'&&!(sk.dmg||sk.heal||sk.status||sk.self))sk.buffOnly=true;   // 只有增益：劇本隨機抽戰法不用，免得改動既有劇本的武將配招（hash 分配）
   return sk;
 }
 
@@ -86,6 +124,11 @@ export function battle(A,B,R=Math.random){
   }
   const ev=(e)=>log.push(e);
   const BG='兵學';
+  // 指揮／被動戰法的單純增益（buf）：戰鬥開始時套到自己／全隊／隨機友軍，屬性直接加，其餘走 tm（到第 r 回合）
+  for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.buf)for(const b of sk.buf){
+    const tg=b.to==='self'?[g]:b.to==='team'?t.gens:pickN(t.gens,b.n,R);
+    for(const m of tg){if(b.k.startsWith('stat:'))m.b[b.k.slice(5)]+=b.v;else m.tm.push({k:b.k,v:b.v,until:b.r})}
+  }});
   // 協同：隨機友軍單體造成的傷害提高
   for(const t of T)t.gens.forEach((g,i)=>{if(g.bx.ally){const j=Math.floor(R()*t.gens.length);t.gens[j].tm.push({k:'dmg',v:g.bx.ally,until:99})}});
   const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round?x.v:0),0);
@@ -103,7 +146,7 @@ export function battle(A,B,R=Math.random){
     f*=K.terrain[dst.terrain]??1;
     f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）
     // 兵學：造成傷害 %
-    const up=M(g,'dmg')+(kind==='atk'?M(g,'dmgAtk'):0)+(kind==='主動'?M(g,'dmgAct'):0)+(prep?M(g,'dmgPrep'):0)
+    const up=M(g,'dmg')+(dtype==='兵刃'?M(g,'dmgBlade'):0)+(kind==='atk'?M(g,'dmgAtk'):0)+(kind==='主動'?M(g,'dmgAct'):0)+(prep?M(g,'dmgPrep'):0)
       +(kind==='突擊'?M(g,'dmgRush'):0)+(dtype==='謀略'?M(g,'dmgStrat'):0)-M(g,'weak');
     // 兵學：受到傷害降低 %
     const dn=M(d,'taken')+(dtype==='兵刃'?M(d,'takenBlade'):M(d,'takenStrat'))+(kind==='atk'||kind==='突擊'?M(d,'takenAtkRush'):0)
@@ -169,6 +212,12 @@ export function battle(A,B,R=Math.random){
       m.tm=m.tm.filter(x=>!['weak','statDown','expose'].includes(x.k));
       ev({type:'skill',side:t.side,i,skill:'達人大觀',kind:BG,tg:[{side:t.side,i:j,status:ks.length?'淨化 '+ks.join('、'):'淨化'}]});
     }});
+    // 指揮／被動的每回合治療（休養、每回合治療我軍群體）
+    for(const t of T)t.gens.forEach((g,i)=>{if(g.troops>0)for(const sk of g.skills)if(sk.regen){
+      const al=aliveIdx(t).sort((a,b)=>t.gens[a].troops/t.gens[a].max-t.gens[b].troops/t.gens[b].max);
+      const hs=(sk.regen.self?[i]:al.slice(0,sk.regen.n)).map(j=>healTo(t,j,g,sk.regen.rate)).filter(Boolean);
+      if(hs.length)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:hs});
+    }});
     const order=[];
     T.forEach((t,ti)=>t.gens.forEach((g,i)=>{if(g.troops>0)order.push([ti,i,g.b.速度+(round===1?M(g,'spd1'):0)+(g.first===round?1000:0)+R()*4])}));
     order.sort((a,b)=>b[2]-a[2]);
@@ -182,10 +231,10 @@ export function battle(A,B,R=Math.random){
       if(fx.威壓||(fx.麻痺&&R()<.3)||(fx.混亂&&R()<.5)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':fx.麻痺?'麻痺':'混亂'});tick();continue}
       if(g.prep){useSkill(t,ti,i,g.prep,{prepared:true});g.prep=null}
       for(const sk of g.skills){
-        if(sk.modeled==='none'||sk.self&&!sk.dmg&&!sk.heal&&!sk.status)continue;
+        if(sk.modeled==='none'||(sk.self||sk.buf||sk.regen)&&!sk.dmg&&!sk.heal&&!sk.status)continue;
         const act=sk.kind==='主動'||sk.each;
         if(!act||(sk.kind==='主動'&&fx.無策))continue;
-        if(R()<sk.rate){
+        if(R()<sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)){
           if(sk.prep){g.prep=sk;ev({type:'prep',side:t.side,i,skill:sk.name});
             if(g.q==='臨機應變'&&R()<.4){g.first=round+1;ev({type:'skill',side:t.side,i,skill:'臨機應變',kind:BG,tg:[{side:t.side,i,status:'下回合先攻'}]})}}
           else useSkill(t,ti,i,sk);
