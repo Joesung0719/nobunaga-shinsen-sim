@@ -1,0 +1,2142 @@
+{
+"明智光秀": {
+"tags": [
+"下克上",
+"禮法家",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> eR KL",
+"cat": "[軍務]",
+"text": ""
+},
+"story": "背景故事\n\n織田家臣。因其才智過人教養出眾,得到信長的重\n\n用,但是突然發動叛亂,在本能寺打倒信長。不過\n\ntae ,讓他在山崎會戰中敗北,逃亡途\nIR tir",
+"cv": "CV:ER ee Sh 順一"
+},
+"織田信長": {
+"tags": [
+"南蠻好尚",
+"茶之湯",
+"鐵炮巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 新生Lv.1",
+"cat": "[ Aste) 4 ll eZ, apee |",
+"text": "~                Cig eS CS ssp                 a\nNT\nAGB AOD"
+},
+"story": "ay ae\n\n43 F AQF ° LAAT EAD) Oe Bez KK»\n標榜天下布武,相繼消滅敵對勢力,眼看就要統一\n天下時,由於明智光秀的謀反,死在本能寺。",
+"cv": "CV:43 W 4 Fe"
+},
+"豐臣秀吉": {
+"tags": [
+"茶之湯",
+"攻城巧者",
+"築城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "OARS lvl",
+"cat": "[產業]",
+"text": "ce)"
+},
+"story": "背景故事\n\n戰國第一的傳奇人物。為織田信長效力,傑出的名\n聲和智謀是其活躍的武器,漸露頭角。本能寺之變\n後,相繼打敗明智光玥,柴田勝家等人,稱宇天下。",
+"cv": "CV: eRe"
+},
+"黑田官兵衛": {
+"tags": [
+"軍師",
+"茶之湯",
+"南蠻信奉"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> 2A RA LVI",
+"cat": "[軍務]",
+"text": "LO te Ce SPAT EOD\n0 2 BAYER BYES"
+},
+"story": "豐臣家熙,擔任主公和秀吉的參謀,為秀吉統一天下\n做出了重要貢獻。可是,其卓越的戰略才能令人畏\n懼,俸祿被限制在豐前中津1 2萬石土地。",
+"cv": ""
+},
+"德川家康": {
+"tags": [
+"南蠻好尚",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "= ¥] Lv.8",
+"cat": "eA \\( ieee |",
+"text": "5 MARR StRBX\n一人二                                Paes"
+},
+"story": "背景故事\n\n江戶幕府的創始人,廣忠之子。桶狹間會戰後自\n立。經歷與織田家同盟,從屬於豐臣家來擴大勢\n力。最後於關原會戰中耶得膀利,成為征夷大將\n軍。",
+"cv": "CV:綿貫龍之介"
+},
+"山縣昌景": {
+"tags": [
+"四天王",
+"騎馬巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "0 RAE RS Lvl",
+"cat": "[軍務]",
+"text": "OE RETR BE RTEL"
+},
+"story": "背景故事\n\n武田家四名臣之一,飯富虎則之弟。和兄長一樣,\n統一著紅色軍裝。在內政、軍事、外次各方面輔佐\n主公信玄,在長徐會戰中,全身中彈身亡。",
+"cv": "CVi3bw AS"
+},
+"武田信玄": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S PM BRKH Lvl",
+"cat": "[軍務]",
+"text": "Diy OG GRAB\nDIS ( BREAD RD sho"
+},
+"story": "背景故事\n\n甲杰守護,信席的嫡男。反對父親嚴苛的政策,將\n\n父親趕走,自己作了家主。率領精強的騎兵軍團,\n\n以臨機應變的智謀,讓織田信長大吃苦頭人稱\n【13 甲 ze”  °",
+"cv": "CV:取上兩生"
+},
+"真田昌幸": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "& 5B P KR Lvl",
+"cat": "[軍務]",
+"text": "CE SVG GRR IPD\nHW IRGOH (BW\nBe)\n\nCF DURGA L"
+},
+"story": "幸村之子,出生在父親隱居的紀州九度山。與父親\n一起進入大坡城,英勇奮戰,夏之陣中待在城內,\n城池陷落時為豐臣秀賴殉死。",
+"cv": "加"
+},
+"上杉謙信": {
+"tags": [
+"虎",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S HP PIR 16 1 Lv",
+"cat": "[軍務]",
+"text": "LG GAS PL 0 Fe,\nFBI  (BBB\nCAWEUSIRS PRES"
+},
+"story": "背景故事\n\n越後的戰國大名,為景的次子。上杉憲政讓給他關\n束管領職,改姓上杉。“茲”字旗飄揚,在戰場馳\n聘的形象令人神和恐懼,人稱 “越後之龍 。",
+"cv": "CV:人鈴木嚇汰"
+},
+"柿崎景家": {
+"tags": [
+"四天王"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S HS RE Lv.1",
+"cat": "[計咯]",
+"text": "GPCR RG\nB79 SEA RS BURL SES AP\n ORTOP ( BBM"
+},
+"story": "背景故事\n\n上杉家臣,家中頭號猛將。主公謙信說“越後七作\n中無出其右者”作為上杉軍的主力表現活躍,但\n是被懷疑勾結織田信長,被殺。",
+"cv": "CV: 高垣 克央"
+},
+"毛利元就": {
+"tags": [
+"攻城巧者",
+"水軍",
+"築城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "Sas TSS TM Lv.1",
+"cat": "[計咯]",
+"text": "LS ME ENGR ERER GP 9 FD 2B.4\nCeaser ae   ( BEBDY"
+},
+"story": "背景故事\n\n安藝的戰國大名,驅使權謀術數來擴大勢力,成為\n中國1 0國之主的稀世謀將。嚴島會戰中用種種\n計謀算計陶晴賢,打敗了5 倍兵力的敵人。",
+"cv": "CV:下山吉光"
+},
+"立花誾千代": {
+"tags": [
+"虎",
+"姬城督"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 姬武者同當Lv.1",
+"cat": "[軍務]",
+"text": "ORM BR PLES B BUGS"
+},
+"story": "背景故事\n\n立花道雪之女。她繼承家督,成為立花城主,並接\nSILAGE RR IRA AH APH KH ARS\n原會戰中,在宗茂不在的期間,還親自率兵守城。",
+"cv": "CV:古賀 WH"
+},
+"今川義元": {
+"tags": [
+"禮法家",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 海道第一Lv.41",
+"cat": "",
+"text": "~              CeAsez pay ype                a\n人"
+},
+"story": "背景故事\n\n駿河的戰國大名。打敗異母兄長玄廣惠探繼承家\n督。結成甲相駿三國同盟成功消除後顧之愛,可是\n在上洛的途中 。在桶狹間遭受織田信長的奇襲而\nde Go",
+"cv": "CV: AW 雅隆"
+},
+"伊達政宗": {
+"tags": [
+"鐵炮巧者",
+"禮法家",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "Oo FEA lv",
+"cat": "[產業]",
+"text": "(SPARS 2 Sr AGE"
+},
+"story": "背景故事\n\n伊達家第1 TAR RE EE A Fo KDE] PO EAR\n了周圍諸國,2 4歲就稱霸與州,人稱「獨眠\n\n龍」,令人畏懼。機敏地生存於豐臣、德川兩政權\n下。",
+"cv": "CV 4 RFE — BB"
+},
+"北條氏康": {
+"tags": [
+"鐵炮巧者",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S  2 TM ak, Lv.1",
+"cat": "[軍務]",
+"text": "IS ELE B CSYUB EFI,\nRo RIVERINE BIOS"
+},
+"story": "背景故事\n\n後北條家第三代家主,氏網的嫡子。與武田信玄、\n上和杉謙信等強豪分庭抗禮,在關東建立了一大王\n條 ae 兼備的名將,作為戰國時期第一民政家也\n4      °",
+"cv": "CV:AW 雅隆"
+},
+"島津義久": {
+"tags": [
+"鐵炮巧者",
+"茶之湯",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 炮術指而Lv",
+"cat": "[軍務]",
+"text": "GHEE — SEU\nFLD Sh (QBMYEHRS"
+},
+"story": "島津家第1 6代家主,貴久的長子。在本領高強的\n弟弟們的協助下擴大領土幾乎古領了整個九州,\n但敗給了涯臣秀吉的九州討伐軍,只被允許保留\n薩摩一國。",
+"cv": ""
+},
+"本多忠勝": {
+"tags": [
+"四天王",
+"槍巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 古令獨步Lv.1",
+"cat": "",
+"text": "人\nVAS) ~ˊ、7 一和)二一\nae oF                          |"
+},
+"story": "背景故事\n\n德川四天王之一。家中頭號猛將評價比家庚還\n高,慣使名槍“蜻蛤切”,據說參加過五十七次會\n戰,從未受傷。\n\nmtr. WA lesb       _        二",
+"cv": "CV: 8 & 拓也"
+},
+"酒井忠次": {
+"tags": [
+"槍巧者",
+"四天王"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "",
+"cat": "[計咯]",
+"text": "GH PEL UGG ARS\nBURR (DEH YH\nCAS ARORA"
+},
+"story": "背景故事\n\n德川四天王的首席,擔任過主公家康的養育工作。\n家康長大後,他率領東三河眾轉戰各地,立下許多\n軍功。其才能也得到過豐臣秀吉的稱讚。",
+"cv": "CV: eRe"
+},
+"長野業正": {
+"tags": [
+"虎",
+"攻城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> BURIE RK Lvl",
+"cat": "[開發]",
+"text": "18 ( REDS)\nCG EOS B\nCOLOR."
+},
+"story": "背景故事\n\n山內上杉家臣。主家滅亡後還艱守居城箕輪城, 6\n\n次擊退了武田信玄的進攻。信玄不得不發出感嘆\n「只要業正還在,不想再對上州出手。」的智將。",
+"cv": "CV:山加 32246"
+},
+"北條綱成": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S W371 Lvl",
+"cat": "和已得77了3250",
+"text": "人\nae oF          |\nCEN"
+},
+"story": "背景故事\n\n北條家臣,福島正成之子。父親過世後,投靠北條\n氏綱並迎娶其女成為一門。在河越會戰等戰役中\n多次立功,因其旗印而獲「地黃八幡」名號,並深\nLia Ee",
+"cv": "CV: & 拓也"
+},
+"本願寺顯如": {
+"tags": [
+"僧侶",
+"攻城巧者",
+"雜賀本願寺"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> BOA — tid Lvl",
+"cat": "[計咯]",
+"text": "LO 1 En Sf Ey — EE EPSP\nEMD? A Ey DOGS"
+},
+"story": "背景故事\n\n本願寺1 1 世法主,證如之子,抵抗武家勢力,引\n領日本各地一向宗門徒起義。成為信長包圍網的\n中心人物,持繽長達十年的戰爭。",
+"cv": "CV: AIR AF"
+},
+"立花道雪": {
+"tags": [
+"虎",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S  EE PON LY.1",
+"cat": "[軍務]",
+"text": "BUTT SERIA IRIE\nRABE! BM ( VBDBEHo"
+},
+"story": "背景故事\n\n大友家臣,立花城西城督。遭雷劈而無法步行,以\n與代步經常做為大友軍先鋒,人稱「鬼道雪」,一\n生都在軍營中渡過,是家中頭號猛將。\n\nmir. BR bres          ok           人、",
+"cv": "CV : Sh RUE K"
+},
+"龍造寺隆信": {
+"tags": [
+"下克上"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 炮術指而Lv",
+"cat": "[軍務]",
+"text": "GO EET — SL EUG\n遞高2 (BM YEPOARS"
+},
+"story": "背景故事\n\n龍造寺家第1 9代家主,周家之子。統一村中與水\n江兩家後對外擴張勢力,據有九州島五國二島,人\n入 PACAP SAS) oh ERA ARM Bie BH\nBY 死。",
+"cv": "CV:安元 洋貴"
+},
+"石川數正": {
+"tags": [
+"軍師"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RiBRRA + felvl",
+"cat": "[產業]",
+"text": "LG ae                fey\ni: RTH Ee ee Geeheaiay 490)\nVee |    |  合\n3   reas\n3 oman\nBON\n2 40)"
+},
+"story": "背景故事\n\n德川家臣,擔任家老。率領西三河眾,表現出色,小\n牧長久手會戰後投奔到豐臣家,因此,德川家三河\n以來的軍制改為了武田流。",
+"cv": "CV: 真對友樹也"
+},
+"馬場信春": {
+"tags": [
+"四天王",
+"虎",
+"築城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RIBAK + felvl",
+"cat": "[開發]",
+"text": "GLIDMD (BEBE )\n0 eR RRA"
+},
+"story": "背景故事\n\n武田家四名臣之一。參加了許多會戰,從來沒有人受\n到傷,綽號“不死身的鬼美濺”,長篠會戰的時候\nAy J REAR HUE RE to",
+"cv": "CV:綿貫龍之介"
+},
+"內藤昌豐": {
+"tags": [
+"四天王"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SRGZER > Helv",
+"cat": "[產業]",
+"text": "CH RARE SS 30S\n(SRBEPIE )"
+},
+"story": "背景故事\n\n武田家臣,武田四名臣之一。武田信繁死後,成為\n主君信玄的副將。擅軍事經略,身為箕輪城主,治\n理西上野方面。於長篠之戰戰死。",
+"cv": "CV? 高木涉"
+},
+"山本勘助": {
+"tags": [
+"軍師",
+"攻城巧者",
+"牢人"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S NAH Lv1",
+"cat": "[計咯]",
+"text": "ELE SE EY Ey SES"
+},
+"story": "背景故事\n\n武田家臣。文武雙全,擔任主君信玄的軍師。第四\n次川中島會戰時,「吸木鳥戰法」遭到上和杉謙信\n識破,為了負起責任而衝入亂軍中戰死。",
+"cv": "CV: JI FAA"
+},
+"宇佐美定滿": {
+"tags": [
+"軍師",
+"四天王"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> SAAS &Llv.l",
+"cat": "[產業]",
+"text": "BA? IBS RIO DSRA DR"
+},
+"story": "背景故事\n\n上杉家臣,據說是越後流軍學鼻祖。上條定憲之胎\n的時候屬於上條方,但是定憲死後返回。參與國\n政,等等表現活躍,但是與長尾政景乘船遊玩的\nBAR 9 FE T ©",
+"cv": "CV:取上兩生"
+},
+"宮部繼潤": {
+"tags": [
+"僧侶"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SRBAKA > telv",
+"cat": "[產業]",
+"text": "( ZBI )"
+},
+"story": "背景故事\n\n淺井家臣。開始時是比叡山的僧人,主家滅亡後,\n為織田信長效力。擔任羽柴秀吉率領的中國征伐\n的屬下。",
+"cv": "CV: 真對友樹也"
+},
+"佐久間信盛": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "So ATH MER © Be Lvl",
+"cat": "[產業]",
+"text": "Se REE SP BTV"
+},
+"story": "織田家臣。在各地的會戰中表現活躍,受人效仰。\n進攻石山本願寺時擔任總指揮,但是本願寺退去\n後,被吧責行動不利,被流放。\n\nCV:川野剛租 ~",
+"cv": "5"
+},
+"松平信康": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "So TRMEER + Helv",
+"cat": "[產業]",
+"text": "CAG BREA Pees"
+},
+"story": "德川家康之長男。娶織田信長之女‧五德,為人則\nBei RASHES RRS RIERA RAL\n> ANG A Be\n\nCV: RRS   =     .",
+"cv": "5"
+},
+"三好實休": {
+"tags": [
+"水軍",
+"茶之湯",
+"下克上"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> BURIE RK Lvl",
+"cat": "[開發]",
+"text": "1S (QREAYS )\niLCOLOR"
+},
+"story": "背景故事\n\n元長的次子,兄長長慶進入人錢內後負責本國阿波\n的經營。作為長慶的左膀右劈,在內政、軍事方面\n表現活躍,但是在和泉久米田會戰中陣亡。專長茶",
+"cv": ""
+},
+"明智秀滿": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> SXFLM ER » tee Lv.1",
+"cat": "[產業]",
+"text": "CA BENE op Baas"
+},
+"story": "BAS REM ERB BAT RAPS Hoh\n崎會戰中守衛安土城,但是由於本軍汗敗,搬退到\n坡本城,把財寶交給包圍軍,然後自盡 了。\n\nCV: RAG ~        說",
+"cv": "5"
+},
+"長宗我部元親": {
+"tags": [
+"虎",
+"水軍",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S #6 F Lvl",
+"cat": "[47 3. |",
+"text": "ALB RED"
+},
+"story": "ap UE\n\nLEAR KA BPI E> BPS Fo PAAR TE\n69-48 FP Robe RES] TAHA T+\n統一了四國,絆號「土佐第一人」。",
+"cv": "CV:小山 博愛"
+},
+"歸蝶": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S Pip ARS Be Lv.1",
+"cat": "",
+"text": ""
+},
+"story": "背景故事\n\n齋藤道三之女。濃姬。在父親與織田家和睦之際嫁\n給織田信長。在本能寺之變後投靠信長的次男。\n信雄,在尾張領有用化糙領而被稱為安土殿。\n7          點            二",
+"cv": "CV: A tet"
+},
+"阿初": {
+"tags": [
+"虎",
+"南蠻信奉"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> AA=Mlvl",
+"cat": "[產業]",
+"text": "IO ES ENPORA SAR\n57 QQ E LE LD\n(PREY)\nCA SRR RSRDR"
+},
+"story": "背景故事\n\n又稱常高院。淺井長政與阿市所生之女。三姊妹中\n的次女。在小谷城、賤了黃之戰中倖存,成為京極高\n次的妻子。據說皈依了基督教。",
+"cv": "CV: 3,38 明里"
+},
+"阿江": {
+"tags": [
+"虎",
+"禮法家"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> AA=Mlvl",
+"cat": "[產業]",
+"text": "CE BAENPCRA RAE\n77 SY PTV LSID\n(BEBE)\n\nof SDR Ae"
+},
+"story": "背景故事\n\n又稱小督、崇源院。淺韻長政與阿市所生之女。三\n姊妹中的三女*後來成為德川秀忠的妻子,生下江\n戶幕府第三代將軍德川家光。",
+"cv": "CV:日高里菜"
+},
+"松永久秀": {
+"tags": [
+"下克上",
+"茶之湯",
+"築城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> 4 ar BL Lyd",
+"cat": "[產業]",
+"text": "GES POEOR,\nSUSCVRRIL (BS\nBE)\n\nCAS BSRSRBRS"
+},
+"story": "背景故事\n\n三好家臣,據說其簽奪主家,殺死將軍足利義輝,\n\n火燒東大寺大佛殿。歸順織田信長後謀反失敗,與\nTF sos | — ABLE TE e",
+"cv": "CV: AW 雅隆"
+},
+"佐竹義重": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S #RAALVI",
+"cat": "[計咯]",
+"text": "MPSS Buh SESS"
+},
+"story": "背景故事\n\n佐竹家第1 8代家主,義昭的嫡子,繼承父親的遺\n志,成功地統一了常陸,與北條家和伊達家為敵。,\n自己親自在惠前指揮人作戰,人稱「鬼義重」,令人\n+ ee",
+"cv": "CV:速水 類"
+},
+"阿松": {
+"tags": [
+"姬城督",
+"禮法家"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 姬武者同當Lv.1",
+"cat": "[軍務]",
+"text": "ORM BR PLES B BUGS"
+},
+"story": "背景故事\n\n前田利家的正室。育有2 男9 女。和秀吉的正室。\n寧寧之間有相當密切的關係,在賤策之戰時自己\n與秀吉進行交涉而達成和議。在利家過世以後出\n家法號芳春院。",
+"cv": "CV:福尾 美佳"
+},
+"柴田勝家": {
+"tags": [
+"虎",
+"攻城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> HK LVI",
+"cat": "[軍務]",
+"text": "IS HFRS Pa\nGP DAVE SEMIR of RIND\nAEM EMERY BSD"
+},
+"story": "背景故事\n\n織田家臣,被稱為「衝鋒柴田」的猛將。擔任北陵\n軍的總指揮。在本能寺之變後與羽柴秀吉爭鬥,不\n過在賤黃會戰中敗北,便於居城北莊城自眉。",
+"cv": "CV: AIR AF"
+},
+"前田利家": {
+"tags": [
+"茶之湯",
+"槍巧者",
+"小姓"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> 8% ASAI",
+"cat": "[軍務]",
+"text": "Shy —TARBALR\nFRNOOOOOE SRAM RAIS\nOD (BBs )"
+},
+"story": "背景故事\n\n織田家臣。在許多會戰中表現出色,外號“槍之又\n左”後來跟隨柴田騰家,為平定北陸做出了貢獻。\n信長死後,為豐臣秀吉效力,成為五大老之一。",
+"cv": "CV:綿貫龍之介"
+},
+"前田慶次": {
+"tags": [
+"牢人",
+"茶之湯",
+"槍巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "",
+"cat": "[計咯]",
+"text": ""
+},
+"story": "背景故事\n\n戰國第一奇人。瀧川益重之子。前田利家之元‧利\n久養子。善使槍,號稱天下無雙。風雅之道造詣亦\n高。關原之戰時灰屬於上杉家。\n\n人全員          加說            一",
+"cv": "CV: 真對友樹也"
+},
+"妻木熙子": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S Fe RM BH LvI",
+"cat": "[軍務]",
+"text": "Ge RAPER BES ITS"
+},
+"story": "背景故事\n\n明智光秀之妻。玉(〈(伽維奢) 之母。她傳有賣自己\n的頭髮幫助流浪且窮困濠倒的光秀的佳話。兩人\nRA RRIS? 6% LARA BAR Ee",
+"cv": "CV:花守由美"
+},
+"成田甲斐": {
+"tags": [
+"虎",
+"攻城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S BT IR + Helv",
+"cat": "[軍務]",
+"text": ""
+},
+"story": "背景故事\n\n成田氏長之女。在進攻小田原時,曾立下擊殺三宅\n高繁等功勞,在忍城擋下了石田三成率領的大軍。\n有束國第一美貌之譽,後來成為羽柴秀吉的側室。",
+"cv": "CV:花守由美"
+},
+"福島正則": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S & thy BP Lv.1",
+"cat": "[開發]",
+"text": "OB QPF CP EVID\nALR APRS RMT BB\nCB @ BRR BABS"
+},
+"story": "豐臣家臣,賤黃七本槍之首。在關原會戰中作為東\n軍的主力奮戰,得到了安藝廣島4 9萬石的估祿。\n可是,後來因為居城廣島城摔自修銀之罪而被改\n易 o\n\nCV: AKERS                    .",
+"cv": ""
+},
+"加藤清正": {
+"tags": [
+"鐵炮巧者",
+"小姓",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S EAT = e Lv.1",
+"cat": "",
+"text": "~                            全二\nNN\nAGB AaB"
+},
+"story": "豐臣家臣,賤了黃七本槍之一。出兵朝鮮時表現活\n躍,留下了“虎加藤”的佳話。秀吉死後與石田\n三成對立,關原會戰中屬於東軍,得到了肥後熊本\n5 2B Bthike",
+"cv": ""
+},
+"竹中半兵衛": {
+"tags": [
+"軍師",
+"攻城巧者",
+"牢人"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 強攻戰術Lv.1",
+"cat": "[軍務]",
+"text": "Ce PASE HEY S"
+},
+"story": "背景故事\n\nPARR EEA 1 6人就奪取了主家的居城稻葉\n山城。他卓越的智謀得到羽柴秀吉賞識,被聘為軍\n師。",
+"cv": "CV: eRe"
+},
+"榊原康政": {
+"tags": [
+"四天王",
+"小姓"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RIBAK + felvl",
+"cat": "[開發]",
+"text": "CEO ROR RW IR\nJBI (RRAAYE)"
+},
+"story": "背景故事\n\n德川四天王之一。高舉“無”旗馳騎在戰場上,在\n各地建立了卓著戰功,晚年被推舉作老中,以\n“老臣爭權乃亡國之兆”為由推辭。",
+"cv": "CV:綿貫龍之介"
+},
+"高橋紹運": {
+"tags": [
+"鐵炮巧者",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S NAH Lv1",
+"cat": "[計咯]",
+"text": "LRBPBRLA SID\n(BEA BEHMOPE)\n© 52 Cy GETTER SRE SPO"
+},
+"story": "ay Ue\n\nKARE? HAS BIH oF FALSE AY KF 0 MEI\n花道雪齊名的猛將。在居城僅以七百兵士迎擊島\n津軍五萬大軍,殺敵無數後全軍覆沒。",
+"cv": "CVi3bw KS"
+},
+"壽桂尼": {
+"tags": [
+"僧侶"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SRGZER > Helv",
+"cat": "[產業]",
+"text": "LO se CE PURER ASD\n2) Ep Ne AEB 01010"
+},
+"story": "背景故事\n\n今川氏親的正室。今川氏輝~義元之母。在丈夫死\n後,由於輔佐繼任家督的氏輝,被稱為女戰國大\n名。據說至義元和氏真一代仍參與政治活動。",
+"cv": "CV:花守由美"
+},
+"鈴木佐大夫": {
+"tags": [
+"雜賀本願寺",
+"鐵炮巧者",
+"築城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "OWE AA » telyv.l",
+"cat": "[產業]",
+"text": "SEP EIR a0’\nSADRRRARD"
+},
+"story": "背景故事\n\n紀伊的土吝,雜賀城主。率領用步槍武裝起來的傭\n其軍團雜賀黨。與本願寺聯合,同織田信長作戰。\n後來被進入紀伊的豐臣家臣藤堂高虎欺騙而自",
+"cv": "CV:櫻井皓基"
+},
+"本多正信": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 將才玉成Lv.1",
+"cat": "[軍務]",
+"text": "GEES? BURP VEST\nGEOR ERGM (SBD\nOi BG Ga pgp"
+},
+"story": "42 RE PIE RIF AM —-M-® RY\n之後返回。發揮其在行政和謀略方面的才能,主公\nCV:川野剛艇 ~              下",
+"cv": "5"
+},
+"陶晴賢": {
+"tags": [
+"下克上",
+"小姓"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S PIB PK + HeLvl",
+"cat": "[軍務]",
+"text": "SE EWS TPAD\nHD ILI (LEE\nCAG RRROBRQA B"
+},
+"story": "背景故事\n\n大內家臣,與房之子。被譽為「西國無雙的侍大\n\n將」,崗主公義隆自由,奉大友晴英為家主,使主\n家成為兌倆\"在嚴品會戰中敗給 了毛利元就而自",
+"cv": "CV: JI FAA"
+},
+"荒木村重": {
+"tags": [
+"下克上",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S ta EP F) + te lvl",
+"cat": "[開發]",
+"text": "ELIAS ( BEGGS)\nBOTS SAE BEB"
+},
+"story": "背景故事\n\n池田家臣,攝津有有岡城主。為織田家效力,負責經\n營攝津但是聯合本願寺、毛利家,發動叛亂,戰\n敗後逃亡。後來成為茶人,是利休七哲之一。",
+"cv": "CV: 真對友樹也"
+},
+"飯富虎昌": {
+"tags": [
+"四天王",
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 重視軍事‧俊Lv.4",
+"cat": "[開發]",
+"text": "SE BERS OREO A\nSESE HAO  (QED\nCAO PIRES"
+},
+"story": "背景故事\n\n武田家臣。率領統一著紅色軍裝的部隊,綽號“甲\n山的猛虎”,擔任信玄的長子義信的監護人,但是\nFIER ARRAS Hem A Be",
+"cv": "CV : Sh RUE K"
+},
+"甘利虎泰": {
+"tags": [
+"四天王"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "So ATH MER © Be Lvl",
+"cat": "[產業]",
+"text": "OEE Pp Begs\nSEY GIES (B\nCAS BRED Paws"
+},
+"story": "ap UE\n\n武田家臣。參與主公信虎的流放。之後在信虎之子\n信玄底下住寐,和板士信方一起擔任宿老。在上四\nAR. RAL SAAT LK Tp ER PARR» HR KR Fe",
+"cv": "CV: 真對友樹也"
+},
+"甘粕景持": {
+"tags": [
+"四天王",
+"攻城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> SXFLM ER » tee Lv.1",
+"cat": "[產業]",
+"text": "OEE PP vases\nSEY IIE (B\n5負面 PEDO HRS"
+},
+"story": "背景故事\n\n上杉家臣。三條城主。原名長重。曾在第四次川中\n島會戰中擔任殿軍,與偷裝妻女山的武田軍人分隊\n交戰。在謙信死後住府景勝,立下了許多戰功。",
+"cv": "CV: 真對友樹也"
+},
+"太田資正": {
+"tags": [
+"弓巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S BT IR + Helv",
+"cat": "[軍務]",
+"text": "=F] BAIN CER RS Zi ae Se\nI NG RANEY SII"
+},
+"story": "背景故事\n\n扇谷上杉家臣,娠付城主。資賴之次男。主家滅亡\n後,歸屬於上杉家及佐竹家,終其一生皆在對抗北\nNRE BF SFE) BRS RAF ESA\n陣。",
+"cv": "CV: JI FAA"
+},
+"真柄直隆": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RICK dF > te Lvl",
+"cat": "[軍務]",
+"text": "OGRE PEAR\nRECUG GB URE AVE BER\n高0.2 (QEHBS)\n\nCAS HRMSRSOAR"
+},
+"story": "朝倉家臣。和弟弟直澄都是家中頭號的剛勇之士,\n威名遠播,姊川會戰中自己方敗走時,與德川軍礁\n戰,和兒子隆基一起陣亡。\n\nCV: AH REE",
+"cv": "5"
+},
+"大內義隆": {
+"tags": [
+"水軍",
+"茶之湯"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RBRA + Helv",
+"cat": "[產業]",
+"text": "OR IRE RS\n© A Gee EME"
+},
+"story": "背景故事\n\n大內家第 3 1代家主。擔任七國的守護,在中國、\n九州地區稱霸。繼其位的莽子晴持去世後,便醉心\n於文建立起獨自的文化,但和遭家臣陶晴賢叛變而\n自盡。",
+"cv": "CV:黑回 祥史"
+},
+"島津貴久": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S SUE Wa Lvl",
+"cat": "[開發]",
+"text": "ee (RB"
+},
+"story": "島津家第1 5代家主,忠良的長子。在父親的輔佐\n下擴大了了所屬領地,完成了薩摩的統一。他引入鐵\n兢,實行積極的外交政策為島津家的進一步發展\n葬定了基礎。\n\nCV:鈴木吱沐 ~               末",
+"cv": "5"
+},
+"坂井政尚": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A URRA > Riv",
+"cat": "[產業]",
+"text": "ESTE\n(Ba\nSRR  國22"
+},
+"story": "織田家臣。信長入京後與柴田勝家、森可成等人合\n力協辦京都政務。在姊川會戰中擔任先鋒為勝利\n做出貢獻。最後在進攻淺井一方的近江堅田時,歷\n經一釋激戰後惠亡。\n\nCV:真對友樹也",
+"cv": "5"
+},
+"伊達輝宗": {
+"tags": [
+"禮法家"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S tiikh & > te Lvl",
+"cat": "[產業]",
+"text": "(BRED)\nCAG SURE A BBE"
+},
+"story": "背景故事\n\n伊達家第1 6代家主,晴宗之次子。經常與相馬家\n爭鬥。將家督讓給嫡子政宗的隔年,就被二本松義\n繼綁架,死於前來救援的伊達軍的槍擊戰中。",
+"cv": "CV: bw 英雄"
+},
+"稻葉一鐵": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S BRAT A + te Lvl",
+"cat": "[開發]",
+"text": "人2\nan ( GDS: ae\nis ener"
+},
+"story": "齋懇家臣,美濃三人眾之一。主家滅亡後為織田信\n長效力,姊川會戰中特斷淺井軍,將己方引導向胖\n利。性格兢固,“一微”一詞起源於他。\n\nCV:真對友樹世               =                    .",
+"cv": ""
+},
+"森可成": {
+"tags": [
+"槍巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RICK dF > te Lvl",
+"cat": "[軍務]",
+"text": "IS GAS PAB REC\nRGB SS BAUS SBR\n0 2 (QBABE)\n\nCASHZMASRSAR"
+},
+"story": "背景故事\n\n織田家臣。在尾張統一戰和桶狹間會戰等戰役中\n表現活躍。擔任宇佐山城主,莘固玫殆湖的南岸。\n後來招致淺井~朝倉聯軍的攻擊,眾寡不敵,陣亡。",
+"cv": "CV : Sh RUE K"
+},
+"蜂須賀小六": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "So TRMEER + Helv",
+"cat": "[產業]",
+"text": ""
+},
+"story": "背景故事\n\n豐臣家臣。幫助建築墨候一夜城,以後作為秀吉的\n參謀在民政等方面發揮才能。四國征伐後領受阿\n波德島18萬石的俸祿,作為對長宗我部家的控\n制。",
+"cv": "CV:小山 博愛"
+},
+"高力清長": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RAG A + te lvl",
+"cat": "[開發]",
+"text": ""
+},
+"story": "德川家臣。自駿府時代便追隨家康的老將。雖然參\n與許多場激戰,由於對敵人寬大,且向來清廉耿\n直,因此被稱為「佛高力」。於關原會戰後隱居。\nCVI SFA ~                   .",
+"cv": ""
+},
+"岡部元信": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S ta EP F) + te lvl",
+"cat": "[開發]",
+"text": ""
+},
+"story": "背景故事\n\n今川家臣。桶狹間會戰中把主公義元的首級帶回\n了.駿河。主家滅亡後,為武田家效力,成為高天神\n城主,但是招致了德川家康的攻擊,城池陷落,戰\n死了。",
+"cv": "CV: JI FRA"
+},
+"一條信龍": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "Oo AASTT & > tell",
+"cat": "[開發]",
+"text": "HLL (RRBYS)\nCAG RGRROBRA E"
+},
+"story": "武田信玄的異母弟。甲林上野城主。一條家繼承著\n甲斐源氏的名望。在信玄的遺言中擔任勝賴的監\n護人,並盡心效力逐步府退的武田家。",
+"cv": "5"
+},
+"原虎胤": {
+"tags": [
+"虎",
+"攻城巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "Oo AASTT & > tell",
+"cat": "[開發]",
+"text": ""
+},
+"story": "背景故事\n\n武田家臣,甲陽五名臣之一,下總千葉家臣原家的\n一旗。一生參加了 38次會戰,專長攻城有情有\nKP “MLAB” 。",
+"cv": "CV: 真對友樹也"
+},
+"千坂景親": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RAG A + te lvl",
+"cat": "[開發]",
+"text": ""
+},
+"story": "上杉家臣。越後國針盛城主。在上杉謙信死後,於\n御館之亂中協助上杉景勝。活躍於外交方面/在關\n原會戰後和本記繁長共同致力於與德川家間的和和\nHAE °",
+"cv": "5"
+},
+"樋口兼豐": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SRBAKA > telv",
+"cat": "[產業]",
+"text": "( ZBI )"
+},
+"story": "上杉家臣。直峰城主。直江兼續之父。跟隨轉封會\n津的上杉家。在兼練不在時,負責留守米澤城,也\n有著手最上家的諜報等工作,為上杉家而盡力。\nVise ~        說",
+"cv": ""
+},
+"仙桃院": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S WKH RI + fe Lvl",
+"cat": "[開發]",
+"text": "LS PUBS FPR\nBPE Bat BAIRD. (SZ\nCDG ARE PREM"
+},
+"story": "背景故事\n\n長尾為景之女。名為綾。嫁給長尾政景之後育有二\n男二女。在丈夫於野尻池中渴死後投靠弟弟‧上\n棚謙信,並自名仙桃院。她的兒子‧景勝後來成為\n謙信的養子。",
+"cv": "CV:和久保由利香"
+},
+"小島彌太郎": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> ATEN ER + te Lvl",
+"cat": "[產業]",
+"text": "ORE Bip RBS\nSiS) IMIR (B\nCAS ESE GHB"
+},
+"story": "背景故事\n\n上杉家臣,年幼時即常在主君謙信身旁參加川中\nBZA BERR eR BEY RBs\n名字都會令人害怕。於是留下為數不少的傳說。",
+"cv": "CV: 真對友樹也"
+},
+"瑞溪院": {
+"tags": [
+"虎",
+"禮法家"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RBRA + Helv",
+"cat": "[產業]",
+"text": ""
+},
+"story": "背景故事\n\nSN BLS He ILE AA AY JE So Sk FA Be\nRFR SF] BST] RS MLA] » ESA BILE AR\n戰但並未絕婚。其女藏春院則成為今川氏真的正\nFo",
+"cv": "CV: REA OB AE"
+},
+"毛利隆元": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> BRA ° telv.l",
+"cat": "[開發]",
+"text": "EEE HEAO ( BEE"
+},
+"story": "安藝的戰國大名,元就的嫡子。成為大內家的人\n質,由大內義隆加冠完成成人儀式。在父親的指導\n下經營中國,遠征出雲途中乂死。",
+"cv": "5"
+},
+"安東愛季": {
+"tags": [
+"水軍"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> BRA ° telv.l",
+"cat": "[開發]",
+"text": "LO AERA HERES Mt\nPLS EM (QLD\nCl AAA ATR"
+},
+"story": "背景故事\n\n槍山安東家第八代家主,舜季的嫡子。統一了湊和\n榆山兩安東家,運用巧妙的戰略建立起安東家最\n大的版圖,其才能如「北斗星常掛北方天空般」\n令人恐懼。",
+"cv": "CV: 真對友樹也"
+},
+"尼子晴久": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S # fi H Fl + fe Lvl",
+"cat": "[開發]",
+"text": "[G te Ce REPRE TPR Po ML,\nEP ar BAIA DO.8 (&"
+},
+"story": "出雲的戰國大名。在祖父‧經久死後繼承家督之\n位。積極的進行外征戰咯,而建立起尼子家最大版\n圖。為了刻固脆能的支配體制,便對新宮堂進行了\n鹿清行動。\n\nCV:真對友樹世               =                    .",
+"cv": "5"
+},
+"十河一存": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> ATEN ER + te Lvl",
+"cat": "[產業]",
+"text": "ICE MBEE SG Po RB\nSEBO PUSS (B\nSAS BREADS SHS"
+},
+"story": "背景故事\n\n三好家臣,三好元長的四子,繼承了十河家,成為\n十河城主。作為家中頭號的猛將而盯名人稱“鬼\n十河”。和卻在參詣且權現的途中落馬身亡。",
+"cv": "CV: JI FAA"
+},
+"齋藤義龍": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S PIB PK + HeLvl",
+"cat": "[軍務]",
+"text": "BALE\nsonnel ERE i"
+},
+"story": "美濃的戰國大名,道三之子,有一說他是美濃守護\n土岐賴藝之子。為了家督與父親對立,殺死父親後\n成為美濃國主。但不久後猝死。據說是身高6尺5\n寸的巨漢。\n\nCV: REZ SY   =     .",
+"cv": "5"
+},
+"相良義陽": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 相全眠Lv.1",
+"cat": "[產業]",
+"text": "IS EOS RBS\nCf GMS PRR"
+},
+"story": "肥後的戰國大名,人吉城主,晴廣之子。得到祖父\n上村賴與的輔佐,經過2次內亂,擴大領國,但是\n投降了島津家,與阿蘇家作戰的時候戰死了。\nCV:兼岩 玲志 ~                  .",
+"cv": "5"
+},
+"相馬盛胤": {
+"tags": [],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RR > Be Lvl",
+"cat": "[軍務]",
+"text": "SVE SARIN LBB.\nGUVGEGERER 0 WM (SB\nGIVE)"
+},
+"story": "相馬家第15代家主,顯胤之副子,小高城主。天文\n之且後與伊達家敵對,在各地展開殊死奮戰。另一\n方面,與近鄰的加桂清顯關係和和睦,輕固了領地的\nHR JR o\n\nCV:柴田 AS 人        說",
+"cv": "5"
+},
+"津田算長": {
+"tags": [
+"僧侶",
+"鐵炮巧者"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S SUE Wa Lvl",
+"cat": "[開發]",
+"text": "CE GDEVOBT ROR\nSRL (PEED\nCB GDR Rs"
+},
+"story": "背景故事\n\n日本最古老的砲術流派津田流砲術之祖。稱為監\n物。向種子島時先學習砲術。後來傳授埠的鍛冶師\n芝過清右衛門鐵砲的製造技術,使垢成為鐵砲生\n產地。",
+"cv": "CV : Sh RUE K"
+},
+"藤林正保": {
+"tags": [
+"忍者",
+"禮法家"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S kaw & Lvl",
+"cat": "[計咯]",
+"text": "CEMPFABBRR BURP\nOER GSB BABS\nMEP GLE RA SANG AES"
+},
+"story": "背景故事\n伊賀的土豪通稱長門守。豚林家是伊賀的上忍三\n家之一,之後著作忍術傳書《萬川集海》的人也",
+"cv": "CV:大友俊"
+},
+"可兒才藏": {
+"tags": [
+"槍巧者",
+"牢人"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S # fi H Fl + fe Lvl",
+"cat": "[開發]",
+"text": "GE a GASPS PORE ME\nPRB DAMIOS (B\nCAS SERBRAOM"
+},
+"story": "背景故事\n\n福島家臣,擔任侍大將。鉛寶藏院篆榮學習槍術。\n因為在關原會戰中將斬落的1 7顆首級都用竹子\n挑若做上記號,得到了“竹之才藏”的綽號。",
+"cv": "CV: 真對友樹也"
+},
+"諏訪姬": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RAG A + tell",
+"cat": "[開發]",
+"text": "LLIN (LEGDE)"
+},
+"story": "背景故事\n\n廖訪賴重之女。在和武田敵對的賴重過世後成為\n信玄的側室。信玄當初本來是要讓自己與雇訪姬\n間所生下的孩子來繼承廖訪家。",
+"cv": "CV:花守由美"
+},
+"種子島時堯": {
+"tags": [
+"鐵炮巧者",
+"南蠻好尚"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RiBRRA + felvl",
+"cat": "[產業]",
+"text": "[GO ae                fey\ni: 二全     ELEN Gee heaie 490)\nVee |    |  合\n3   reas\n3 _—\nBON\n2 40)"
+},
+"story": "背景故事\n\n島津家臣,種子島的領主。惠時的長子。同大隅的\n之族袖密家抗爭。從漂流到種子島的葡萄牙船上\n得到鐵砲,進行分析,改造成了國產品。",
+"cv": "CV: © 44"
+},
+"里見義堯": {
+"tags": [
+"水軍",
+"下克上"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S RR > Be Lvl",
+"cat": "[軍務]",
+"text": "CEMRRREP SKB\n嗎內員得人We高0 4 (B\naoe)"
+},
+"story": "背景故事\n\n房總的戰國大名。打敗殺死父親實導的表兄弟義\n豐,成為家主。國府臺會戰中敗給了北條氏康,但\n是此後繼續在房總擴大勢力,與北條家戰鬥。",
+"cv": "CVi3bw AS"
+},
+"阿市": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S PAPI Lvl",
+"cat": "[軍務]",
+"text": "IS 15, a ap £2 ESP) 回 Gage"
+},
+"story": "背景故事\n\n織田信長之妹。雖然嫁給淺井長政,但在長政自盡\n以後返回娘家。本能寺之變以後嫁給了此田勝家\n與勝家一起自盡於越前北之莊城。據說是名絕世\n美女。\n\nmire3ab ee be        LON         一",
+"cv": "CV:花守由美"
+},
+"加藤嘉明": {
+"tags": [
+"小姓",
+"水軍"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S tiikh & > te Lvl",
+"cat": "[產業]",
+"text": "( ZBE YS )"
+},
+"story": "eo\n\n豐臣家臣,賤黃七本槍之一。智勇雙全,獲得好評。\n作為豐臣水軍的主力在各地的會戰中表現活躍,\n\n關原會戰中屬於東軍,領受伊予松山2 OSH\n\nke\n\nnvr. a8 ab 2b we          >           a",
+"cv": "CV:櫻井皓基"
+},
+"吉岡妙林": {
+"tags": [
+"姬城督",
+"僧侶"
+],
+"hg": true,
+"src": "shop",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S 相全眠Lv.1",
+"cat": "[產業]",
+"text": "GETS REBEROS\n© (ONE PURI AH"
+},
+"story": "背景故事\n\n大友家臣‧吉岡鑑與之妻。在丈夫於耳川會戰中\n戰死後出家,法號妙林。在得受島津軍侵略時駐守\nHE Ye IR, Te HEIR BK Eo S 4K EF A BRAISED FA\nFh 70 VA IB HH o",
+"cv": "CV: AT ABT"
+},
+"寧寧": {
+"tags": [
+"僧侶",
+"禮法家",
+"茶之湯"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "> 健太違和痊Lv.5",
+"cat": "[產業]",
+"text": "BYP eAPa EOD ( VBC\nCASS BERRA"
+},
+"story": "背景故事\n\n亦被稱為高台院、北政所。秀吉之妻。不只是名妻\n子,同時也以政治家的身份支持秀吉和朝廷之間\n多家臣。",
+"cv": "CV:和久保由利香"
+},
+"大久保長安": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "OAT &N'B Lvl",
+"cat": "[產業]",
+"text": "Oe ol ICP EERGRIR 9\n(BYE 975 (A> RUGS 8 BP aR\nSEL RADRIR GD ee ( Babuss"
+},
+"story": "德川家臣。利用主家的勢力和新技術採掘金銀殘,\n設立一里塚和傳馬宿等等,在藹府的民政、財政方\n面做出了極大的貢獻,綽號 “天下的總代官”。\nCV: kw HE         .",
+"cv": "5"
+},
+"浦上宗景": {
+"tags": [
+"下克上"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SRBRA + felvl",
+"cat": "[產業]",
+"text": "CELI BRR BS\n(LEER)\nSAS BORSA QEBw"
+},
+"story": "背景故事\n\n備前的戰國大名。邊與室津城主的兄長政宗爭閏,\n邊在備前擴大勢力。可是卻被逐漸擁有勢力的家\n臣宇喜多直家攻擊,而被趕出居城。",
+"cv": "CV: KW FF"
+},
+"大祝鶴": {
+"tags": [
+"虎",
+"水軍"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "S Fae te + te Lvl",
+"cat": "[產業]",
+"text": "7B) Bp OTE GP GAR GREHEL\nBEM ( BH S ))\n© 2 BP EER be"
+},
+"story": "背景故事\n\n三島水軍眾大祝氏之女。據《塢姬傳說》所述,與\n大內家交戰時曾披甲上陣併英勇奮戰,隨後追隨\n戰死的戀人投海自盡。",
+"cv": "CV:花守由美"
+},
+"河田長親": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "C oD Fi vy tm Lvl",
+"cat": "",
+"text": "可學習  可學習"
+},
+"story": "背景故事\n\n北條家臣。泰季的嫡子。在進攻小田原時由於身為\n忍城代的父親在會戰前去世而執掌防守指揮工\n作,與甲莫公主在忍城擋下了石田三成率領的大\n軍。",
+"cv": "CV: JI FAA"
+},
+"池田輝政": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tae PF] > Riv",
+"cat": "[開發]",
+"text": "LION (LLB)\n© i @ RN RG\nGBB SBA BEM! 5"
+},
+"story": "背景故事\n\n織田家臣,恆與的次子。本能寺之變後歸屬豐臣\n家,在各地表現活躍。關原會戰中屬於東軍,戰後\n領受播磨姬路5 2 Gti AAR “WERE SEAR” ©",
+"cv": "CV: eRe"
+},
+"下方貞清": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "",
+"cat": "[產業]",
+"text": "ORG MME DB"
+},
+"story": "Ree RAL) ARERR SMAAK\n槍之一。之後也在桶狹間、姊川等戰役中立下輝煌\n戰功,晚年接受了松平忠吉的招撥。\n\nCV: EAE ~        說",
+"cv": ""
+},
+"齋藤利三": {
+"tags": [
+"茶之湯"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tik / fe > Riv",
+"cat": "[產業]",
+"text": "IO Bef Paes iaaS\n\nihe ifn) ZB   ; )\nst  one    _\neS        |"
+},
+"story": "背景故事\n\nTEAR RoE RMT RR MA AG IF A RAR\nhe J AREAS Fo bet RK » FRE » RG\n首。女兒是當過德川家光乳母的春日局。",
+"cv": "CV:綿貫龍之介"
+},
+"仙石權兵衛": {
+"tags": [
+"水軍"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A FD te Be ‧。 RLv.1",
+"cat": "[產業]",
+"text": "EEG ( BBREHYS )\nOD DBP REDE HR DR"
+},
+"story": "背景故事\n\n豐臣家臣。由於平定淡路島有功,得到淡路洲本五\n萬石俸祿。擔任征伐九州的先鋒時,在戶次川會戰\n中大敗給島津軍,被沒收了領國,不過後來歸還。",
+"cv": "CV:綿貫龍之介"
+},
+"九戶政實": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A + ta PRI > Riv.",
+"cat": "[開發]",
+"text": "BPE BVA 85 PAIRS\nO.15 (BREE )"
+},
+"story": "南部家臣,信仲之子。南部晴政死後推舉弟弟實\n親為繼承人,未果,於是發動亂。與應南部信直的\n邀請而出戰的豐臣軍人奮戰,慘得敗北,被斬首。\nCV:真對友樹世               =",
+"cv": ""
+},
+"鬼庭左月齋": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A EUS > Riv",
+"cat": "[開發]",
+"text": "SESE HNO ( BRESGY\nCA OMe BIRR"
+},
+"story": "伊達家臣。積宗的五子盛重入囊國分家的時候,他\n去了國分家料理諸般事務。後來負責會議諸事。人\n取社會戰中雖然高齡,還擔任殿軍,戰死沙場。\nCV:最上兩生 ~        =          .",
+"cv": ""
+},
+"福留親政": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tRikKRA + Riv",
+"cat": "[產業]",
+"text": "Fane\naS, RES\n2 3   sree ™"
+},
+"story": "長宗我部家臣。在與安藝家之戰鬥中活躍,留下了\n「福流之荒切」之逸義。從其主元親那收到21\n張感謝狀,是家中屈指可屬的勇將。於南伊予攻略\n\nCV:真對友樹世               =",
+"cv": "5"
+},
+"遠藤直經": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tik / fe > Riv",
+"cat": "[產業]",
+"text": "ot @ BRE A BEB"
+},
+"story": "FEHR BR RP AGI AA Bere EDR\n獻計暗殺織田信長,但是沒有被採納。姊川會戰的\n時候,一個人突入信長的主營,陣亡。",
+"cv": "5"
+},
+"安藤守就": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SA 內疏邱用 ‧。 RLy.1",
+"cat": "[開發]",
+"text": "AP SE Bait BS ADAIR DD\nO.15 (RR YS )"
+},
+"story": "齋朋家臣,美濃三人眾之一。主家滅亡後為織田信\n長效力,但是後來被趕走。趁著本能寺之變,起兵\n欲恢復舊領地,不過與稻葉一鐵作戰,敗戰身死。\nCV: ASRS               =                    .",
+"cv": "5"
+},
+"池田恆興": {
+"tags": [
+"小姓"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "APSR PIR > Riv.",
+"cat": "[軍務]",
+"text": "SALT\nsoni MBSR"
+},
+"story": "背景故事\n\n織田家臣,信長的乳兄弟。在姊川會戰等戰役中表\n現出色。本能寺之變後成為織田家四和宿老之一,加\n入羽柴秀吉一方,參加小牧長久手會戰,陣亡。",
+"cv": "CV: 真對友樹也"
+},
+"氏家卜全": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tae PF] > Riv",
+"cat": "[開發]",
+"text": "CHO (LGDE)\n© 2 BUREN RT,"
+},
+"story": "齋藤家臣,美濃三人眾之一。主家滅亡後為織可\n家效力,伊勢平定戰中立下了戰功。長島一向起義\n討伐戰中織田軍敗北的時候,擔任殿軍,陣亡。\nCV: AS REE               =                    .",
+"cv": ""
+},
+"佐久間盛政": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A ay FM BR ‧。 RLv.1",
+"cat": "[產業]",
+"text": "[0亞加侈學俊劉路9喉但公\nOD BAY P Gye"
+},
+"story": "背景故事\n柴田家臣,盛次的嫡男。為叔父勝家效力。外號\n“鬼玄蓉”的猛將。職黃作戰時過於深入,釀成柴\n田軍的敗因。戰後被售,被斬首。\n7。 bee Bh ob oe A          on           一",
+"cv": "CV:綿貫龍之介"
+},
+"栗山善助": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A BRAID 7. ‧。 RLv.1",
+"cat": "[開發]",
+"text": "LO ME EN BESO OVO WE\nBIOS ( PAB E)\nCADRBRRARRAL"
+},
+"story": "背景故事\n\n黑田家臣。黑田八虎之一。本名為利安。為侍奉官\n兵衛的股及之臣。在關原之戰中,與義弟‧母時太\n兵衛共同追隨宮兵衛,與豐後的大友軍作戰。",
+"cv": "CV:綿貫龍之介"
+},
+"結城秀康": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "APSR PIR > Riv.",
+"cat": "[軍務]",
+"text": "OE BYP SAR FPG\n=     y         ’\n\nva alm, iE   tac   aa                 開  »\n\n                         Z Ap Be    458  SO fi\n\nVW jz   BY"
+},
+"story": "德川家康的次子,繼承了結城家的家督。關原會戰\n的時候留在關東,以防備上杉景勝,戰後獲得越前\n福井7 5 萬石領地。據說性格火爆。\n\nCV:綿貫襲之介   =",
+"cv": "5"
+},
+"鳥居元忠": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "Ae) T Re > Riv",
+"cat": "[軍務]",
+"text": "lS 1B, 3 sre RIB"
+},
+"story": "背景故事\n\n德川家臣。關原會戰的時候受主公家康之命守衛\n伏見城,經過1 3 天的攻防,最後與守城兵士一起\n戰死,其忠節被稱讚為“三河武士之鑑”。\n\nmir. @ 2 sk     ,               oN                 一",
+"cv": "CV: eRe"
+},
+"小幡景憲": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "AERA WG > Riv",
+"cat": "[開發]",
+"text": ">     ae  =\nIS 5)       kes          )  4m  P  ASO\n¢ 3 )    一、  La 2h KE, Sa aley"
+},
+"story": "德川家臣,甲放流兵學家,昌盛之子。雖成為主公\n秀忠的侍從,但後來出走。大表之陣後才返回。集\n甲州流兵學之大成,教導眾多門徒。\n\nCV: SFA ~",
+"cv": "5"
+},
+"保科正俊": {
+"tags": [
+"槍巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A Ae FE EM ER ‧。 RLv.1",
+"cat": "[產業]",
+"text": "CELA E Po RIBS\n\nSEBO PIRI IE BLD\n(BLEBBE)\n\nCAS GOED O4HR"
+},
+"story": "背景故事\n\n武田家臣,信濃高遠城主。作為信濃先方眾參加了\n各地的會戰,綽號“槍彈正”,作為戰國三彈正之\n一被記述在《甲陽軍鑑》中。",
+"cv": "CV: eRe"
+},
+"多田三八郎": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "AF FM ER ‧。 RLv.1",
+"cat": "[產業]",
+"text": "CERES Po Gages\nCAD BPR PRR"
+},
+"story": "武田家臣,甲陽五名臣之一出身美濃。傳說他在\n信州虛空藏山的鹿茜消滅了地獄妖婆‧火車鬼。\n是家中最專長指揮夜襲的人。\n\nCV:綿貫襲之介   =     .",
+"cv": "5"
+},
+"小山田信茂": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A URRA > Riv",
+"cat": "[產業]",
+"text": "ESTE\n(Ba\nSRR  國22"
+},
+"story": "武田家臣,出羽守信有有之子。率領專長投石的部隊\n在各地的戰鬥中表現活躍。投降了織田信長的甲\n斐侵襲軍,但是勝賴死後被冠以叛徒之名斬首。\nCV:川野剛航 ~             =",
+"cv": "5"
+},
+"新發田重家": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "",
+"cat": "[產業]",
+"text": "( ZBI )\nOA VRS BEM"
+},
+"story": "LAG RE ofp a= AL Ay PAB IAL ER ARAL\nHOR T Hake T ZHOMA HREM DER\n田信長,守住居城新發田城發動謀反,失敗後自盡\n了 °\n\nCV:真對友樹世               -                     .",
+"cv": "5"
+},
+"福原貞俊": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A RAS IY fe > Kivi",
+"cat": "[開發]",
+"text": ""
+},
+"story": "毛利家臣。擔任首席家老,輔佐小早川隆景,經營\n山陽方面。主公元就死後成為四人眾之一,輔佐\nKEKE > ALE RAY Bre\n\nCV: EAE ~        =          .",
+"cv": "5"
+},
+"磯野員昌": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A + ta PRI > Riv.",
+"cat": "[開發]",
+"text": "EP LEB ES ANAL D\nO15 (RES )\n© i Hes FPR at"
+},
+"story": "淺井家臣,佐和山城主。姊川之戰時擔任先鋒奮戰\n不懈。後來降於織田信長。雖擔任至新蔬城主,但\n在遭到走罰,領地被收回後出奔至高野山。\n\nCV:真對友樹世",
+"cv": "5"
+},
+"岩城親隆": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "AERA WG > Riv",
+"cat": "[開發]",
+"text": "OPES,         oat\nVee\nlo rei es        _  轉  .\nUi"
+},
+"story": "陸與大館城主。伊達晴宗長子。他成為岩城重隆的\n義子而繼承家督也繼承了養父建立的領國,但後\n來得到佐竹家攻擊,被迫從屬。",
+"cv": ""
+},
+"水原親憲": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A tRikKRA + Riv",
+"cat": "[產業]",
+"text": "Fane\n\na=, RES\n\ncAG 5G)\n\n2 359 ze aces )  és\nES"
+},
+"story": "上杉家臣,水原館主。御館之亂的時候支持上杉景\n勝,景勝移封會津後,他擔任豬苗城代,在大坡之\n陣中立下軍功,得到了德川秀忠的表彰。\n\nCV:最上嗣生 ~        >          |",
+"cv": "5"
+},
+"池田千": {
+"tags": [
+"虎"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A XFL IM ER » KRLv.1",
+"cat": "[產業]",
+"text": "CAD BRED Pas"
+},
+"story": "背景故事\n\n池田恆與長女,嫁森長可。據傳在賤黃會戰的岐阜\n城之戰中,曾率領鐵炮隊助勢攻城。森長可死後,\n依從長可遺言回到故里,再嫁中村一炙。",
+"cv": "CV:花守由美"
+},
+"山內一豐": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A BRAID 7. ‧。 RLv.1",
+"cat": "[開發]",
+"text": "CE MARA"
+},
+"story": "背景故事\n\n織田家臣,其妻千代的內助之功很有名。本能寺之\n變後從屬於豐臣秀吉,關原會戰的時候向德川家\n獻上居城掛川城,而在戰後得到土佐高知2 4共\nFa Lie",
+"cv": "CV: I FFA"
+},
+"蜂須賀家政": {
+"tags": [
+"鐵炮巧者"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A RAS IY fe > Kivi",
+"cat": "[開發]",
+"text": ""
+},
+"story": "背景故事\n\n豐臣家臣,正勝的嫡男。關原會戰的時候讓兒子至\n鎮屬於東西,以回阿波德島藩的安泰。以後也實質\n地主導藩政,為德島落的體制確立做出了貢獻。",
+"cv": "CV:綿貫龍之介"
+},
+"大久保忠世": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "AKER A + Riv",
+"cat": "[開發]",
+"text": "oh RAR S"
+},
+"story": "德川家臣,忠員的長子。參加過三方原會戰,長篠\n會戰等許多會戰,其勇敢和性格和出眾的戰功,連\n織田信長和豐臣秀吉也給了予其高度的評價。\nCV:真對友樹世               =",
+"cv": ""
+},
+"橫山喜內": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "AKER A + Riv",
+"cat": "[開發]",
+"text": ""
+},
+"story": "蒲生家臣。在征伐九州時立功,受賜蒲生之姓與\nTeh) 字,改名為蒲生鄉舍。後來在石田家與藤堂\n\n家等家的來去之間,不時的會回到蒲生家。\n\nCV:真對友樹世               =                    .",
+"cv": "。"
+},
+"脇坂安治": {
+"tags": [
+"槍巧者",
+"水軍"
+],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A fa F509 fe > Kivi",
+"cat": "[開發]",
+"text": "0負面個吃器供@他愛用僵"
+},
+"story": "背景故事\n\n豐臣家臣,賤策七本槍之一。主公秀吉征伐中國的\n時候,打敗“丹波的紅鬼”赤井直正,立下大功。\n關原會戰中,叛變到東軍,保全了領地。",
+"cv": "CV:綿貫龍之介"
+},
+"小山田茂誠": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A EUS > Riv",
+"cat": "[開發]",
+"text": "LO 1 Ey EZ SABO\nSEH AIRMENOD ( QRD\nCA GUS ARRA"
+},
+"story": "武田家臣。娶真加昌幸之長女村松大人為妻。武回\n家滅亡後,成為真田家的家臣。大坡之陣時代替\n信之輔佐參戰的信吉、信政。\n\nCV:川野則租 ~              一",
+"cv": ""
+},
+"甘粕景繼": {
+"tags": [],
+"hg": true,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "A Ae FE EM ER ‧。 RLv.1",
+"cat": "[產業]",
+"text": ""
+},
+"story": "LAR ERIE IBM ERBACHER BS\nIRAX © HJR VER? FE IRAURKR RIP IE BH EIR,\n無人之際而攻擊,於是失去居城。\n\nCV:綿貫龍之人   -     .",
+"cv": "5"
+},
+"長野業盛": {
+"tags": [
+"鐵炮巧者",
+"虎"
+],
+"hg": false,
+"src": "list",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "SEU S + aly",
+"cat": "[開發]",
+"text": "1%,       : 7\n\n.   15 ia ce 1596)  ( ,      os Pe &\n      2 53 =   apes\naE  BY        Le     1      ="
+},
+"story": "背景故事\n\n山內上杉家臣,箕輪城主,業正之子。父親死後他\n繼承了家督。微底抵抗進攻上野的武田家,並造成\n死者一千六百多人負傷數千的傷害,最後自盡\nJe",
+"cv": "CV:綿貫龍之介"
+},
+"三好長逸": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "C iz wb Lvl",
+"cat": "Pern]",
+"text": "~                              全一7所>                                                         主\n人\n可學習   可學習"
+},
+"story": "三好家臣,三好三人眾的首席。和主公義繼、松永\nRESA RRS RH PRR AML HRA\n給織田信長的人錢內平定軍,人逃亡之後去向不明。\nCV:真對友樹世               =",
+"cv": "5"
+},
+"井伊直親": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "C R/S GY Lvl",
+"cat": "Pern]",
+"text": "人"
+},
+"story": "今川家臣。井伊谷城主。直盛羲子。直盛死後繼承\n家督,但是因為主君氏真質疑其有謀反意圖而草\n殺害。其子直政則由繼承家督之位的井伊直虎所\nCV: ASRS               =                    .",
+"cv": "5"
+},
+"尼子義久": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "C 40 8 ok a Lvl",
+"cat": "",
+"text": "一=一一                                                                                     時\n人\n哥學習    Te 8"
+},
+"story": "出雲的戰國大名。月山富田城主。晴久的嫡子。守\n衛居城與毛利元就的出雲遠征軍作戰,但是殺死\n了首席家老宇山久兼等等,敗給了元就的離間計。\nCV:川野剛租 ~             說",
+"cv": ""
+},
+"中村一氏": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "C iz wb Lvl",
+"cat": "Pern]",
+"text": "~                    LY on ee\nBy eG   a ee Gy\nC=\nCoN"
+},
+"story": "豐臣家臣,擔任岸和田城主。主公和秀吉死後,成為\n三中老之一,領受駿河府中1 ARS MA\n戰中屬於東軍,但是在決戰前夕病死。\n\nCV:真對友樹世               =",
+"cv": ""
+},
+"槍足輕": {
+"tags": [
+"?(新標籤)"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "O 易武Lv.1",
+"cat": "",
+"text": "~                       Clg)                                            a\nMQ"
+},
+"story": "背景故事\n戰國時代中的一個槍足輕",
+"cv": "CV: JI FAA"
+},
+"鐵炮足輕": {
+"tags": [
+"?(新標籤)"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "O 易武Lv.1",
+"cat": "",
+"text": "~              Clg)                          a\nNT\n可學習 THB"
+},
+"story": "背景故事\n戰國時代中的一個鐵炮足輕",
+"cv": "CV: JI FAA"
+},
+"色部長實": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "& KIER A + Flv",
+"cat": "[開發]",
+"text": "GeO (RIGGS)"
+},
+"story": "上杉家臣,平林城主,勝長之子。兄長顯長死後,由\n他繼承家和督。鎮壓出羽仙北暴動等作戰中表現活\n躍。參加豐臣秀吉出兵朝鮮行動中,患了重病,死\ntro\n\nCV :45 EK ~            —                 .",
+"cv": "5"
+},
+"色部勝長": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "& 鐵炮人訓線。音Tv.4",
+"cat": "[產業]",
+"text": "Oe LEMS BP BER\nCAR SHERA P BaS"
+},
+"story": "上杉家臣,平林城主,上條定憲之辣中曾站在上條\n方。咱中島會戰中表現活躍受到了表彰。本誕繁\n長謀反時,進攻繁長的居城灶上城的過程中病死。\nCV:最上兩生 ~        =          .",
+"cv": "5"
+},
+"口羽通良": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "& BRAG TY 72. ‧ #2 Lv.1",
+"cat": "[開發]",
+"text": ""
+},
+"story": "毛利家臣,志道廣良的次子。輔佐吉川元春經營山\n陰方面。主公元就死後成為四人眾之一,輔佐輝\n元,參與國家的政務。\n\nCV:真對友樹世               -                    |",
+"cv": "5"
+},
+"杉浦玄任": {
+"tags": [
+"僧侶",
+"雜賀本願寺"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "6 的張九奉。‧音Lv.1",
+"cat": "[產業]",
+"text": "CEB LIARS\nCRG SIRER RRB"
+},
+"story": "背景故事\n\n本願寺的坊官。加賀一鉛一換的大將。率領門徒與\nRE Bho kA BHI BAK LIF | BH Fe >\n據說這正是「本願清水」的起源。",
+"cv": "CV: 真對友樹也"
+},
+"松平忠直": {
+"tags": [],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "& ARR A + Flv",
+"cat": "[開發]",
+"text": "但高9 (RIGGS)"
+},
+"story": "結城秀康的嫡子。其父死後繼承了家和督。有在大坡\n之陣時,成功阻止了真田幸村軍等事蹣。但之後因\n為行為不檢點,便遺到貶點而處流刑。\n\nCV:真對友樹世",
+"cv": "."
+},
+"本願寺教如": {
+"tags": [
+"僧侶",
+"雜賀本願寺"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "各內政印用。‧音Lv.41",
+"cat": "[開發]",
+"text": "AP SE Bait BS ADAIR DD\nO.07 (BREBS )"
+},
+"story": "背景故事\n\nABS 1 2世法主,顯如的長子。性格激烈,與織\n田信長和睦後也主張微底抗戰。父親死後,為了爭\n奪法主之位與弟弟準如對立,建立了東本願寺。",
+"cv": "CV: 真對友樹也"
+},
+"金森長近": {
+"tags": [
+"鐵炮巧者",
+"茶之湯"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "&SIKMR + ly",
+"cat": "[產業]",
+"text": "OEMS BP ° GAGS\n(SEBS )\n© i Ep RSPR F) Gp o Raz"
+},
+"story": "背景故事\n\n織田家臣,赤母衣眾之一。跟隨柴田勝家,為了平\n定北陸做出了貢獻。勝家死後閒居,後來為豐臣衣\n吉效力,專長茶道是利休七哲之一。",
+"cv": "CV: JI FAA"
+},
+"筒井順慶": {
+"tags": [
+"僧侶"
+],
+"hg": false,
+"src": "list-bottom",
+"q": "tags=圖形字典確認；其餘為OCR草稿",
+"heijo": {
+"name": "各括張永礁。‧音Lv.1",
+"cat": "[產業]",
+"text": "IO EGR LISA TRRAIS\n( QBEBS )"
+},
+"story": "背景故事\n\n大和的國眾。順照的嫡子。因為父親順照早近,2\n歲就繼承了家和督。與松永久秀爭鬥,被趕出居城筒\n井城但是後來從屬織田信長,恢復了勢力。",
+"cv": "CV: 真對友樹也"
+}
+}
