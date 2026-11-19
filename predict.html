@@ -78,7 +78,7 @@ th{color:var(--muted);font-weight:500}
   <p class="note">假設：每人戰法 = 固有 + 2 個傳授戰法；兵種取隊伍特性最佳；兵學、評定眾、裝備、戰法等級未計入。名將登用機率用 S1 公告（5★ 0.16%/張起）；限定／PK／S2／S3 武將不一定從登用取得，抽數僅供參考。每張期望抽數 = 1 ÷ 該武將機率，未考慮每 5 抽保底。戰報回測：勝負方向命中約 67%（差距明顯的場次約 73%）。</p>
 </div>
 <script type="module">
-import{battle,parseSkill,innateOf,fullRedStats,bestArm}from'./slg/engine.js?v=41';
+import{battle,parseSkill,innateOf,fullRedStats,bestArm}from'./slg/engine.js?v=42';
 const[D,CARDS,RANK]=await Promise.all(['land.json','data.json','rank.json'].map(f=>fetch(f,{cache:'no-cache'}).then(r=>r.json())));
 const $=id=>document.getElementById(id);
 const CARD=new Map(CARDS.map(c=>[c.n,c]));
