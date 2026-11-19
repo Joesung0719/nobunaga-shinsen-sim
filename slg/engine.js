@@ -11,12 +11,17 @@ export const K={
   base:4.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
   statDiv:280,       // 屬性差係數 = 1 + (攻方屬性 − 守方屬性) / statDiv，夾在 0.3～3
   counter:[1.15,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.15，被剋方 ×0.87
-  terrain:{},        // 地形對傷害的倍率，例如 {林:0.9}；遊戲內地形沒有攻防加成（Joe），只有這一季的火炬有，數值到了再補
+  terrain:{},        // 地形對傷害的倍率，例如 {林:0.9}；遊戲內地形沒有攻防加成（Joe）
+  // 火炬（Joe 截圖 2026-11-20）：占領後擁有火炬視野，視野內同一門玩家部隊戰鬥時造成傷害 +3%、受到傷害 −3%。
+  // 用法：team.mods={dmg:K.torch.dmg,taken:K.torch.taken}（視野範圍的格數尚未收集，由呼叫端決定誰在範圍內）
+  torch:{dmg:1.03,taken:.97,w:7,h:6},   // 視野範圍 7×6 格（Joe）
   crit:1.5,         // 會心（兵刃）／奇謀（謀略）觸發時的傷害倍率：推估值，奇謀傷害率另外加上去
   guess:{主動:{S:[.35,1.7],A:[.35,1.45],B:[.4,1.2]},突擊:{S:[.3,1.9],A:[.3,1.6],B:[.3,1.3]}},
 };
 // 兵種相剋（遊戲內說明，Joe 提供）：騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制。
 export const COUNTER={槍:['騎','器械'],騎:['弓','器械'],弓:['鐵炮','器械'],鐵炮:['槍','器械']};
+// 火炬視野：(x,y) 是否在以 (cx,cy) 為中心的 7×6 格內。6 的那一邊中心偏哪側還沒確認，暫時多算上側（y−3～y+2）。
+export const inTorch=(cx,cy,x,y)=>Math.abs(x-cx)<=Math.floor(K.torch.w/2)&&y>=cy-Math.floor(K.torch.h/2)&&y<=cy+Math.ceil(K.torch.h/2)-1;
 export const ST4=['武勇','智略','統率','速度'];
 const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 機率無法行動',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};
 
@@ -144,7 +149,8 @@ export function battle(A,B,R=Math.random){
     let f=Math.min(3,Math.max(.3,1+(a-df)/K.statDiv));
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
     f*=K.terrain[dst.terrain]??1;
-    f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）
+    f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）、火炬視野
+    f*=dst.mods?.taken??1;   // 火炬視野：受到傷害降低
     // 兵學：造成傷害 %
     const up=M(g,'dmg')+(dtype==='兵刃'?M(g,'dmgBlade'):0)+(kind==='atk'?M(g,'dmgAtk'):0)+(kind==='主動'?M(g,'dmgAct'):0)+(prep?M(g,'dmgPrep'):0)
       +(kind==='突擊'?M(g,'dmgRush'):0)+(dtype==='謀略'?M(g,'dmgStrat'):0)-M(g,'weak');

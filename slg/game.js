@@ -1,13 +1,13 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=41';
-import {chibi,SIDE_COL,setSpec} from './chibi.js?v=41';
-import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=41';
-import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=41';
-import {isoGeom} from './iso.js?v=41';
-import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=41';
-import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=41';
-import {SCENARIOS} from './scenarios.js?v=41';
-import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=41';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=44';
+import {chibi,SIDE_COL,setSpec} from './chibi.js?v=44';
+import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=44';
+import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=44';
+import {isoGeom} from './iso.js?v=44';
+import {createPhaserBoard,createBattleStage,setPerf,isLight} from './board-phaser.js?v=44';
+import {compile as bgCompile,summary as bgSummary} from './bingaku.js?v=44';
+import {SCENARIOS} from './scenarios.js?v=44';
+import {play,sfx,unlock,setAudio,audioSettings} from './audio.js?v=44';
 
 // 網站剛更新時，瀏覽器可能拿到舊的 slg.html 配新的 js（或反過來），版面會整個跑掉。
 // 兩邊各記一個版本號，不一致就強制重新載入。每次改動 slg/ 或 slg.html 都要把版本號一起加 1：
@@ -626,11 +626,14 @@ function dmgMul(a){
   const charm=G.camp&&a.side===0&&G.units.some(u=>u.hero&&alive(u))?charmDmg(G.camp.h):1;
   return charm*(raining()&&a.side===0?G.sc.surprise:1)*(G.buffs||[]).filter(b=>b.side===a.side&&G.day>=b.days[0]&&G.day<=b.days[1]&&(!b.arm||b.arm===a.team.arm)).reduce((m,b)=>m*b.dmg,1);
 }
+// 火炬（九州爭霸這季才有，Joe 2026-11-20）：打地、打人時我方一律算在火炬視野內，造成傷害 +3%、受到傷害 −3%。戰役劇本不套用。
+const torchOn=t=>t.side===0&&(G.mode==='land'||G.mode==='pvp');
+const modsOf=(t,mul=1)=>{const o={};if(mul!==1)o.dmg=mul;if(torchOn(t)){o.dmg=(o.dmg??1)*K.torch.dmg;o.taken=K.torch.taken}return Object.keys(o).length?o:null};
 async function fight(a,d){
   const was=G.busy;G.busy=true;G.sel=null;
   d.team.terrain=G.T[d.y][d.x]==='城'?'城':G.T[d.y][d.x];
   const mul=dmgMul(a);
-  a.team.mods=mul!==1?{dmg:mul}:null;d.team.mods=null;
+  a.team.mods=modsOf(a.team,mul);d.team.mods=modsOf(d.team);
   const before=[a.team.gens.map(g=>g.troops),d.team.gens.map(g=>g.troops)];
   const r=battle(a.team,d.team);
   const st=G.st,lines=[];
@@ -657,7 +660,8 @@ async function fight(a,d){
     if(r.res==='D'){d.drawUntil=G.day+DRAW_DAYS-1;addLog(`平局：${d.team.name} 保留剩餘兵力 ${DRAW_DAYS} 天，之後恢復滿兵。`)}
     else if(alive(d)){d.team.gens.forEach(g=>g.troops=g.max);d.drawUntil=null}   // garrison is full again after a loss
   }
-  if(a.team.mods)addLog(`${raining()&&a.side===0?'豪雨奇襲':'戰場加成'}：${a.team.name} 造成的傷害 ×${+a.team.mods.dmg.toFixed(2)}`);
+  if(a.team.mods?.dmg&&mul!==1)addLog(`${raining()&&a.side===0?'豪雨奇襲':'戰場加成'}：${a.team.name} 造成的傷害 ×${+mul.toFixed(2)}`);
+  if(torchOn(a.team)||torchOn(d.team))addLog('火炬視野：我方造成傷害 +3%、受到傷害 −3%');
   if(!alive(d))addLog(`${d.team.name} 潰走！`);
   if(!alive(a))addLog(`${a.team.name} 潰走！`);
   lines.push(...rescueCheck());
@@ -806,7 +810,7 @@ let autoRun=false;
 const cloneT=t=>({...t,gens:t.gens.map(g=>({...g,st:{...g.st}}))});
 function evalAtk(a,d){
   let s=0;const N=3,mul=dmgMul(a);
-  for(let k=0;k<N;k++){const A=cloneT(a.team),B=cloneT(d.team);A.mods=mul!==1?{dmg:mul}:null;B.mods=null;
+  for(let k=0;k<N;k++){const A=cloneT(a.team),B=cloneT(d.team);A.mods=modsOf(a.team,mul);B.mods=modsOf(d.team);
     const b0=total(B),a0=total(A);battle(A,B);
     let v=(b0-total(B))-(a0-total(A))*(a.lord?1.6:1.1);
     if(B.gens[0].troops<=0)v+=d.target?1e6:3000;

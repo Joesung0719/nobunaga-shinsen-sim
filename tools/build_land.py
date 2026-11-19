@@ -232,6 +232,9 @@ BANDITS = {
  10: dict(troops=36000, teams=3, labor=4),
 }
 
+# 火炬（Joe 截圖 2026-11-20）：占領後擁有火炬視野；視野內同一門玩家部隊戰鬥時造成傷害 +3%、受到傷害 −3%。視野範圍 7×6 格（Joe 2026-11-20；偶數邊的中心偏哪一側未確認）。
+TORCH = dict(dmg=3, taken=3, range=dict(w=7, h=6), garrison=dict(troops=36000, teams=5), cityGuard=dict(troops=600, teams=1))
+
 def info(name, cost):
     n = ALIAS.get(name, name)
     c = cards.get(n)
@@ -244,7 +247,7 @@ for k, gs in T.items():
 for r in R: assert r['t'] in teams, r
 used = {r['t'] for r in R}
 assert used == set(teams), set(teams) - used
-out = dict(levels={str(k): v for k, v in LEVELS.items()}, teams=teams, reports=R, lands=LANDS, bandits={str(k): v for k, v in BANDITS.items()})
+out = dict(levels={str(k): v for k, v in LEVELS.items()}, teams=teams, reports=R, lands=LANDS, torch=TORCH, bandits={str(k): v for k, v in BANDITS.items()})
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 missing = sorted({g['n'] for t in teams.values() for g in t if 'img' not in g})
 print(len(teams), 'teams', len(R), 'reports; no card image:', len(missing), missing)
