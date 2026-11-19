@@ -215,6 +215,23 @@ LEVELS = {   # per = troops per garrison general; waves = garrison teams to beat
  10: dict(glv=50, per=15000, waves=3, note='全員 5★ 滿編隊伍；共 3 隊守軍'),
 }
 
+# 低階土地與野盜（Joe 先前給的遊戲截圖，2026-10-30 抄入專案記憶；截圖本身不進 repo，數值待回遊戲核對）
+# troops = 每隊總兵力（守軍 1 隊）；prestige = 佔領威信；silver／food = 每小時產量，Lv5 是約數（記憶寫 ~1900）。
+LANDS = {
+ '空地': dict(troops=200,  prestige=2,  silver=None, food=None),
+ '1':    dict(troops=400,  prestige=10, silver=300,  food=450),
+ '2':    dict(troops=1200, prestige=20, silver=450,  food=700),
+ '3':    dict(troops=2400, prestige=40, silver=600,  food=900),
+ '4':    dict(troops=5400, prestige=60, silver=850,  food=1200),
+ '5':    dict(troops=9000, prestige=80, silver=1900, food=2000, approx=True),
+}
+# 野盜：在地圖上遊蕩的中立部隊。troops = 每隊兵力，teams = 隊數，labor = 擊破後的勞力。
+BANDITS = {
+ 8:  dict(troops=24000, teams=2, labor=2),
+ 9:  dict(troops=33000, teams=2, labor=3),
+ 10: dict(troops=36000, teams=3, labor=4),
+}
+
 def info(name, cost):
     n = ALIAS.get(name, name)
     c = cards.get(n)
@@ -227,7 +244,7 @@ for k, gs in T.items():
 for r in R: assert r['t'] in teams, r
 used = {r['t'] for r in R}
 assert used == set(teams), set(teams) - used
-out = dict(levels={str(k): v for k, v in LEVELS.items()}, teams=teams, reports=R)
+out = dict(levels={str(k): v for k, v in LEVELS.items()}, teams=teams, reports=R, lands=LANDS, bandits={str(k): v for k, v in BANDITS.items()})
 json.dump(out, open(f'{repo}/land.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 missing = sorted({g['n'] for t in teams.values() for g in t if 'img' not in g})
 print(len(teams), 'teams', len(R), 'reports; no card image:', len(missing), missing)
