@@ -83,6 +83,8 @@ const ARMSK={
   薩摩鐵炮隊:{arm:'鐵炮',buf:[{k:'dmgAtk',v:[20,40]}]},
   鐵炮僧兵隊:{arm:'鐵炮',buf:[{k:'stat:統率',v:[6,12]},{k:'stat:智略',v:[6,12]}]},
   赤備隊:{arm:'騎',buf:[{k:'crit',v:[17.5,35]}]},
+  // 合盟之陣：三人勢力都不同、大將自帶戰法是主動或突擊才生效（Joe）。大將自帶戰法發動率 +6.5→13%；兵力高的副將傷害 +9→18%、受傷 −5→10%，兵力低的副將傷害 +5→10%、受傷 −9→18%（誰高誰低隨戰況變，這裡取兩者平均）。
+  合盟之陣:{arm:null,alliance:{boss:[6.5,13],sub:[7,14]}},
 };
 // one skill → what the engine can run
 export function parseSkill(name,D,lv=null){
@@ -95,6 +97,7 @@ function parseSkill0(name,D){
   if(kind==='內政')return sk;
   if(kind==='兵種'){const a=ARMSK[name];if(!a)return sk;   // 兵種技：開場直接生效，整隊吃到，只有隊伍兵種相符才有效（合盟之陣等條件型沒有模擬）
     sk.arm=a.arm;sk.opening=true;
+    if(a.alliance){sk.alliance={boss:hi(a.alliance.boss[0],a.alliance.boss[1]),sub:hi(a.alliance.sub[0],a.alliance.sub[1])};sk.modeled='text';sk.buffOnly=true;return sk}
     const val=(v,i)=>hi(v[0],v[1]);
     if(a.buf)sk.buf=a.buf.map(b=>({k:b.k,v:hi(b.v[0],b.v[1]),to:'team',n:0,r:b.r||99}));
     if(a.each){sk.each=true;sk.rate=hi(a.each.rate[0],a.each.rate[1])/100;sk.dmg=hi(a.each.dmg[0],a.each.dmg[1])/100;sk.dtype=a.each.dtype||'兵刃';sk.n=[1,1]}
@@ -147,6 +150,8 @@ function pickN(arr,n,R){const a=[...arr],o=[];while(a.length&&o.length<n)o.push(
 // A: attacker team, B: defender team. team = {name, side, arm, terrain:'平'|'林'|'城', gens:[{n, st:{武勇…}, troops, max, skills:[parsed], bg}]}
 // gens[0] is 大將. g.bg 是 bingaku.js compile() 的結果（兵學，可為 null）。Troops are changed in place.
 // Returns {res:'W'|'D'|'L' (for A), log:[events], rounds}
+// 軍學修習 Lv5：騎／鐵炮 武勇智略+2.5、傷害+1.25%、受傷-1.25%；弓 速度+5、傷害+2.5%；足輕 統率+5、受傷-2.5%
+const STUDY={騎:{st:{武勇:2.5,智略:2.5},dmg:1.25,taken:1.25},鐵炮:{st:{武勇:2.5,智略:2.5},dmg:1.25,taken:1.25},弓:{st:{速度:5},dmg:2.5},槍:{st:{統率:5},taken:2.5}};
 export function battle(A,B,R=Math.random){
   const T=[A,B],log=[];
   let round=0,res='D';
@@ -159,11 +164,23 @@ export function battle(A,B,R=Math.random){
   }
   const ev=(e)=>log.push(e);
   const BG='兵學';
+  // 軍學修習（設施，Lv5 全滿；玩家一律滿級）：依隊伍兵種給屬性與傷害／受傷％；t.study 才生效（守軍沒有）
+  for(const t of T)if(t.study){const S=STUDY[t.arm];if(S)for(const g of t.gens){
+    for(const k in S.st)g.b[k]+=S.st[k];
+    if(S.dmg)g.tm.push({k:'dmg',v:S.dmg,until:99});if(S.taken)g.tm.push({k:'taken',v:S.taken,until:99});
+  }}
   // 指揮／被動戰法的單純增益（buf）：戰鬥開始時套到自己／全隊／隨機友軍，屬性直接加，其餘走 tm（到第 r 回合）
   for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.buf&&!(sk.arm&&t.arm!==sk.arm))for(const b of sk.buf){
     const tg=b.to==='self'?[g]:b.to==='team'?t.gens:pickN(t.gens,b.n,R);
     for(const m of tg){if(b.k.startsWith('stat:'))m.b[b.k.slice(5)]+=b.v;else m.tm.push({k:b.k,v:b.v,until:b.r})}
   }});
+  // 合盟之陣：三人勢力各不相同、大將自帶戰法（skills[0]）是主動或突擊才生效
+  for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.alliance){
+    const fs=t.gens.map(x=>x.f),bk=t.gens[0].skills[0]?.kind;
+    if(fs.every(Boolean)&&new Set(fs).size===fs.length&&(bk==='主動'||bk==='突擊')){
+      t.gens[0].tm.push({k:bk==='主動'?'rateAct':'rushRate',v:sk.alliance.boss,until:99});
+      for(const m of t.gens.slice(1)){m.tm.push({k:'dmg',v:sk.alliance.sub,until:99});m.tm.push({k:'taken',v:sk.alliance.sub,until:99})}
+    }}});
   // 協同：隨機友軍單體造成的傷害提高
   for(const t of T)t.gens.forEach((g,i)=>{if(g.bx.ally){const j=Math.floor(R()*t.gens.length);t.gens[j].tm.push({k:'dmg',v:g.bx.ally,until:99})}});
   const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round?x.v:0),0);
@@ -175,7 +192,7 @@ export function battle(A,B,R=Math.random){
     if(d.troops<=0)return null;
     if(dtype==='auto')dtype=g.b.武勇>=g.b.智略?'兵刃':'謀略';
     if(R()*100<M(d,'evade'))return{side:dst.side,i:dt,v:0,left:d.troops,dtype,evade:true};
-    const a=dtype==='兵刃'?g.b.武勇:g.b.智略,df=(dtype==='兵刃'?d.b.統率:d.b.智略)*(1-M(d,'statDown')/100);
+    const a=dtype==='兵刃'?g.b.武勇:g.b.智略,df=(dtype==='兵刃'?d.b.統率:d.b.智略)*(1-M(d,'statDown')/100)*(1-Math.min(100,M(g,'pierce'))/100);
     let f=Math.min(3,Math.max(.3,1+(a-df)/K.statDiv));
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
     f*=K.terrain[dst.terrain]??1;
@@ -241,6 +258,14 @@ export function battle(A,B,R=Math.random){
   }
   outer:for(round=1;round<=K.rounds;round++){
     ev({type:'round',round});
+    // 軍學能力：弓 齊射（第2、6回合）、足輕 守禦（第5回合）、鐵炮 破軍（第3回合）
+    for(const t of T)if(t.study&&t.gens.some(g=>g.troops>0)){
+      const ti=T.indexOf(t),e=T[1-ti],al=aliveIdx(t);
+      if(t.arm==='弓'&&(round===2||round===6)&&aliveIdx(e).length){
+        for(const i of pickN(al,R()<.5?2:3,R)){const n=R()<.5?1:2;for(const j of pickN(aliveIdx(e),n,R)){const r=hit(t,ti,i,e,j,.6,'auto','兵學');if(r)ev({type:'skill',side:t.side,i,skill:'齊射',kind:'軍學',tg:[r]})}}}
+      if(t.arm==='槍'&&round===5){const hs=pickN(al,2,R).map(j=>healTo(t,j,t.gens[j],1)).filter(Boolean);if(hs.length)ev({type:'skill',side:t.side,i:al[0],skill:'守禦',kind:'軍學',tg:hs})}
+      if(t.arm==='鐵炮'&&round===3){const j=pickN(al,1,R)[0];t.gens[j].tm.push({k:'pierce',v:25,until:round+1});ev({type:'skill',side:t.side,i:j,skill:'破軍',kind:'軍學',tg:[{side:t.side,i:j,status:'破陣 25%'}]})}
+    }
     // 達人大觀：第 4 回合淨化友軍單體 2 個減益狀態
     if(round===4)for(const t of T)t.gens.forEach((g,i)=>{if(g.troops>0&&g.q==='達人大觀'){
       const j=aliveIdx(t).sort((a,b)=>Object.keys(t.gens[b].fx).length-Object.keys(t.gens[a].fx).length)[0],m=t.gens[j];

@@ -35,7 +35,7 @@ for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<ge
 }
 function mk(names,side,red=RED){
   const arm=bestArm(D,names)||'槍';
-  return{name:names[0],side,arm,terrain:'平',gens:names.map(n=>({n,st:fullRedStats(D,n,names,arm,LV,red,FULL),troops:10000,max:10000,
+  return{name:names[0],side,arm,terrain:'平',gens:names.map(n=>({n,f:D.stats[n]?.f||'',st:fullRedStats(D,n,names,arm,LV,red,FULL),troops:10000,max:10000,
     skills:[innateOf(D,n),...plan(names)[names.indexOf(n)]].filter(Boolean).map(ps),bg:null}))};
 }
 function duel(a,b){let w=0;for(let i=0;i<SIMS;i++){const r=battle(mk(a,0),mk(b,1),rng).res;w+=r==='W'?1:r==='D'?.5:0}return w/SIMS}

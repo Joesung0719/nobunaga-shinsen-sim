@@ -42,6 +42,9 @@ for(let c=CMIN;c<=CMAX;c++){const cs=cand.filter(x=>x.c===c).sort((a,b)=>b.p-a.p
 // 戰報實戰分高的也入選
 for(const x of cand){const f=kit.fieldScore(x.names);x.f=f.score}
 for(let c=CMIN;c<=CMAX;c++)pre.push(...cand.filter(x=>x.c===c).sort((a,b)=>b.f-a.f).slice(0,400));
+// 合盟情境：三個不同勢力的組合也要入選（合盟需三勢力各不同，同勢力組合吃協力）
+const mixed=cand.filter(x=>new Set(x.names.map(n=>D.stats[n].f)).size===3);
+for(let c=CMIN;c<=CMAX;c++)pre.push(...mixed.filter(x=>x.c===c).sort((a,b)=>(b.p+b.f*20)-(a.p+a.f*20)).slice(0,1500));
 const uniq=new Map();for(const x of pre)uniq.set(x.names.join('|'),x);
 log(`階段 1 入選 ${uniq.size}`);
 // ---- 階段 2：每隊排大將 × 兵種，擇優；再算各級土地勝率 ----
@@ -64,7 +67,7 @@ for(const x of uniq.values()){
 // 每個 Cost 留粗篩前 400，再細算（24 次）
 const fin=[];
 for(let c=CMIN;c<=CMAX;c++)fin.push(...mid.filter(m=>m.x.c===c).sort((a,b)=>b.a-a.a).slice(0,330));
-const sumResSrc=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const g=(kit.SRC[s]||[]).reduce((a,x)=>pulls(x)<pulls(a)?x:a);if(!names.includes(g))src.add(g)}return src};
+const sumResSrc=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const so=kit.SRC[s]||[];if(!so.length)continue;const g=so.reduce((a,x)=>pulls(x)<pulls(a)?x:a);if(!names.includes(g))src.add(g)}return src};
 const teams=[];let k2=0;
 for(const m of fin){
   const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk);
