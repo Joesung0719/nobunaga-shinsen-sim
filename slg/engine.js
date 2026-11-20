@@ -338,16 +338,21 @@ export function bestArm(D,names){
 // red：紅度 0–5（預設 5＝滿紅）。特性欄 2～4 在 1／3／5 紅解鎖；自由點數每紅 +10（滿紅 50）。
 export const traitsAtRed=(D,n,red=5)=>(D.stats?.[n]?.traits||[]).slice(0,red>=5?4:red>=3?3:red>=1?2:1);
 // red 也可以是 {武將名:紅度}，隊中每人紅度不同時用（沒列的算滿紅）。
-export function fullRedStats(D,n,names,arm,lv=50,red=5){
+// 設施加成（Joe 的設施截圖）：協力-勢力 Lv1～10 = 0.5,1,1.5,2,2.5,3,4,5,6,7%（三人同勢力才生效）、協力-家門 每級 1%（同家門才生效，家門資料沒收，由玩家勾選）、兵種營 每級 +1 兵種等級（×2%）。
+export const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
+const FAC6=['織田','豐臣','德川','武田','上杉','群雄'];
+// fac = {co, arm, ka, same}；不給就是舊行為（兵種營 Lv5、沒有協力與家門）
+export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const traits=traitsAtRed(D,n,rd(n));
-  let lvArm=5,cap=10;const team={};
+  let lvArm=fac?fac.arm:5,cap=10;const team={};
   for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);lvArm+=x.arm?.[arm]||0;cap+=x.cap?.[arm]||0;if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
   lvArm=Math.min(cap,lvArm);
   const own={};let extra=0;
   for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}
   const st=statsAt(D,n,lv,D.stats?.[n]?.r),k=st.武勇>=st.智略?'武勇':'智略';
   st[k]+=Math.floor(lv/10)*(10+extra)+10*rd(n);
-  return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+(own[x]||0)+(team[x]||0))/100)*10)/10]));
+  let fp=0;if(fac){const f0=D.stats?.[names[0]]?.f;if(fac.co&&FAC6.includes(f0)&&names.every(x=>D.stats?.[x]?.f===f0))fp+=CO_PCT[fac.co];if(fac.same&&fac.ka)fp+=fac.ka}
+  return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+fp+(own[x]||0)+(team[x]||0))/100)*10)/10]));
 }
 export const innateOf=(D,n)=>D.stats?.[n]?.inn||D.innate?.[n]||'';
