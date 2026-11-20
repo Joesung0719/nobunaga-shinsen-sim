@@ -26,7 +26,10 @@ export const ST4=['武勇','智略','統率','速度'];
 const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 機率無法行動',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};
 
 const num=s=>s==null?null:+s;
-const hi=(a,b)=>num(b)??num(a);   // 「Lv1→滿級」取滿級
+// 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～MAX_SKILL_LV 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
+export const MAX_SKILL_LV=5,DEFAULT_SKILL_LV=3;
+let curLv=null;
+const hi=(a,b)=>{const x=num(a),y=num(b);if(y==null||curLv==null)return y??x;return x+(y-x)*(Math.max(1,Math.min(MAX_SKILL_LV,curLv))-1)/(MAX_SKILL_LV-1)};
 function targetCount(s){
   if(!s)return[1,1];
   if(/全體/.test(s))return[3,3];
@@ -66,7 +69,11 @@ function parseBuffs(x){
   return{buf,regen,partial};
 }
 // one skill → what the engine can run
-export function parseSkill(name,D){
+export function parseSkill(name,D,lv=null){
+  curLv=lv;
+  try{return parseSkill0(name,D)}finally{curLv=null}
+}
+function parseSkill0(name,D){
   const t=D.skillText?.[name],kind=t?.kind||D.kind?.[name]||(t?'?':'主動'),g=t?.g||D.skills?.[name]||'B';
   const sk={name,kind,g,modeled:'none',text:t?.text||''};
   if(kind==='內政'||kind==='兵種')return sk;

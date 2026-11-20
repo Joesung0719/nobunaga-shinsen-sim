@@ -1,16 +1,16 @@
 // 全站共用導覽：頂端四項（登用模擬／武將資料庫／組隊分析／Q版戰棋）。
-// 「組隊分析」底下是子分頁：組隊戰報估算、隊伍預測、開荒推薦（打地已併入開荒推薦，對戰預設在隊伍預測）；「Q版戰棋」只留戰役。
-// 舊網址 slg.html?m=land 導向開荒推薦、?m=pvp 導向隊伍預測。
+// 「組隊分析」是單一頁面 land.html（目標 → 一鍵推薦 → 組隊 → 預測勝率 → 戰報估算），不再有子分頁；「Q版戰棋」只留戰役。
+// 舊網址 recommend.html、predict.html、slg.html?m=land／?m=pvp 都轉到 land.html（#rec／#predict 錨點）。
 // 每頁在 <nav class="site"> 裡留著同樣四個連結當備援（這支沒載入也能切頁）。
-// 用法：<script src="site-nav.js?v=7" data-page="gacha|slg|land|rec|predict|generals"></script>（放在 </body> 前）。
+// 用法：<script src="site-nav.js?v=8" data-page="gacha|slg|land|generals"></script>（放在 </body> 前）。
 // 改動這支要把各頁 script 網址的 ?v= 一起加 1，避免瀏覽器拿到快取裡的舊版。
 (()=>{
   const page=document.currentScript?.dataset.page||'';
   const TABS=[['gacha','./','登用模擬'],['generals','generals.html','武將資料庫'],['team','land.html','組隊分析'],['slg','slg.html?m=camp','Q版戰棋']];
   // 子分頁：[key, 網址, 名稱, 在戰棋頁內切換的模式]
-  const SUB=[['land','land.html','組隊戰報估算'],['predict','predict.html','隊伍預測'],['rec','recommend.html','開荒推薦']];
-  const inTeam=p=>['land','predict','rec'].includes(p);
-  {const m=new URLSearchParams(location.search).get('m');if(page==='slg'&&(m==='land'||m==='pvp')){location.replace(m==='land'?'recommend.html':'predict.html');return}}
+  const SUB=[];
+  const inTeam=p=>['land'].includes(p);
+  {const m=new URLSearchParams(location.search).get('m');if(page==='slg'&&(m==='land'||m==='pvp')){location.replace(m==='land'?'land.html#rec':'land.html#predict');return}}
   const css=`
 nav.site{display:flex;gap:6px;flex-wrap:wrap}
 nav.site a{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.85rem;white-space:nowrap}
@@ -38,12 +38,12 @@ nav.site a:focus-visible,nav.sub a:focus-visible{outline:2px solid var(--paper);
   sub.append(...subs);header?.after(sub);
 
   const h1=header?.querySelector('h1'),desc=header?.querySelector('p');
-  const TITLES={team:['組隊分析','組隊、戰報估算、隊伍預測（含對戰預設）、開荒推薦（含打地）'],slg:['Q版戰棋','戰役關卡：每格一支部隊，接觸就打 8 回合自動戰鬥']};
+  const TITLES={team:['組隊分析',''],slg:['Q版戰棋','戰役關卡：每格一支部隊，接觸就打 8 回合自動戰鬥']};
   // mode：戰棋頁目前的模式（camp 屬於 Q版戰棋，land／pvp 屬於組隊分析）
   const mark=mode=>{
     const group=page==='slg'?(mode==='land'||mode==='pvp'?'team':'slg'):inTeam(page)?'team':page;
     for(const e of top)setCur(e,e.dataset.k===group);
-    sub.hidden=group!=='team';
+    sub.hidden=true;
     const cur=page==='slg'?(mode==='pvp'?'pvp':'sim'):page;
     for(const e of subs)setCur(e,e.dataset.s===cur);
     if(page==='slg'&&TITLES[group]){if(h1)h1.textContent=TITLES[group][0];if(desc)desc.textContent=TITLES[group][1];document.title=TITLES[group][0]+(document.title.includes('｜')?'｜'+document.title.split('｜').pop():'')}

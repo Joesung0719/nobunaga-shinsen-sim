@@ -4,7 +4,7 @@
 - `slg.html`：Q版戰棋（只剩戰役模式，逐回合自動戰鬥；舊網址 `slg.html?m=land` 會導向開荒推薦、`?m=pvp` 導向隊伍預測）
 - `land.html`：Q版戰棋底下的「組隊・戰報估算」（自由組隊，Lv3–Lv10 土地守軍依實戰戰報抽樣估算；原「打地模擬」，網址不變）
 - `site-nav.js`：全站共用導覽。主分頁只有三個：登用模擬／Q版戰棋／武將資料庫；在組隊頁多一排子分頁（組隊戰報估算／隊伍預測〔含對戰預設〕／開荒推薦〔含打地〕）。改這支要把各頁 `site-nav.js?v=` 加 1
-- `recommend.html`、`recommend.json`、`tools/recommend.mjs`、`tools/recommend-lib.mjs`：開荒隊伍推薦（Q版戰棋子分頁）。`node tools/recommend.mjs [Cost上限=15]` 把所有 3 人、總 Cost 上限內的組合用戰鬥引擎模擬打 Lv5–10 土地，輸出 `recommend.json`（假設寫在檔內 assumptions）；頁面可依目標土地、養成、戰法來源、Cost 上限、勝率門檻篩選，列出最省資源與勝率最高的隊伍。
+- `land.html`：組隊分析單一頁面（目標土地／對手 → 一鍵推薦 → 組隊 → 預測勝率 → 戰報估算）；`recommend.html`、`predict.html` 只是轉址到 land.html（#rec／#predict）。`recommend.json`、`tools/recommend.mjs`、`tools/recommend-lib.mjs`：開荒隊伍推薦資料。`node tools/recommend.mjs [Cost上限=15]` 把所有 3 人、總 Cost 上限內的組合用戰鬥引擎模擬打 Lv5–10 土地，輸出 `recommend.json`（假設寫在檔內 assumptions）；頁面可依目標土地、養成、戰法來源、Cost 上限、勝率門檻篩選，列出最省資源與勝率最高的隊伍。
 - `generals.html`：武將資料庫（武將頁可依兵種、Cost、季度、勢力、稀有度篩選）（武將圖卡、屬性與成長、特性、固有與傳授戰法；戰法一覽可依分類篩選，並列出帶這個戰法的武將）。資料全部來自 `land.json` 與 `data.json`，不另存一份；網址加 `#武將名` 可直接開啟該武將。
 - `proto/phaser/`：Q版戰棋改用 Phaser 4 的原型（桶狹間），和遷移計畫；正式版不受影響
 - `slg/board-phaser.js`：Q版戰棋的戰場與戰鬥演出（Phaser 4 畫布）。地圖、部隊、標記格、鏡頭、紅葉／豪雨／篝火，以及戰鬥視窗中間的武將列（兵力條殘影、刀光、彈出數字、戰法 cut-in）都在這裡；規則、AI、戰鬥公式在 `slg/game.js`、`slg/engine.js`。舊版 SVG 戰場已移除。出陣設定的「畫面效果」：自動（手機等低階裝置用省電）／完整／省電（降解析度與幀率，關閉濾鏡、紅葉、雲影、水面閃光）

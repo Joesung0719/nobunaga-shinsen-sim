@@ -9,10 +9,10 @@
 //            已含發動機率、傷害率、目標數、控制、增益）；
 //   再依這一隊調整：干擾（控制狀態隊內補位、同種重複打折、快手優先）、受哪項屬性影響（本隊該屬性最高者加成）、
 //   勢力／一門（來源武將同勢力、同標籤略加分）、等級紅度（紅度低偏好發動率高、不用準備；紅度高才吃準備型）。
-import {parseSkill,innateOf} from './engine.js';
+import {parseSkill,innateOf} from './engine.js?v=45';
 
 export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
-  const PS=new Map(),ps=n=>{if(!PS.has(n))PS.set(n,parseSkill(n,D));return PS.get(n)};
+  const PS=new Map(),ps=(n,lv=null)=>{const k=n+'|'+lv;if(!PS.has(k))PS.set(k,parseSkill(n,D,lv));return PS.get(k)};
   const SRC={};for(const[g,s]of Object.entries(D.teach))(SRC[s]??=[]).push(g);
   const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
   // 數量＝全帳號共用的戰法庫存（Joe 2026-11-20）：A 級百煉成鋼、奮鬥 2，B 級全部 3，其餘所有戰法 1。
