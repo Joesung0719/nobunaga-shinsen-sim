@@ -87,6 +87,8 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
         if(b.k==='rushRate'){if(nRush>0){v*=1+.08*Math.min(3,nRush);tips.push('增益：提高突擊發動率，隊內有突擊戰法可吃到')}else v*=.7}
       }
       if(p.kind==='指揮'&&(p.buf||[]).length&&!(p.dmg||p.heal)){tips.push('指揮技：開場直接生效，不用等發動')}
+      // 傷害類型要和武將屬性型相符（兵刃吃武勇、謀略吃智略）；不相符又沒有控制效果就幾乎不選
+      if(p.dmg&&(p.dtype==='兵刃'||p.dtype==='謀略')&&((p.dtype==='兵刃')!==(role==='phys'))){if(p.status){v*=.7}else{v*=.3;tips.push(`${p.dtype}傷害與${g.n}的${role==='phys'?'武勇':'智略'}型不合，已大幅降權`)}}
       const sw=field.skillWin?.[s];
       if(sw&&sw[0]>=5){const wr=(sw[1]+1.5)/(sw[0]+3),m=Math.max(.9,Math.min(1.12,1+.6*(wr-.5)));v*=m;if(Math.abs(m-1)>.03)tips.push(`戰報：出現在 ${sw[0]} 隊，勝率 ${Math.round(sw[1]/sw[0]*100)}%（樣本少，只微調）`)}
       const red=g.red||0;
@@ -143,6 +145,30 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
     const tr=field.trio?.[[...names].sort().join('|')];
     return{score:base+pb*.5+(tr?(shr(tr)-.5)*.5:0),n:Math.min(...gs.map(x=>x[0])),each:gs.map(x=>x[0]),pairs,trio:tr||null};
   }
+  // 搭配品質（一鍵推薦的硬性門檻）：回傳 {ok, fails, score}。
+  // 不合格＝自帶突擊沒搭突擊／普攻類、兵種技與隊伍兵種不符、主動戰法 ≥4、戰法沒配滿、傷害類型與武將屬性型不合（無控制效果時）、增益沒有可吃到的對象。
+  // score＝加分項數量（突擊連動、兵種技生效、增益有對象、主動數量合理），給排序用：先看搭配品質再看勝率。
+  function quality(team,sel,arm){
+    const fails=[],K=kindOf;let score=0;
+    for(const c of check(team,sel,arm)){if(c.lv==='warn')fails.push(c.t);else score++}
+    const allK=team.flatMap((g,i)=>[K(innateOf(D,g.n)),...sel[i].filter(Boolean).map(K)]);
+    const nRush=allK.filter(k=>k==='突擊').length,nAct=allK.filter(k=>k==='主動').length;
+    team.forEach((g,i)=>{
+      const role=roleOf(g.st),mine=sel[i].filter(Boolean);
+      if(mine.length<2)fails.push(`${g.n}的戰法沒有配滿`);
+      for(const s of mine){const p=ps(s);
+        if(p.dmg&&(p.dtype==='兵刃'||p.dtype==='謀略')&&!p.status&&((p.dtype==='兵刃')!==(role==='phys')))fails.push(`${g.n}的「${s}」是${p.dtype}傷害，與${g.n}的${role==='phys'?'武勇':'智略'}型不合`);
+        for(const b of p.buf||[]){
+          if(b.k==='rateAct'&&!nAct)fails.push(`「${s}」提高主動發動率，但隊內沒有主動戰法`);
+          if(b.k==='rushRate'&&!nRush)fails.push(`「${s}」提高突擊發動率，但隊內沒有突擊戰法`);
+        }
+        if(p.kind==='兵種'&&p.arm===arm)score++;
+      }
+    });
+    if(nRush>=1&&nRush<=3)score++;
+    if(nAct<=3)score++;
+    return{ok:!fails.length,fails,score};
+  }
   // 組好之後的檢查：回傳 [{lv:'warn'|'ok', t}]，給畫面顯示「這組搭配有沒有問題」
   function check(team,sel,arm){
     const out=[],K=n=>kindOf(n),inn=team.map(g=>K(innateOf(D,g.n)));
@@ -159,5 +185,5 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={}}={}){
     if(nAct>=4)out.push({lv:'warn',t:`整隊有 ${nAct} 個主動戰法，戰報裡主動戰法堆太多的隊勝率偏低`});
     return out;
   }
-  return{kindOf,feedsAtk,check,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
+  return{kindOf,feedsAtk,check,quality,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
 }

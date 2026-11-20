@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import {battle,parseSkill,innateOf,fullRedStats,bestArm} from '../slg/engine.js';
 import {makeKit} from '../slg/teamlib.js';
 
+const FULL={co:10,arm:5,ka:3,same:true};   // 設施全滿（Joe）
 const D=JSON.parse(fs.readFileSync(new URL('../land.json',import.meta.url)));
 const [CAP=15,RED=0,TOP=15,LV=50]=process.argv.slice(2).map(Number);
 const SIMS=+(process.env.SIMS||2),POOL=process.env.POOL||'normal';
@@ -23,7 +24,7 @@ const POOLSK=Object.keys(D.skillText).filter(s=>!INN.has(s)).map(s=>[s,val(s)]).
 const kit=makeKit(D,{power:JSON.parse(fs.readFileSync(new URL('../skillpower.json',import.meta.url))),field:JSON.parse(fs.readFileSync(new URL('../field.json',import.meta.url)))});
 const PLAN=new Map();
 function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const arm=bestArm(D,names)||'槍';
-  const st=names.map(n=>({n,red:RED,st:fullRedStats(D,n,names,arm,LV,RED)}));p=kit.pick(st,null,{},{arm}).sel;PLAN.set(key,p)}return p}
+  const st=names.map(n=>({n,red:RED,st:fullRedStats(D,n,names,arm,LV,RED,FULL)})),pl=kit.pick(st,null,{},{arm});p=pl.sel;p.q=kit.quality(st,pl.sel,arm);PLAN.set(key,p)}return p}
 
 const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
@@ -34,7 +35,7 @@ for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<ge
 }
 function mk(names,side,red=RED){
   const arm=bestArm(D,names)||'槍';
-  return{name:names[0],side,arm,terrain:'平',gens:names.map(n=>({n,st:fullRedStats(D,n,names,arm,LV,red),troops:10000,max:10000,
+  return{name:names[0],side,arm,terrain:'平',gens:names.map(n=>({n,st:fullRedStats(D,n,names,arm,LV,red,FULL),troops:10000,max:10000,
     skills:[innateOf(D,n),...plan(names)[names.indexOf(n)]].filter(Boolean).map(ps),bg:null}))};
 }
 function duel(a,b){let w=0;for(let i=0;i<SIMS;i++){const r=battle(mk(a,0),mk(b,1),rng).res;w+=r==='W'?1:r==='D'?.5:0}return w/SIMS}
@@ -43,7 +44,8 @@ const pickN=(arr,n)=>{const o=[];while(o.length<n)o.push(arr[Math.floor(rng()*ar
 // 階段 0：用屬性與固有戰法估值先篩到 20000 隊（全部組合有三十多萬隊，逐一對戰太慢）
 const pw=n=>{const st=fullRedStats(D,n,[n],'槍',LV,RED);return Math.max(st.武勇,st.智略)+.5*st.統率+.3*st.速度+120*val(innateOf(D,n))};
 const PW=Object.fromEntries(gens.map(g=>[g.n,pw(g.n)]));
-const pool0=cands.map(t=>[t,t.reduce((a,n)=>a+PW[n],0)]).sort((a,b)=>b[1]-a[1]).slice(0,20000).map(x=>x[0]);
+// 搭配品質是硬性門檻：戰法組不合格的隊伍（突擊沒連動、兵種技不符、主動堆太多…）不進榜
+const pool0=cands.map(t=>[t,t.reduce((a,n)=>a+PW[n],0)]).sort((a,b)=>b[1]-a[1]).slice(0,60000).map(x=>x[0]).filter(t=>plan(t).q.ok).slice(0,20000);
 // 階段 1：粗篩（12 支隨機隊試算）
 const field=pickN(pool0,12);
 const s1=pool0.map(t=>({t,w:field.reduce((a,f)=>a+duel(t,f),0)/field.length})).sort((a,b)=>b.w-a.w).slice(0,300);
