@@ -1328,6 +1328,9 @@ for(const[n,t]of Object.entries({
 武田信玄:{武略:[['剛柔相濟', '智勇兼備', '虛實自在'],['妙策', '豪勇', '突貫', '膽力', '活路', '奇謀']],臨戰:[['掎手之策', '心頭滅卻', '達人大觀'],['協同', '地利', '天時', '機動', '明鏡', '不惑']],陣立:[['佯動之策', '氣勢崩摧', '生生不息'],['俊才', '才氣', '逆境', '不敵', '兵心', '慧眼']]},
 甘利虎泰:{武略:[['剛柔相濟', '冷靜沉著', '兵勢連鎖'],['剛力', '豪勇', '突貫', '膽力', '活路', '警戒']],機略:[['離間之計', '軍律擾亂', '破陣之勢'],['神算', '鬼氣', '大勇', '早驅', '神祕', '強韌']],臨戰:[['掎手之策', '心頭滅卻', '達人大觀'],['兵家', '機動', '協同', '地利', '明鏡', '天時']],陣立:[['勇猛果敢', '反討之計', '生生不息'],['亂戰', '俊才', '才氣', '不敵', '逆境', '恩顧']]},
 }))AUTO[n]={...AUTO[n],...t};
+// 推定：收集器「兵學節點與配置.xlsx」9/9 讀齊、與同配置的截圖（織田信長、豐臣秀吉機略）一致，但這個方向沒有截圖確認（2026-11-20）
+for(const n of ['今川義元','歸蝶','武田信玄'])AUTO[n]={...AUTO[n],機略:[['臨機應變','軍律擾亂','離間之計'],['神算','鬼氣','大勇','早驅','神祕','多謀']]};
+export const EST={今川義元:['機略'],歸蝶:['機略'],武田信玄:['機略']};
 {
   const qi={},zh={};
   for(const t of Object.values(TREES))for(const d of Object.values(t)){
@@ -1340,7 +1343,7 @@ for(const[n,t]of Object.entries({
 }
 export const hasTree=n=>!!TREES[n];
 // 方向＋這位武將的奇／正（沒有資料就是空的）
-export function dirOf(id,n){const d=DIRS.find(x=>x.id===id);if(!d)return null;const t=TREES[n]?.[id];return{...d,qi:t?.qi||[],zheng:t?.zheng||[]}}
+export function dirOf(id,n){const d=DIRS.find(x=>x.id===id);if(!d)return null;const t=TREES[n]?.[id];return{...d,qi:t?.qi||[],zheng:t?.zheng||[],est:!!EST[n]?.includes(id)}}
 export const BASE_TEXT='武將每進階1次，可使自身造成的傷害及治療提高2%，所受的傷害降低2%';
 
 // sel = {d:'武略', q:'虛實自在', z:{剛力:2,…}}；回傳整理過、不超過點數上限的選擇
