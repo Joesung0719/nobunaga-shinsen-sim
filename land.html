@@ -101,6 +101,10 @@ th{position:sticky;top:0;background:#25201c;color:var(--muted);font-weight:500;f
 td.n,th.n{text-align:right}
 .rW{color:var(--gold)} .rD{color:var(--steel)} .rL{color:var(--vermilion)}
 .r5t{color:var(--gold)} .r4t{color:var(--violet)} .r3t{color:var(--steel)}
+.advice{margin-top:14px;display:grid;gap:10px}.advice h3{margin:0;font-family:var(--display);font-size:1rem;color:var(--gold);letter-spacing:.06em}
+.advice .ac{border:1px solid var(--line);border-radius:6px;background:#171412;padding:10px 12px;font-size:.82rem;line-height:1.6}
+.advice .ac b.nm{color:var(--gold);font-size:.95rem}.advice .ac dl{margin:6px 0 0;display:grid;grid-template-columns:4.2em 1fr;gap:3px 10px}.advice dt{color:var(--muted)}.advice dd{margin:0}.advice dd small{display:block;color:var(--muted);font-size:.76rem}
+.advice .warn{color:#ff9a7a}.advice .okk{color:#8fd19e}.advice ul{margin:4px 0 0;padding-left:1.2em}
 .empty{padding:22px;text-align:center;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 /* team builder: picture-first cards; every choice opens a picker instead of a dropdown */
@@ -326,7 +330,6 @@ input[type=range]{accent-color:var(--gold)}
   <section class="panel" id="rec">
     <h2>② 一鍵推薦</h2>
     <div class="fl"><span class="lbl">總 Cost</span><select id="cmin" aria-label="總 Cost 下限"></select><span class="lbl">～</span><select id="cmax" aria-label="總 Cost 上限"></select><span class="note" id="cnote"></span></div>
-    <div class="fl" style="margin-top:8px"><span class="lbl">最低勝率</span><input type="range" id="thr" min="30" max="100" step="5" aria-label="最低勝率" style="flex:1;min-width:140px;max-width:260px"><b id="thrV"></b></div>
     <div class="fl" style="margin-top:8px"><span class="lbl">隊數</span><select id="nteam" aria-label="一鍵組幾隊"><option value="1">1 隊</option><option value="2">2 隊</option><option value="3">3 隊</option></select><button class="pbtn big" id="ai" type="button">AI 一鍵組隊</button><span class="note" id="aiNote">依「模擬打下這一級的勝率」與「戰報裡玩家實際搭配的勝率」綜合挑出隊伍，戰法依庫存自動配好，載入下方編輯。</span></div>
     <div class="tabs" role="group" aria-label="推薦清單" id="rtabs" style="margin:14px 0 0"></div>
     <div class="rlist" id="rlist"></div>
@@ -337,6 +340,7 @@ input[type=range]{accent-color:var(--gold)}
     <div class="tteams" id="tteams"></div>
     <div class="slots" id="slots"></div>
     <div class="stock" id="stock"></div>
+    <div class="advice" id="advice"></div>
     <div class="teambar">
       <div class="tb-box">
         <h4>COST ／ 兵力</h4>
@@ -443,8 +447,9 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=45';
-import {makeKit} from './slg/teamlib.js?v=3';
+import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=46';
+import {makeKit} from './slg/teamlib.js?v=4';
+import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -480,7 +485,7 @@ const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-
 const SLG_KEY='shinsen-slg-v1';
 const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
 const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
-  skLv:DEFAULT_SKILL_LV,cmin:15,cmax:15,thr:70,nteam:1,rtab:'cheap',tgt:'land',opp:{preset:'0:5',gens:[]},
+  skLv:DEFAULT_SKILL_LV,cmin:15,cmax:15,thr:70,nteam:1,rtab:'best',tgt:'land',opp:{preset:'0:5',gens:[]},
   my:{gens:[{n:'立花誾千代',s:['',''],t:9900},{n:'立花道雪',s:['',''],t:9900},{n:'北條氏康',s:['',''],t:9900}],arm:'弓'}},load());
 let slgSet=null;
 if(SLG){
@@ -491,7 +496,15 @@ if(SLG){
 // 多隊：S.teams 是所有隊伍，S.my 永遠指向目前編輯的那一隊（舊存檔只有 S.my → 變成第 1 隊）
 if(SLG)S.teams=[S.my];
 else{if(!Array.isArray(S.teams)||!S.teams.length)S.teams=[S.my];S.ti=Math.min(S.ti|0,S.teams.length-1);S.my=S.teams[S.ti]}
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return{}}}
+function load(){
+  try{
+    const o=JSON.parse(localStorage.getItem(KEY))||{};
+    // 戰法等級改為 Lv1～10（舊版是 1～5）：舊存檔的預設等級與個別等級都作廢，改用新預設
+    if(o.rtab==='cheap')o.rtab='best';
+    if(o.lvScale!==10){delete o.skLv;for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))m.sl={};o.lvScale=10}
+    return o;
+  }catch{return{}}
+}
 function save(){
   // the Q版戰棋 page reads the team's final stats (Lv50 + 配點 + 加成) from here
   try{const p=teamBonus().pct;S.my.calc=S.my.gens.map(m=>{const v=statVals(m,p);return v?Object.fromEntries(v.map(x=>[x.k,Math.round(x.tot*10)/10])):null})}catch{}
@@ -551,8 +564,8 @@ function renderDefender(){
     const tb=el('div',{class:'tb'});
     if(per!=null){const w=Math.max(0,Math.min(1,left/per));tb.append(el('div',{class:'bar red'},el('i',{style:`width:${w*100}%`})))}
     const ul=el('ul');
-    for(const s of g.s){const gr=GRADE[g.r];ul.append(el('li',{title:s,html:`<b class="g${gr}">${gr}</b>${s}`}))}
-    box.append(el('div',{class:'gen r'+g.r},pic,el('div',{class:'nm'},g.n),
+    for(const s of g.s){const gr=GRADE[ROSTER.get(g.n)?.r??g.r];ul.append(el('li',{title:s,html:`<b class="g${gr}">${gr}</b>${s}`}))}
+    box.append(el('div',{class:'gen r'+(ROSTER.get(g.n)?.r??g.r)},pic,el('div',{class:'nm'},g.n),
       el('div',{class:'meta'},el('span',{},`Lv${D.levels[lv].glv}`),el('span',{},left==null?'兵 ?':`兵 ${fmt(left)}`)),tb,ul));
   });
 }
@@ -655,7 +668,7 @@ function table(head,rows,numCols=[]){
   return el('div',{class:'tablebox'},el('table',{},el('thead',{},th),tb));
 }
 const resSpan=r=>`<span class="r${r}">${RES[r]}</span>`;
-const gName=g=>`<span class="r${g.r}t">${g.n}</span>`;
+const gName=g=>`<span class="r${ROSTER.get(g.n)?.r??g.r}t">${g.n}</span>`;   // 稀有度以武將資料庫為準，不用守軍隊伍裡的 r
 function renderTab(){
   const body=$('tabBody');
   if(S.tab==='stats'){
@@ -706,7 +719,7 @@ const pulls=n=>{const c=CARD.get(n);const r=c?.s1?c.s1/100:RATE[c?.r||D.stats?.[
 const KIT=makeKit(D,{power:POWER||{},tags:Object.fromEntries(Object.entries(EX||{}).map(([k,v])=>[k,v.tags||[]])),pulls,field:FIELD||{}});
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
-for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
+for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:D.stats?.[c.n]?.r||c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
 for(const[n,x]of Object.entries(D.stats||{}))if(!ROSTER.has(n))ROSTER.set(n,{n,r:x.r??5,c:x.c,img:D.art?.[n]??null});
 for(const t of Object.values(D.teams))for(const g of t){const n=g.n==='池田恒興'?'池田恆興':g.n;if(!ROSTER.has(n))ROSTER.set(n,{n,r:g.r,c:g.c,img:null,garrison:true})}
 const innateOf=n=>D.innate[n]??D.innate[n==='池田恆興'?'池田恒興':n]??null;
@@ -1001,7 +1014,7 @@ function renderBuilder(){
     box.append(el('div',{class:'slot'+(i===0?' boss':'')},hero,el('div',{class:'body'},
       reds,statBars(m,bonus.pct),skills,traitTiles(m),bingakuPanel(m,g.r),el('label',{class:'troopln'},'兵力',tr,tv))));
   });
-  renderTeamBar(bonus);renderTeams();renderStock();renderLvBar();
+  renderTeamBar(bonus);renderTeams();renderStock();renderLvBar();renderAdvice();
 }
 function pips(n,cur,on){
   const box=el('div',{class:'pips'});
@@ -1044,9 +1057,15 @@ function autofill(ti,reset){
   const red=Object.fromEntries(t.gens.map(m=>[m.n,m.red||0]));
   let stt;try{stt=t.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,t.arm,50,red)}))}catch{return}
   const res={};S.teams.forEach((o,oi)=>{if(oi!==ti)o.gens.forEach(m=>m.s.forEach(x=>{if(x)res[x]=(res[x]||0)+1}))});
-  const pl=KIT.pick(stt,t.gens.map(m=>m.s.filter(Boolean)),res);
+  const pl=KIT.pick(stt,t.gens.map(m=>m.s.filter(Boolean)),res,{arm:t.arm});
   t.gens.forEach((m,i)=>{const ns=pl.sel[i];m.s=[ns[0]||'',ns[1]||'']});
   WHY[ti]=pl.why;
+  // 兵學方向／節點、自由配點：空的就依建議補上（reset＝全部重推薦）；自己選過的不動
+  t.gens.forEach((m,i)=>{
+    const r=ROSTER.get(m.n)?.r,b=adviseBingaku(KIT,D,m.n,r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st);
+    if(b&&(reset||!m.bg))m.bg=b.sel;
+    if(reset||!ptsUsed(m)){m.pts=advisePoints(stt[i].st,ptsPool(m)).pts;clampPts(m)}
+  });
 }
 function renderTeams(){
   const box=$('tteams');if(SLG){box.hidden=true;return}
@@ -1065,15 +1084,43 @@ function renderStock(){
   const tot=S.teams.reduce((a,t)=>a+resourceOf(t),0);
   const box=$('stock');box.replaceChildren(el('b',{},'戰法庫存（全帳號共用，裝上就扣 1，跨隊也算）：'),
     ...(st.length?st.map(x=>el('span',{class:'tag'+(KIT.count(x)-u[x]<0?' warn':'')},`${x} 剩 ${KIT.count(x)-u[x]}／${KIT.count(x)}`)):[el('span',{class:'note'},'目前沒有裝任何傳承戰法')]),
-    el('span',{class:'note'},'　數量：百煉成鋼、奮鬥 2，B 級 3，其餘 1；固有戰法不受限。'),
-    el('span',{class:'note',html:`　${S.teams.length} 隊登用期望抽數 ≈ <b>${fmt(tot)}</b>（每張 1÷機率，傳承戰法來源武將另算一張）`}));
+    el('span',{class:'note'},'　數量：百煉成鋼、奮鬥 2，B 級 3，其餘 1；固有戰法不受限。'));
   const w=(WHY[S.ti]||[]).flat();
   if(w.length)box.append(el('details',{class:'help',style:'flex-basis:100%'},el('summary',{},'推薦理由（戰法）'),el('ul',{},...w.map(x=>el('li',{},x)))));
+}
+
+// ================= 玩家建議：這一隊每位武將怎麼配 =================
+function renderAdvice(){
+  const box=$('advice');if(!box)return;
+  const my=S.my,names=my.gens.map(m=>m.n);
+  if(names.some(n=>!D.stats?.[n])||new Set(names).size<3){box.replaceChildren();return}
+  const red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]));
+  let stt;try{stt=my.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,my.arm,50,red)}))}catch{return}
+  const sel=my.gens.map(m=>m.s.filter(Boolean)),why=WHY[S.ti]||[];
+  const checks=KIT.check(stt,sel,my.arm);
+  const head=el('h3',{},`玩家建議：第 ${S.ti+1} 隊（${my.arm}兵）每位武將怎麼配`);
+  const ar=armReason(D,my.arm,names),aSk=KIT.POOL.filter(s=>KIT.ps(s).kind==='兵種'&&KIT.ps(s).arm===my.arm);
+  const top=el('div',{class:'ac'},el('b',{class:'nm'},`兵種：${my.arm}兵`),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
+    aSk.length?el('div',{},`可搭兵種技（開場直接生效、整隊吃到）：${aSk.map(x=>KIT.ps(x).text?`${x}`:x).join('、')}；目前${my.gens.some(m=>m.s.some(x=>aSk.includes(x)))?'已裝上':'沒裝，若有可考慮換掉最弱的戰法'}`):null,
+    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null);
+  const cards=my.gens.map((m,i)=>{
+    const r=ROSTER.get(m.n)?.r,skills=[innateOf(m.n),...m.s].filter(Boolean),b=adviseBingaku(KIT,D,m.n,r,skills,stt[i].st),pt=advisePoints(stt[i].st,ptsPool(m));
+    const mine=m.bg&&b&&JSON.stringify(m.bg)!==JSON.stringify(b.sel);
+    return el('div',{class:'ac'},el('b',{class:'nm'},`${i===0?'★ ':''}${m.n}`),el('span',{class:'note'},`　${r}★・${stt[i].st.武勇>=stt[i].st.智略?'武勇型':'智略型'}`),
+      el('dl',{},
+        el('dt',{},'戰法'),el('dd',{},[innateOf(m.n),...m.s].filter(Boolean).map((s,j)=>`${j?'':'固有：'}${s}（${KIT.kindOf(s)}）`).join('　'),
+          ...(why[i]||[]).filter(w=>m.s.includes(w.split('（')[0])).map(w=>el('small',{},w))),
+        el('dt',{},'兵學'),el('dd',{},b?(bgSummary(m.bg||b.sel,r,m.n)||'未選'):'這位武將的兵學樹還沒收錄（或 3★ 以下沒有兵學）',
+          ...(b?[mine?el('small',{},`你目前自選與建議不同；建議：${bgSummary(b.sel,r,m.n)}`):null,...b.why.map(w=>el('small',{},w)),b.alt.length?el('small',{},`次佳方向：${b.alt.join('、')}`):null].filter(Boolean):[])),
+        el('dt',{},'配點'),el('dd',{},`${Object.entries(m.pts||{}).filter(([,v])=>v).map(([k,v])=>k+' +'+v).join('、')||'尚未配點'}（共 ${ptsPool(m)} 點）`,el('small',{},pt.why)),
+        el('dt',{},'兵種'),el('dd',{},`${my.arm}兵`,el('small',{},ar||''))));
+  });
+  box.replaceChildren(head,top,...cards,el('div',{class:'row'},Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto'},'照建議重配兵學與配點（覆蓋目前的）'),{onclick:()=>{autofill(S.ti,false);my.gens.forEach((m,i)=>{const b=adviseBingaku(KIT,D,m.n,ROSTER.get(m.n)?.r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st);if(b)m.bg=b.sel;m.pts=advisePoints(stt[i].st,ptsPool(m)).pts;clampPts(m)});save();renderBuilder()}})));
 }
 function renderLvBar(){
   const box=$('lvDefault');box.replaceChildren(el('span',{class:'lbl'},'預設'));
   for(let v=1;v<=MAX_SKILL_LV;v++){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.skLv===v)},`Lv${v}`);b.onclick=()=>{S.skLv=v;save();renderAll()};box.append(b)}
-  $('lvInfo').replaceChildren(el('div',{class:'note',style:'font-size:.74rem'},`沒個別設定的戰法都用 Lv${S.skLv}（預設取中間值 Lv${DEFAULT_SKILL_LV}，不是 Lv1 也不是滿級 Lv${MAX_SKILL_LV}）。每招旁邊的下拉選單可個別調；灰字＝用預設。說明文字只有 Lv1 與滿級兩端數值，中間等級線性內插（推估）。`));
+  $('lvInfo').replaceChildren(el('div',{class:'note',style:'font-size:.74rem'},`戰法等級是 Lv1～Lv${MAX_SKILL_LV}。沒個別設定的戰法都用 Lv${S.skLv}（預設 Lv${DEFAULT_SKILL_LV}，是推估的一般練度，請依你的帳號調整）；守軍用最高級 Lv${MAX_SKILL_LV}。每招旁邊的下拉選單可個別調；灰字＝用預設。說明文字只有 Lv1 與 Lv${MAX_SKILL_LV} 兩端數值，中間等級線性內插（推估）。`));
 }
 $('fillSk').onclick=()=>{autofill(S.ti,false);trimStock();save();renderBuilder()};
 $('resetSk').onclick=()=>{S.teams.forEach((_,i)=>autofill(i,true));trimStock();save();renderBuilder()};
@@ -1093,7 +1140,7 @@ function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特
 function buildAuto(spec,side,troops,arm0){
   const names=spec.map(g=>g.n),arm=arm0||bestArm(D,names)||'槍',red=Object.fromEntries(spec.map(g=>[g.n,g.red||0]));
   const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,50,red)}));
-  const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)));
+  const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm});
   return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
     skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,S.skLv)),bg:null}))};
 }
@@ -1183,7 +1230,7 @@ $('sug').onclick=async()=>{
       if(++k%8===0){$('prog').textContent=`分析第 ${i+1} 位…（${k}）`;await pause()}
     }
     res.sort((a,b)=>b.sc-a.sc);
-    html+=`<div class="scrollx"><table><tr><th>換掉 ${spec[i].n}</th><th>勝率</th><th>變化</th><th>Cost</th><th>期望抽數</th><th></th></tr>${res.slice(0,5).map(x=>{const dl=x.sc-base;return`<tr><td>${x.n}</td><td>${pc(x.sc)}</td><td class="${dl>=0?'pos':'neg'}">${dl>=0?'+':''}${Math.round(dl*100)}%</td><td>${costOf(x.n)}</td><td>${fmt(x.res)}</td><td><button class="pbtn ghost" data-i="${i}" data-n="${x.n}">換上</button></td></tr>`}).join('')}</table></div>`;
+    html+=`<div class="scrollx"><table><tr><th>換掉 ${spec[i].n}</th><th>勝率</th><th>變化</th><th>Cost</th><th></th></tr>${res.slice(0,5).map(x=>{const dl=x.sc-base;return`<tr><td>${x.n}</td><td>${pc(x.sc)}</td><td class="${dl>=0?'pos':'neg'}">${dl>=0?'+':''}${Math.round(dl*100)}%</td><td>${costOf(x.n)}</td><td><button class="pbtn ghost" data-i="${i}" data-n="${x.n}">換上</button></td></tr>`}).join('')}</table></div>`;
   }
   out.innerHTML=html+'<p class="note">每個候選只模擬少數場，差距在 ±15% 內視為相近。</p>';$('prog').textContent='';
   out.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{const m=my.gens[+b.dataset.i];m.n=b.dataset.n;m.bg=null;m.sl={};m.s=['',''];m.pts={};trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})});
@@ -1194,7 +1241,7 @@ const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
 const prow=(t,lv)=>t.w[lv]||[0,0];
 const inRange=t=>t.c>=S.cmin&&t.c<=S.cmax;
 function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣本越多權重越大）
-  const[w,left]=prow(t,S.lv),sim=w/100+left/100*.1,n=t.f[1],wf=.35*Math.min(1,n/6);
+  const[w,left]=prow(t,S.lv),w2=prow(t,Math.min(10,S.lv+2))[0],sim=(w+w2)/200+left/100*.1,n=t.f[1],wf=.5*Math.min(1,n/6);   // 低等級會飽和 100%，併看高兩級；戰報實戰分權重提高
   return(1-wf)*sim+wf*Math.max(0,Math.min(1,(t.f[0]-.5)*2+.5));
 }
 const fieldLine=f=>`戰報實戰：${f.each.map(n=>`${n}場`).join('／')}出場（${f.n<5?'樣本很少，只是估計':'樣本尚可'}）${f.pairs.length?'；同隊搭配 '+f.pairs.join('、'):'；戰報裡沒有這組搭配'}${f.trio?`；整隊 ${f.trio[0]} 場 ${Math.round(f.trio[1]/f.trio[0]*100)}% 勝率`:''}。`;
@@ -1226,8 +1273,8 @@ function card(t,i){
   const acts=[go];
   if(S.teams.length<3&&!SLG){const add=el('button',{class:'pbtn ghost',type:'button'},'加為新一隊');add.onclick=()=>{S.teams.push(mkMy(t.n,t.a));S.ti=S.teams.length-1;S.my=S.teams[S.ti];trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};acts.push(add)}
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
-    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.r[2].length?`；傳承戰法來源另需 ${t.r[2].join('、')}`:''}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det),
-    el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('span',{class:'res'},`約 ${fmt(res)} 抽`)),
+    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det),
+    el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('small',{},`打下 Lv${Math.min(10,S.lv+2)}：${prow(t,Math.min(10,S.lv+2))[0]}%`)),
     el('div',{class:'acts'},...acts));
 }
 function rankCard(t,i,k){
@@ -1238,22 +1285,25 @@ function rankCard(t,i,k){
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
     el('div',{},el('div',{class:'gl'},...t.team.map((n,gi)=>el('div',{class:'gg'},el('b',{},(gi?'':'★')+n),el('span',{class:'rc'},`Cost${costOf(n)}`),el('span',{class:'sk'},[innateOf(n),...(t.skills[n]||[])].filter(Boolean).join('・'))))),
       el('div',{class:'meta'},`${ARMN[t.arm]||t.arm}・總 Cost ${t.team.reduce((a,n)=>a+costOf(n),0)}・${k} 紅`)),
-    el('div',{class:'pc'},el('b',{},pc(t.winRate)),el('small',{},'榜內平均勝率'),el('span',{class:'res'},`約 ${fmt(res)} 抽`)),
+    el('div',{class:'pc'},el('b',{},pc(t.winRate)),el('small',{},'榜內平均勝率')),
     el('div',{class:'acts'},go,opp));
 }
 function renderRec(){
   const opts=[];for(let c=A.cost[0];c<=A.cost[1];c++)opts.push(c);
   $('cmin').innerHTML=opts.map(c=>`<option${c===S.cmin?' selected':''}>${c}</option>`).join('');$('cmax').innerHTML=opts.map(c=>`<option${c===S.cmax?' selected':''}>${c}</option>`).join('');
   $('cnote').textContent='開季初始三人 Cost 總和 15，之後隨建設／科技提高，上限可調到 20。';
-  $('thr').value=S.thr;$('thrV').textContent=S.thr+'%';$('nteam').value=String(S.nteam);
+  $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
-  for(const[k,t]of[['cheap','最省資源'],['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
+  for(const[k,t]of[['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
   const L=$('rlist');
   if(!R){L.replaceChildren(el('p',{class:'note'},'推薦資料讀取失敗'));return}
   const empty=m=>[el('p',{class:'note',style:'text-align:center;padding:16px'},m)];
   const rows=R.teams.filter(inRange);let list=[],note='';
-  if(S.rtab==='cheap'){note=`達到 ${S.thr}% 勝率（打下 Lv${S.lv}）的最省登用資源前 5 隊。`;list=rows.filter(t=>prow(t,S.lv)[0]>=S.thr).sort((a,b)=>(a.r[0]+a.r[1])-(b.r[0]+b.r[1])||prow(b,S.lv)[0]-prow(a,S.lv)[0]).slice(0,5)}
-  else if(S.rtab==='best'){note=`打下 Lv${S.lv} 的模擬勝率最高前 5 隊。`;list=rows.slice().sort((a,b)=>prow(b,S.lv)[0]-prow(a,S.lv)[0]||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
+  // 低等級土地（Lv4～6）守軍太弱，模擬勝率常常全部飽和成 100%，分不出隊伍好壞：
+  // 所以同時看「再高兩級」的勝率當壓力測試，只留下兩關都過關的隊伍，並用較高等級的勝率與戰報實戰分排序。
+  const lv2=Math.min(10,S.lv+2),w2=t=>prow(t,lv2)[0],avg=t=>(prow(t,S.lv)[0]+w2(t))/2;
+  if(false){}
+  else if(S.rtab==='best'){note=`打下 Lv${S.lv} 與 Lv${lv2} 的平均模擬勝率最高前 5 隊（Lv${S.lv} 已飽和時用 Lv${lv2} 分高下）。`;list=rows.slice().sort((a,b)=>avg(b)-avg(a)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
   else if(S.rtab==='pro'){note='戰報裡玩家實際出場、實戰勝率高的搭配（樣本少，僅供參考）。';list=rows.filter(t=>t.f[1]>=1).sort((a,b)=>b.f[0]-a.f[0]).slice(0,6)}
   if(S.rtab==='rank'){
     const k=S.rred||'0',rk=(RANK?.[k]||[]).filter(t=>t.team.reduce((a,n)=>a+costOf(n),0)<=S.cmax&&t.team.reduce((a,n)=>a+costOf(n),0)>=S.cmin);
@@ -1261,9 +1311,8 @@ function renderRec(){
       el('span',{class:'note'},'循環賽平均勝率（隊伍互打，Lv50、戰法滿級；tools/team-rank.mjs）。可設為上方④的對手。'));
     L.replaceChildren(sw,...(rk.length?rk.slice(0,10).map((t,i)=>rankCard(t,i,k)):empty('這個 Cost 範圍沒有對戰榜資料')));return;
   }
-  L.replaceChildren(el('p',{class:'note'},note+(S.lv<4?'（Lv3 沒有推薦資料）':'')),...(list.length?list.map(card):empty(S.rtab==='cheap'?`沒有隊伍達到 ${S.thr}% 勝率，調低門檻或放寬 Cost 範圍看看。`:'這個範圍內沒有資料')));
+  L.replaceChildren(el('p',{class:'note'},note+(S.lv<4?'（Lv3 沒有推薦資料）':'')),...(list.length?list.map(card):empty('這個範圍內沒有資料')));
 }
-$('thr').oninput=e=>{S.thr=+e.target.value;save();renderRec()};
 $('nteam').onchange=e=>{S.nteam=+e.target.value;save()};
 $('cmin').onchange=e=>{S.cmin=+e.target.value;if(S.cmax<S.cmin)S.cmax=S.cmin;save();renderRec()};
 $('cmax').onchange=e=>{S.cmax=+e.target.value;if(S.cmin>S.cmax)S.cmin=S.cmax;save();renderRec()};

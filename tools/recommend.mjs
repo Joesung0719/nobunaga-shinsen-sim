@@ -25,7 +25,7 @@ const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
 const mkTeam=(names,arm,sk)=>{const st=L.teamStats(names,arm,LV,0,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS)}};
 function plan(names,arm){   // 組出戰法：回傳 sel、why
   const st=L.teamStats(names,arm,LV,0,FAC);
-  return kit.pick(names.map((n,i)=>({n,red:0,st:st[i]})));
+  return kit.pick(names.map((n,i)=>({n,red:0,st:st[i]})),null,{},{arm});
 }
 // ---- 階段 1：全部組合，代理分取前段 ----
 const cand=[];

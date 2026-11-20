@@ -29,7 +29,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // ---- roster ----
 const ROSTER=new Map();
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f});
-for(const[n,x]of Object.entries(D.stats))ROSTER.set(n,Object.assign({n,r:5},ROSTER.get(n),{c:x.c,f:x.f}));
+for(const[n,x]of Object.entries(D.stats))ROSTER.set(n,Object.assign({n,r:5},ROSTER.get(n),{c:x.c,f:x.f},x.r?{r:x.r}:{}));
 for(const t of Object.values(D.teams))for(const g of t)if(!ROSTER.has(g.n))ROSTER.set(g.n,{n:g.n,r:g.r,c:g.c,f:''});
 const facOf=n=>ROSTER.get(n)?.f||'';
 // 武將頭像：沿用武將資料庫的卡圖（img/），沒有卡圖的武將用 Q 版人物
@@ -64,7 +64,7 @@ function builderTeam(){
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null,sl:slOf(m,S)}))};
 }
 // 組隊頁每招戰法的等級（個別設定，沒有就用預設 S.skLv）
-function slOf(m,S){const o={};for(const n of[innateOf(D,m.n),...(m.s||[])].filter(Boolean))o[n]=m.sl?.[n]??S.skLv??3;return o}
+function slOf(m,S){const o={};for(const n of[innateOf(D,m.n),...(m.s||[])].filter(Boolean))o[n]=m.sl?.[n]??S.skLv??8;return o}
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
 if(SET.hero){ensureHero(SET.hero);setSpec(SET.hero.name,heroSpec(SET.hero))}   // 戰役主角的外觀
 // 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）

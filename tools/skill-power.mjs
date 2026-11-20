@@ -13,11 +13,11 @@ const top=[...GEN].sort((a,b)=>L.costOf(b)-L.costOf(a)),rr=L.rng(7),REFS=[];
 for(let i=0;i<16;i++){const g=[];while(g.length<3){const n=top[Math.floor(rr()*60)];if(!g.includes(n))g.push(n)}REFS.push(g)}
 const FOES=[8,9].flatMap(lv=>L.garrisonsAt(lv).map(k=>L.garrison(k,lv)));
 const mrg=(my,foe)=>{const A=L.clone(my),B=L.clone(foe);const r=battle(A,B,R);return(sumT(A)/sumM(A)-sumT(B)/sumM(B))+(r.res==='W'?.3:r.res==='L'?-.3:0)};
-const score=(names,extra)=>{const st=L.teamStats(names,'騎',50,0,FAC),sk=names.map(()=>[]);if(extra)sk[extra[0]].push(extra[1]);
-  const my=L.myTeam(names,'騎',st,sk,TROOPS);let a=0;for(const f of FOES)for(let i=0;i<2;i++)a+=mrg(my,f);return a/(FOES.length*2)};
-const base=REFS.map(r=>score(r,null)),out={};
+const score=(names,extra,arm='騎')=>{const st=L.teamStats(names,arm,50,0,FAC),sk=names.map(()=>[]);if(extra)sk[extra[0]].push(extra[1]);
+  const my=L.myTeam(names,arm,st,sk,TROOPS);let a=0;for(const f of FOES)for(let i=0;i<2;i++)a+=mrg(my,f);return a/(FOES.length*2)};
+const baseBy={},baseOf=(arm,ri)=>(baseBy[arm]??=REFS.map(r=>score(r,null,arm)))[ri],out={};
 for(const s of kit.POOL){out[s]={};for(const[k,isP]of[['p',true],['m',false]]){let a=0,c=0;
-  REFS.forEach((r,ri)=>r.forEach((n,i)=>{if(phys(n)===isP){a+=score(r,[i,s])-base[ri];c++}}));out[s][k]=c?+(a/c).toFixed(4):0}}
+  REFS.forEach((r,ri)=>r.forEach((n,i)=>{if(phys(n)===isP){{const arm=kit.ps(s).arm||'騎';a+=score(r,[i,s],arm)-baseOf(arm,ri);c++}}}));out[s][k]=c?+(a/c).toFixed(4):0}}
 fs.writeFileSync(new URL('../skillpower.json',import.meta.url),JSON.stringify(out));
 const top5=k=>Object.entries(out).sort((a,b)=>b[1][k]-a[1][k]).slice(0,6).map(x=>x[0]+x[1][k]);
 console.log(kit.POOL.length,'skills; phys',top5('p'),'mag',top5('m'));
