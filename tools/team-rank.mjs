@@ -7,6 +7,7 @@
 //  · 兩階段：20000 隊粗篩→前 300 名循環賽→前 40 名各對 300 強再打 12 場，排名看平均勝率（平手算 0.5 勝）。
 import fs from 'node:fs';
 import {battle,parseSkill,innateOf,fullRedStats,bestArm} from '../slg/engine.js';
+import {makeKit} from '../slg/teamlib.js';
 
 const D=JSON.parse(fs.readFileSync(new URL('../land.json',import.meta.url)));
 const [CAP=15,RED=0,TOP=15,LV=50]=process.argv.slice(2).map(Number);
@@ -17,7 +18,12 @@ const val=s=>{const x=ps(s);if(x.modeled!=='text'||!['主動','突擊','指揮',
   return (x.rate||0)*((x.dmg||0)*(x.n?(x.n[0]+x.n[1])/2:1)+(x.heal||0)*.5+(x.status?.p||0)*.6)*(x.prep?.8:1)};
 const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
 const POOLSK=Object.keys(D.skillText).filter(s=>!INN.has(s)).map(s=>[s,val(s)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-const inh=n=>{const own=innateOf(D,n);return POOLSK.filter(([s])=>s!==own).slice(0,2).map(x=>x[0])};
+// 傳授戰法：用組隊推薦（slg/teamlib.js pick）依「這一隊」搭配，不再每人都拿全域最強的同兩招：
+// 自帶突擊要搭突擊／普攻類、主動戰法不堆太多、兵種技要符合隊伍兵種、增益要有可加成的對象，並參考戰報勝率。
+const kit=makeKit(D,{power:JSON.parse(fs.readFileSync(new URL('../skillpower.json',import.meta.url))),field:JSON.parse(fs.readFileSync(new URL('../field.json',import.meta.url)))});
+const PLAN=new Map();
+function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const arm=bestArm(D,names)||'槍';
+  const st=names.map(n=>({n,red:RED,st:fullRedStats(D,n,names,arm,LV,RED)}));p=kit.pick(st,null,{},{arm}).sel;PLAN.set(key,p)}return p}
 
 const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
@@ -29,7 +35,7 @@ for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<ge
 function mk(names,side,red=RED){
   const arm=bestArm(D,names)||'槍';
   return{name:names[0],side,arm,terrain:'平',gens:names.map(n=>({n,st:fullRedStats(D,n,names,arm,LV,red),troops:10000,max:10000,
-    skills:[innateOf(D,n),...inh(n)].filter(Boolean).map(ps),bg:null}))};
+    skills:[innateOf(D,n),...plan(names)[names.indexOf(n)]].filter(Boolean).map(ps),bg:null}))};
 }
 function duel(a,b){let w=0;for(let i=0;i<SIMS;i++){const r=battle(mk(a,0),mk(b,1),rng).res;w+=r==='W'?1:r==='D'?.5:0}return w/SIMS}
 const pickN=(arr,n)=>{const o=[];while(o.length<n)o.push(arr[Math.floor(rng()*arr.length)]);return o};
@@ -52,6 +58,6 @@ for(let i=0;i<s1.length;i++)for(let j=i+1;j<s1.length;j++){
 s1.sort((a,b)=>b.g/b.n-a.g/a.n);
 for(const x of s1.slice(0,40)){let w=0,c=0;for(const y of s1){if(y===x)continue;for(let k=0;k<12;k++){const r=battle(mk(x.t,0),mk(y.t,1),rng).res;w+=r==='W'?1:r==='D'?.5:0;c++}}x.g=w;x.n=c}
 const out=s1.slice(0,40).map(x=>({team:x.t,cost:x.t.reduce((a,n)=>a+D.stats[n].c,0),winRate:+(x.g/x.n).toFixed(3),arm:bestArm(D,x.t),
-  skills:Object.fromEntries(x.t.map(n=>[n,[innateOf(D,n),...inh(n)]])),seasons:x.t.map(n=>D.stats[n].season)})).sort((a,b)=>b.winRate-a.winRate);
+  skills:Object.fromEntries(x.t.map((n,i)=>[n,[innateOf(D,n),...plan(x.t)[i]]])),seasons:x.t.map(n=>D.stats[n].season)})).sort((a,b)=>b.winRate-a.winRate);
 console.log(JSON.stringify({cap:CAP,red:RED,lv:LV,pool:POOL,candidates:cands.length,top:out.slice(0,TOP)},null,1));
 if(process.env.OUT)fs.writeFileSync(process.env.OUT,JSON.stringify(out));

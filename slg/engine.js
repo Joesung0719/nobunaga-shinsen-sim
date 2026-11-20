@@ -26,8 +26,8 @@ export const ST4=['武勇','智略','統率','速度'];
 const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 機率無法行動',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};
 
 const num=s=>s==null?null:+s;
-// 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～MAX_SKILL_LV 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
-export const MAX_SKILL_LV=5,DEFAULT_SKILL_LV=3;
+// 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～10 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
+export const MAX_SKILL_LV=10,DEFAULT_SKILL_LV=8;   // 戰法等級 Lv1～Lv10（Joe 2026-11-20 更正，原先誤設 1～5）；預設 Lv8 是推估的一般玩家練度
 let curLv=null;
 const hi=(a,b)=>{const x=num(a),y=num(b);if(y==null||curLv==null)return y??x;return x+(y-x)*(Math.max(1,Math.min(MAX_SKILL_LV,curLv))-1)/(MAX_SKILL_LV-1)};
 function targetCount(s){
@@ -68,6 +68,22 @@ function parseBuffs(x){
   }
   return{buf,regen,partial};
 }
+// 兵種技（kind＝兵種）：說明文字寫的是「將○兵進階為…」，整隊（3 人）開場就生效。arm＝需要的隊伍兵種；只模擬屬性、傷害／會心／發動率這類數值，
+// 回生、反擊、密報、冷卻這類條件效果沒有模擬（龍騎兵的彈丸機制簡化成每回合機率打一次）。數值 [Lv1, 滿級]。
+const ARMSK={
+  龍騎兵:{arm:'鐵炮',each:{rate:[35,70],dmg:[52,104],dtype:'auto'}},
+  伊賀忍者:{arm:'弓',buf:[{k:'stat:武勇',v:[5,10]},{k:'stat:速度',v:[5,10]}],each:{rate:[100,100],dmg:[54,107]}},
+  三河弓兵隊:{arm:'弓',buf:[{k:'stat:統率',v:[10,20]}]},
+  越後先手組:{arm:'騎',buf:[{k:'stat:速度',v:[12,24]}]},
+  三河武士:{arm:'槍',buf:[{k:'stat:統率',v:[8,16]}]},
+  母衣武者:{arm:'騎',buf:[{k:'stat:速度',v:[10,20]}]},
+  僧兵隊:{arm:'槍',buf:[{k:'takenBlade',v:[10,20]}]},
+  甲斐弓騎兵:{arm:'弓',buf:[{k:'rateAct',v:[4,8]}]},
+  大太刀力士隊:{arm:'槍',buf:[{k:'takenAtkRush',v:[9,18],r:2}]},
+  薩摩鐵炮隊:{arm:'鐵炮',buf:[{k:'dmgAtk',v:[20,40]}]},
+  鐵炮僧兵隊:{arm:'鐵炮',buf:[{k:'stat:統率',v:[6,12]},{k:'stat:智略',v:[6,12]}]},
+  赤備隊:{arm:'騎',buf:[{k:'crit',v:[17.5,35]}]},
+};
 // one skill → what the engine can run
 export function parseSkill(name,D,lv=null){
   curLv=lv;
@@ -76,7 +92,14 @@ export function parseSkill(name,D,lv=null){
 function parseSkill0(name,D){
   const t=D.skillText?.[name],kind=t?.kind||D.kind?.[name]||(t?'?':'主動'),g=t?.g||D.skills?.[name]||'B';
   const sk={name,kind,g,modeled:'none',text:t?.text||''};
-  if(kind==='內政'||kind==='兵種')return sk;
+  if(kind==='內政')return sk;
+  if(kind==='兵種'){const a=ARMSK[name];if(!a)return sk;   // 兵種技：開場直接生效，整隊吃到，只有隊伍兵種相符才有效（合盟之陣等條件型沒有模擬）
+    sk.arm=a.arm;sk.opening=true;
+    const val=(v,i)=>hi(v[0],v[1]);
+    if(a.buf)sk.buf=a.buf.map(b=>({k:b.k,v:hi(b.v[0],b.v[1]),to:'team',n:0,r:b.r||99}));
+    if(a.each){sk.each=true;sk.rate=hi(a.each.rate[0],a.each.rate[1])/100;sk.dmg=hi(a.each.dmg[0],a.each.dmg[1])/100;sk.dtype=a.each.dtype||'兵刃';sk.n=[1,1]}
+    sk.modeled='text';if(!sk.dmg)sk.buffOnly=true;
+    return sk}
   if(!t){
     const gs=K.guess[kind]?.[g];
     if(gs)Object.assign(sk,{modeled:'guess',rate:gs[0],dmg:gs[1],dtype:'auto',n:[1,1]});
@@ -137,7 +160,7 @@ export function battle(A,B,R=Math.random){
   const ev=(e)=>log.push(e);
   const BG='兵學';
   // 指揮／被動戰法的單純增益（buf）：戰鬥開始時套到自己／全隊／隨機友軍，屬性直接加，其餘走 tm（到第 r 回合）
-  for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.buf)for(const b of sk.buf){
+  for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.buf&&!(sk.arm&&t.arm!==sk.arm))for(const b of sk.buf){
     const tg=b.to==='self'?[g]:b.to==='team'?t.gens:pickN(t.gens,b.n,R);
     for(const m of tg){if(b.k.startsWith('stat:'))m.b[b.k.slice(5)]+=b.v;else m.tm.push({k:b.k,v:b.v,until:b.r})}
   }});
@@ -245,6 +268,7 @@ export function battle(A,B,R=Math.random){
       if(g.prep){useSkill(t,ti,i,g.prep,{prepared:true});g.prep=null}
       for(const sk of g.skills){
         if(sk.modeled==='none'||(sk.self||sk.buf||sk.regen)&&!sk.dmg&&!sk.heal&&!sk.status)continue;
+        if(sk.arm&&t.arm!==sk.arm)continue;   // 兵種技：隊伍兵種不符就沒效果
         const act=sk.kind==='主動'||sk.each;
         if(!act||(sk.kind==='主動'&&fx.無策))continue;
         if(R()<sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)){

@@ -7,7 +7,8 @@ export const CARDS=JSON.parse(fs.readFileSync(new URL('../data.json',import.meta
 const CARD=new Map(CARDS.map(c=>[c.n,c]));
 export const INNATE=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x.inn).filter(Boolean)]);
 const PSK=new Map();export const ps=n=>{if(!PSK.has(n))PSK.set(n,parseSkill(n,D));return PSK.get(n)};
-export const rarityOf=n=>CARD.get(n)?.r||Object.values(D.teams).flat().find(g=>g.n===n)?.r||5;
+// 稀有度只有一個來源：武將資料庫（D.stats.r → 卡池 data.json）；守軍隊伍裡的 r 只在資料庫沒有這位武將時才用（曾經讓真田昌幸 5★ 顯示成 4★）
+export const rarityOf=n=>D.stats[n]?.r||CARD.get(n)?.r||(D.stats[n]?5:Object.values(D.teams).flat().find(g=>g.n===n)?.r)||5;
 export const costOf=n=>D.stats[n]?.c??CARD.get(n)?.c??0;
 
 const RED_AT=[0,1,3,5],ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'},STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
