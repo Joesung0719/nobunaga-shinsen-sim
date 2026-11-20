@@ -447,7 +447,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=46';
+import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=47';
 import {makeKit} from './slg/teamlib.js?v=4';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
@@ -1055,7 +1055,7 @@ function autofill(ti,reset){
   if(reset)t.gens.forEach(m=>{m.s=['',''];m.sl={}});
   const names=t.gens.map(m=>m.n);if(names.some(n=>!D.stats?.[n])||new Set(names).size<3)return;
   const red=Object.fromEntries(t.gens.map(m=>[m.n,m.red||0]));
-  let stt;try{stt=t.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,t.arm,50,red)}))}catch{return}
+  let stt;try{stt=t.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,t.arm,50,red,t.fac)}))}catch{return}
   const res={};S.teams.forEach((o,oi)=>{if(oi!==ti)o.gens.forEach(m=>m.s.forEach(x=>{if(x)res[x]=(res[x]||0)+1}))});
   const pl=KIT.pick(stt,t.gens.map(m=>m.s.filter(Boolean)),res,{arm:t.arm});
   t.gens.forEach((m,i)=>{const ns=pl.sel[i];m.s=[ns[0]||'',ns[1]||'']});
@@ -1095,7 +1095,7 @@ function renderAdvice(){
   const my=S.my,names=my.gens.map(m=>m.n);
   if(names.some(n=>!D.stats?.[n])||new Set(names).size<3){box.replaceChildren();return}
   const red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]));
-  let stt;try{stt=my.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,my.arm,50,red)}))}catch{return}
+  let stt;try{stt=my.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,my.arm,50,red,my.fac)}))}catch{return}
   const sel=my.gens.map(m=>m.s.filter(Boolean)),why=WHY[S.ti]||[];
   const checks=KIT.check(stt,sel,my.arm);
   const head=el('h3',{},`玩家建議：第 ${S.ti+1} 隊（${my.arm}兵）每位武將怎麼配`);
@@ -1133,13 +1133,13 @@ const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
   const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]));
   return{name:names[0]+'隊',side:0,arm:my.arm,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,f:D.stats?.[m.n]?.f,
-    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red),troops:m.t,max:m.t,
+    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
 // 只給武將名／紅度的隊伍（對手、搭配建議候選）：Lv50、戰法依推薦補滿、戰法預設等級
 function buildAuto(spec,side,troops,arm0){
   const names=spec.map(g=>g.n),arm=arm0||bestArm(D,names)||'槍',red=Object.fromEntries(spec.map(g=>[g.n,g.red||0]));
-  const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,50,red)}));
+  const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,50,red,S.my.fac)}));
   const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm});
   return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
     skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,S.skLv)),bg:null}))};
@@ -1291,7 +1291,7 @@ function rankCard(t,i,k){
 function renderRec(){
   const opts=[];for(let c=A.cost[0];c<=A.cost[1];c++)opts.push(c);
   $('cmin').innerHTML=opts.map(c=>`<option${c===S.cmin?' selected':''}>${c}</option>`).join('');$('cmax').innerHTML=opts.map(c=>`<option${c===S.cmax?' selected':''}>${c}</option>`).join('');
-  $('cnote').textContent='開季初始三人 Cost 總和 15，之後隨建設／科技提高，上限可調到 20。';
+  $('cnote').textContent='開季初始三人 Cost 總和 15，之後隨建設／科技提高，上限可調到 20。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
   for(const[k,t]of[['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}

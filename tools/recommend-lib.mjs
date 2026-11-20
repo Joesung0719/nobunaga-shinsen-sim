@@ -36,7 +36,7 @@ export function teamStats(names,arm,lv,red,fac){
     for(const t of active(n,red)){const x=traitFx(n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}
     const st=statsAt(D,n,lv,rarityOf(n)),k=st.武勇>=st.智略?'武勇':'智略';
     st[k]+=Math.floor(lv/10)*(10+extra)+red*10;
-    return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+same+(own[x]||0)+(team[x]||0))/100)*10)/10]));
+    return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+same+(fac.same&&fac.ka?fac.ka:0)+(own[x]||0)+(team[x]||0))/100)*10)/10]));
   });
 }
 export const armsWithSynergy=names=>{const o=new Set();for(const n of names)for(const t of D.stats[n]?.traits||[]){const a=traitFx(n,t).arm;for(const k in a||{})o.add(k)}return o};
