@@ -1241,7 +1241,7 @@ const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
 const prow=(t,lv)=>t.w[lv]||[0,0];
 const inRange=t=>t.c>=S.cmin&&t.c<=S.cmax;
 function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣本越多權重越大）
-  const[w,left]=prow(t,S.lv),w2=prow(t,Math.min(10,S.lv+2))[0],sim=(w+w2)/200+left/100*.1,n=t.f[1],wf=.5*Math.min(1,n/6);   // 低等級會飽和 100%，併看高兩級；戰報實戰分權重提高
+  const[w,left]=prow(t,S.lv),w2=(prow(t,9)[0]+prow(t,10)[0])/2,sim=(w+w2*2)/300+left/100*.1,n=t.f[1],wf=.5*Math.min(1,n/6);   // 低等級會飽和 100%，併看高兩級；戰報實戰分權重提高
   return(1-wf)*sim+wf*Math.max(0,Math.min(1,(t.f[0]-.5)*2+.5));
 }
 const fieldLine=f=>`戰報實戰：${f.each.map(n=>`${n}場`).join('／')}出場（${f.n<5?'樣本很少，只是估計':'樣本尚可'}）${f.pairs.length?'；同隊搭配 '+f.pairs.join('、'):'；戰報裡沒有這組搭配'}${f.trio?`；整隊 ${f.trio[0]} 場 ${Math.round(f.trio[1]/f.trio[0]*100)}% 勝率`:''}。`;
@@ -1274,7 +1274,7 @@ function card(t,i){
   if(S.teams.length<3&&!SLG){const add=el('button',{class:'pbtn ghost',type:'button'},'加為新一隊');add.onclick=()=>{S.teams.push(mkMy(t.n,t.a));S.ti=S.teams.length-1;S.my=S.teams[S.ti];trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};acts.push(add)}
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
     el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det),
-    el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('small',{},`打下 Lv${Math.min(10,S.lv+2)}：${prow(t,Math.min(10,S.lv+2))[0]}%`)),
+    el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('small',{},`Lv9：${prow(t,9)[0]}%・Lv10：${prow(t,10)[0]}%`)),
     el('div',{class:'acts'},...acts));
 }
 function rankCard(t,i,k){
@@ -1301,9 +1301,10 @@ function renderRec(){
   const rows=R.teams.filter(inRange);let list=[],note='';
   // 低等級土地（Lv4～6）守軍太弱，模擬勝率常常全部飽和成 100%，分不出隊伍好壞：
   // 所以同時看「再高兩級」的勝率當壓力測試，只留下兩關都過關的隊伍，並用較高等級的勝率與戰報實戰分排序。
-  const lv2=Math.min(10,S.lv+2),w2=t=>prow(t,lv2)[0],avg=t=>(prow(t,S.lv)[0]+w2(t))/2;
+  // Joe：守軍 Lv6～8 本來就弱，Lv9～10 才強；排序以 Lv9、Lv10 勝率為主（模擬是 0 紅、戰法滿級，課金／練度更高的帳號只會更強）
+  const lv2=Math.max(9,S.lv),w2=t=>prow(t,lv2)[0],avg=t=>(prow(t,9)[0]+prow(t,10)[0])/2;
   if(false){}
-  else if(S.rtab==='best'){note=`打下 Lv${S.lv} 與 Lv${lv2} 的平均模擬勝率最高前 5 隊（Lv${S.lv} 已飽和時用 Lv${lv2} 分高下）。`;list=rows.slice().sort((a,b)=>avg(b)-avg(a)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
+  else if(S.rtab==='best'){note=`依打下 Lv9、Lv10 的平均模擬勝率排序前 5 隊（Lv6～8 守軍弱、幾乎都 100%，不拿來分高下；模擬是 0 紅、Lv50、戰法滿級，紅度與練度更高會再強一些）。`;list=rows.slice().sort((a,b)=>avg(b)-avg(a)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
   else if(S.rtab==='pro'){note='戰報裡玩家實際出場、實戰勝率高的搭配（樣本少，僅供參考）。';list=rows.filter(t=>t.f[1]>=1).sort((a,b)=>b.f[0]-a.f[0]).slice(0,6)}
   if(S.rtab==='rank'){
     const k=S.rred||'0',rk=(RANK?.[k]||[]).filter(t=>t.team.reduce((a,n)=>a+costOf(n),0)<=S.cmax&&t.team.reduce((a,n)=>a+costOf(n),0)>=S.cmin);
