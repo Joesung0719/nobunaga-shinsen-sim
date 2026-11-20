@@ -1,5 +1,5 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=44';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=45';
 import {chibi,SIDE_COL,setSpec} from './chibi.js?v=44';
 import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=44';
 import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=44';
@@ -61,8 +61,10 @@ function randomTeam(){
 function builderTeam(){
   let S;try{S=JSON.parse(localStorage.getItem('shinsen-land-v1'))}catch{}
   if(!S?.my?.gens)return null;
-  return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null}))};
+  return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null,sl:slOf(m,S)}))};
 }
+// 組隊頁每招戰法的等級（個別設定，沒有就用預設 S.skLv）
+function slOf(m,S){const o={};for(const n of[innateOf(D,m.n),...(m.s||[])].filter(Boolean))o[n]=m.sl?.[n]??S.skLv??3;return o}
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
 if(SET.hero){ensureHero(SET.hero);setSpec(SET.hero.name,heroSpec(SET.hero))}   // 戰役主角的外觀
 // 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）
@@ -119,7 +121,8 @@ function genStats(g){
 }
 function battleTeam(spec,side){
   return{name:spec.gens[0].n+'隊',side,arm:spec.arm,terrain:'平',
-    gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(ps),
+    gens:spec.gens.map(g=>({n:g.n,f:facOf(g.n),st:genStats(g),troops:g.t,max:g.t,skills:[innateOf(D,g.n),...g.s].filter(Boolean).map(n=>g.sl?.[n]?parseSkill(n,D,g.sl[n]):ps(n)),   // sl：組隊頁設定的戰法等級（沒有就滿級，同舊版）
+     
       bg:bgCompile(g.bg,ROSTER.get(g.n)?.r,g.red||0,g.n),bgs:bgSummary(g.bg,ROSTER.get(g.n)?.r,g.n)}))};
 }
 const teamsAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv}[a-z]$`).test(k));
