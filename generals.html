@@ -281,6 +281,7 @@ function bingakuBox(g){
     dirs.replaceChildren(...DIRS.map(d=>{const b=el('button',{class:'chip',type:'button',style:`--dc:${d.col}`,'aria-pressed':String(d.id===bgDir)},d.id,el('small',{},d.sub));b.onclick=()=>{bgDir=d.id;draw()};return b}));
     const d=dirOf(bgDir,g.n);
     if(!tree){body.replaceChildren(el('div',{class:'bg-miss'},`${g.n}的兵學樹尚未收錄。目前可在戰棋裡選方向（套用紅度加成），奇與正的內容需要遊戲內「兵學」畫面截圖或文字才能補上。`));return}
+    if(!d.qi.length){body.replaceChildren(el('div',{class:'bg-miss'},`${g.n}的「${bgDir}」方向還沒收錄，需要遊戲內該方向的兵學畫面截圖。`));return}
     body.replaceChildren(
       el('div',{class:'bg-sub'},el('b',{},'兵學・奇'),'3 項擇 1'),
       el('div',{class:'bg-grid'},...d.qi.map(q=>el('div',{class:'bg-it',style:`--dc:${d.col}`},el('b',{},q.n),el('p',{},q.t)))),
