@@ -26,7 +26,7 @@ const PLAN=new Map();
 function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const arm=bestArm(D,names)||'槍';
   const st=names.map(n=>({n,red:RED,st:fullRedStats(D,n,names,arm,LV,RED,FULL)})),pl=kit.pick(st,null,{},{arm});p=pl.sel;p.q=kit.quality(st,pl.sel,arm);PLAN.set(key,p)}return p}
 
-const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
+const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(v.r||5)===5&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
 const cands=[];
 for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<gens.length;k++){

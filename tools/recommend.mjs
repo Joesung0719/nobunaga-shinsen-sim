@@ -15,14 +15,17 @@ const pulls=n=>1/(CARD.get(n)?.s1/100||RATE[L.rarityOf(n)]||RATE[5]);
 const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD,official:J('official.json')});
 const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900,LV=50,LANDS=[4,5,6,7,8,9,10];
 const R=L.rng(20261120),t0=Date.now(),log=m=>console.error(`[${((Date.now()-t0)/1000).toFixed(0)}s] ${m}`);
-const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'),cost=L.costOf;
+// Joe 2026-11-21：第六季，玩家已有大部分武將、差在紅度，沒人用紫將 → 戰法等級分三檔：初期 Lv4／中期 Lv7／後期 Lv10（ws 欄；w 為後期），兵學不計；只推金將（5★），不算抽數／取得成本
+const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'&&L.rarityOf(n)===5),cost=L.costOf;
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);
 const mrg=(my,foe)=>{const A=L.clone(my),B=L.clone(foe);const r=battle(A,B,R);return(sumT(A)/sumM(A)-sumT(B)/sumM(B))+(r.res==='W'?.3:r.res==='L'?-.3:0)};
 const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=>L.garrison(k,9));
 // 原始屬性代理分（Lv50）：先篩掉明顯弱的組合
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
 const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
-const mkTeam=(names,arm,sk)=>{const st=L.teamStats(names,arm,LV,0,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS)}};
+const mkTeam=(names,arm,sk,slv=null)=>{const st=L.teamStats(names,arm,LV,0,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS,slv)}};
+// 練度檔位（Joe 2026-11-21：初期要搶資源，升級用的銀幣不多；銀幣用來開兵學、換戰法點數）：初期戰法 Lv4、中期 Lv7、後期 Lv10；兵學本模擬一律不計。
+const STAGES={early:4,mid:7,late:10};
 function plan(names,arm){   // 組出戰法：回傳 sel、why
   const st=L.teamStats(names,arm,LV,0,FAC);
   const tm=names.map((n,i)=>({n,red:0,st:st[i]})),pl=kit.pick(tm,null,{},{arm});
@@ -35,10 +38,6 @@ for(let i=0;i<GEN.length;i++)for(let j=i+1;j<GEN.length;j++)for(let k=j+1;k<GEN.
   cand.push({names:[GEN[i],GEN[j],GEN[k]],c,p:raw[GEN[i]]+raw[GEN[j]]+raw[GEN[k]]})}
 log(`組合 ${cand.length}`);
 const pre=[];for(let c=CMIN;c<=CMAX;c++)pre.push(...cand.filter(x=>x.c===c).sort((a,b)=>b.p-a.p).slice(0,3500));
-// 便宜的也要入選（抽數最少前段）
-const pr=n=>n.reduce((a,x)=>a+pulls(x),0);
-cand.forEach(x=>x.pr=pr(x.names));
-for(let c=CMIN;c<=CMAX;c++){const cs=cand.filter(x=>x.c===c).sort((a,b)=>b.p-a.p).slice(0,12000).sort((a,b)=>a.pr-b.pr).slice(0,1200);pre.push(...cs)}
 // 戰報實戰分高的也入選
 for(const x of cand){const f=kit.fieldScore(x.names);x.f=f.score}
 for(let c=CMIN;c<=CMAX;c++)pre.push(...cand.filter(x=>x.c===c).sort((a,b)=>b.f-a.f).slice(0,400));
@@ -67,14 +66,15 @@ for(const x of uniq.values()){
 // 每個 Cost 留粗篩前 400，再細算（24 次）
 const fin=[];
 for(let c=CMIN;c<=CMAX;c++)fin.push(...mid.filter(m=>m.x.c===c).sort((a,b)=>b.a-a.a).slice(0,330));
-const sumResSrc=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const so=kit.SRC[s]||[];if(!so.length)continue;const g=so.reduce((a,x)=>pulls(x)<pulls(a)?x:a);if(!names.includes(g))src.add(g)}return src};
+const _unused=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const so=kit.SRC[s]||[];if(!so.length)continue;const g=so.reduce((a,x)=>pulls(x)<pulls(a)?x:a);if(!names.includes(g))src.add(g)}return src};
 const teams=[];let k2=0;
 for(const m of fin){
   const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk);
   const w={};for(const lv of LANDS){const r=marchPct(team,lv,24);w[lv]=r}
-  const src=[...sumResSrc(names,sk)],gen=Math.round(pr(names)),ks=Math.round(src.reduce((a,g)=>a+pulls(g),0));
+  const ws={};for(const[sn,sl]of Object.entries(STAGES)){if(sn==='late')continue;const tm=mkTeam(names,m.arm,sk,sl).team;ws[sn]={};for(const lv of LANDS)ws[sn][lv]=marchPct(tm,lv,12)}
+  const src=[],gen=0,ks=0;   // 不再計抽數
   const f=kit.fieldScore(names);
-  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,r:[gen,ks,src],w,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
+  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,r:[gen,ks,src],w,ws,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
   if(++k2%300===0)log(`細算 ${k2}/${fin.length}`);
 }
 function marchPct(my,lv,reps){
@@ -88,6 +88,20 @@ const names=new Set(teams.flatMap(t=>[...t.n,...t.r[2]]));
 const info=n=>({r:L.rarityOf(n),c:cost(n),f:D.stats[n].f,season:D.stats[n].season,inn:L.innateOf(D,n),tags:TAGS[n]||[],pulls:Math.round(pulls(n)),st:Object.fromEntries(['武勇','智略','統率','速度'].map(k=>[k,Math.round(statsAt(D,n,LV,L.rarityOf(n))[k])]))});
 const gens=Object.fromEntries([...names].map(n=>[n,info(n)]));
 const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
-  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 9900 兵；打下一級土地 = 依序打完該級所有守軍隊（兵力不補、平局算失敗），24 次模擬；兵學、裝備未計。資源 = 登用期望抽數（不計保底），傳授戰法的來源武將另計一張。'};
+  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 9900 兵；打下一級土地 = 依序打完該級所有守軍隊（兵力不補、平局算失敗），24 次模擬；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
+// ---- 升級路線：Cost 提高後用繼承券換將 ----
+// 最少更換＝只換一位（繼承券 1 張，其餘兩人沿用）；全面換血＝不顧資源，直接換成該 Cost 內最強的另一組。
+const sc=t=>(t.w[9][0]+t.w[10][0])/2;
+const better=(a,b)=>(b.q||0)-(a.q||0)||sc(b)-sc(a)||b.w[10][1]-a.w[10][1];
+teams.forEach(t=>{
+  const up=[];
+  for(let c=t.c+1;c<=CMAX;c++){
+    const cs=teams.filter(u=>u.c===c);
+    const one=cs.filter(u=>u.n.filter(x=>t.n.includes(x)).length===2).sort(better)[0];
+    const full=cs.filter(u=>u.n.filter(x=>t.n.includes(x)).length<=1).sort(better)[0];
+    if(one||full)up.push([c,one?teams.indexOf(one):-1,full?teams.indexOf(full):-1]);
+  }
+  if(up.length)t.up=up;
+});
 fs.writeFileSync(new URL('../recommend.json',import.meta.url),JSON.stringify({assumptions,gens,teams}));
 log(`搭配不合格排除 ${rej} 種（隊伍×兵種）；輸出 ${teams.length} 隊，${(fs.statSync(new URL('../recommend.json',import.meta.url)).size/1e6).toFixed(2)}MB`);
