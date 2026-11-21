@@ -447,8 +447,8 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=48';
-import {makeKit} from './slg/teamlib.js?v=4';
+import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=49';
+import {makeKit} from './slg/teamlib.js?v=5';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -713,11 +713,11 @@ function renderTab(){
 
 // ---- team builder ----
 const J=f=>fetch(f,{cache:'no-cache'}).then(r=>r.json()).catch(()=>null);
-const [CARDS,POWER,FIELD,EX,R,RANK]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json'].map(J));
+const [CARDS,POWER,FIELD,EX,R,RANK,OFFICIAL]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json','official.json'].map(J));
 const CARD=new Map(CARDS.map(c=>[c.n,c])),RATE={5:.0016,4:.009,3:.0344};
 // 登用期望抽數 = 1 ÷ 該武將機率（名將登用公告；不計每 5 抽保底）
 const pulls=n=>{const c=CARD.get(n);const r=c?.s1?c.s1/100:RATE[c?.r||D.stats?.[n]?.r||5]||RATE[5];return 1/r};
-const KIT=makeKit(D,{power:POWER||{},tags:Object.fromEntries(Object.entries(EX||{}).map(([k,v])=>[k,v.tags||[]])),pulls,field:FIELD||{}});
+const KIT=makeKit(D,{power:POWER||{},tags:Object.fromEntries(Object.entries(EX||{}).map(([k,v])=>[k,v.tags||[]])),pulls,field:FIELD||{},official:OFFICIAL||[]});
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:D.stats?.[c.n]?.r||c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});

@@ -12,7 +12,7 @@ const TAGS=Object.fromEntries(Object.entries(EX).map(([k,v])=>[k,v.tags||[]]));
 const CARD=new Map(CARDS.map(c=>[c.n,c]));
 const RATE={5:0.0016,4:0.009,3:0.0344};
 const pulls=n=>1/(CARD.get(n)?.s1/100||RATE[L.rarityOf(n)]||RATE[5]);
-const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD});
+const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD,official:J('official.json')});
 const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900,LV=50,LANDS=[4,5,6,7,8,9,10];
 const R=L.rng(20261120),t0=Date.now(),log=m=>console.error(`[${((Date.now()-t0)/1000).toFixed(0)}s] ${m}`);
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'),cost=L.costOf;
