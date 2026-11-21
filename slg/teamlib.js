@@ -224,6 +224,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       v*=(TU.cat[catOf(s)]??1)*(TU.grade[grade(s)]??1);
       // 官方編制先驗（回測會排除同一組三人）
       const ofc=ofGS(g.n,s,loo),ofs=ofS(s,loo);
+      // 官方資料沒出現過的戰法：officialOnly（一鍵推薦／榜單）直接剔除；官方有人帶、但這位武將沒帶過的組合只降權（預設 .6，官方先驗關閉時不動）
+      if(ctx.officialOnly&&!ofc&&!ofs)return{v:0,tips:[]};
+      if(ctx.officialOnly&&!ofc)v*=.6;
       if(ofc>0){v*=1+TU.pGS*Math.min(1,ofc/3);tips.push(`官方編制裡${g.n}常帶這招（${ofc} 組）`)}
       else if(ofs>0)v*=1+TU.pS*Math.min(1,ofs/OF_MAX*1.5);
       return{v,tips};
