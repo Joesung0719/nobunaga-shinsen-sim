@@ -258,13 +258,11 @@ export function battle(A,B,R=Math.random){
   }
   outer:for(round=1;round<=K.rounds;round++){
     ev({type:'round',round});
-    // 軍學能力：弓 齊射（第2、6回合）、足輕 守禦（第5回合）、鐵炮 破軍（第3回合）
+    // 軍學能力：只模擬截圖寫明的足輕 守禦（第5回合，我軍群體2人，治療率100%）
     for(const t of T)if(t.study&&t.gens.some(g=>g.troops>0)){
-      const ti=T.indexOf(t),e=T[1-ti],al=aliveIdx(t);
-      if(t.arm==='弓'&&(round===2||round===6)&&aliveIdx(e).length){
-        for(const i of pickN(al,R()<.5?2:3,R)){const n=R()<.5?1:2;for(const j of pickN(aliveIdx(e),n,R)){const r=hit(t,ti,i,e,j,.6,'auto','兵學');if(r)ev({type:'skill',side:t.side,i,skill:'齊射',kind:'軍學',tg:[r]})}}}
+      const al=aliveIdx(t);
+      // 齊射（弓，第2、6回合）的傷害係數、破軍（鐵炮，第3回合）的持續回合：截圖沒寫，標示為未知、不模擬
       if(t.arm==='槍'&&round===5){const hs=pickN(al,2,R).map(j=>healTo(t,j,t.gens[j],1)).filter(Boolean);if(hs.length)ev({type:'skill',side:t.side,i:al[0],skill:'守禦',kind:'軍學',tg:hs})}
-      if(t.arm==='鐵炮'&&round===3){const j=pickN(al,1,R)[0];t.gens[j].tm.push({k:'pierce',v:25,until:round+1});ev({type:'skill',side:t.side,i:j,skill:'破軍',kind:'軍學',tg:[{side:t.side,i:j,status:'破陣 25%'}]})}
     }
     // 達人大觀：第 4 回合淨化友軍單體 2 個減益狀態
     if(round===4)for(const t of T)t.gens.forEach((g,i)=>{if(g.troops>0&&g.q==='達人大觀'){

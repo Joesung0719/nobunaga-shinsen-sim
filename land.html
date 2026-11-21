@@ -1032,7 +1032,7 @@ function renderTeamBar(bonus){
   $('arms').replaceChildren(...ARMS.map(([k,label])=>{const b=el('button',{type:'button','aria-pressed':String(S.my.arm===k)},el('b',{},k[0]),el('small',{},label));b.onclick=()=>{S.my.arm=k;save();renderBuilder()};return b}));
   $('armInfo').replaceChildren(el('span',{class:'pill',html:`${S.my.arm}兵 <b>Lv${al.lv}</b>`}),el('span',{class:'pill'},`${ARM_CAMP[S.my.arm]} ${al.camp}`),el('span',{class:'pill'},`特性 +${al.tr}`),el('span',{class:'pill',html:`上限 ${al.cap}${al.raw>al.cap?`（超出 ${al.raw-al.cap} 級無效）`:''}`}));
   const fsame=el('input',{type:'checkbox'});fsame.checked=!!S.my.fac.same;fsame.onchange=()=>{S.teams.forEach(t=>t.fac.same=fsame.checked);S.my.fac.same=fsame.checked;save();renderBuilder()};
-  $('fac').replaceChildren(el('span',{class:'note',style:'grid-column:1/-1'},'設施一律假設升到滿：協力 Lv10（三人同勢力才生效，最多 +7%；三人勢力不同時沒有，只能搭「合盟之陣」）、兵種營 Lv5、家門 Lv3（+3%）、軍學修習 Lv5（依兵種給屬性、傷害％與齊射／守禦／破軍）。合盟之陣依隊伍自動判定：三個不同勢力才會啟動。'),
+  $('fac').replaceChildren(el('span',{class:'note',style:'grid-column:1/-1'},'設施一律假設升到滿：協力 Lv10（三人同勢力才生效，最多 +7%；三人勢力不同時沒有，只能搭「合盟之陣」）、兵種營 Lv5、家門 Lv3（+3%）、軍學修習 Lv5（依兵種給屬性與傷害／受傷％，足輕守禦已計；弓齊射的傷害係數、鐵炮破軍的持續回合截圖沒寫，未計入）。合盟之陣依隊伍自動判定：三個不同勢力才會啟動。'),
     el('label',{style:'grid-column:1/-1'},fsame,'三人同家門（勾了才算家門 +3%）'));
   const ts=teamStatPct().parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`));
   $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]),...ts);
