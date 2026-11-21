@@ -21,12 +21,12 @@ const INN=new Set([...Object.values(D.innate),...Object.values(D.stats).map(x=>x
 const POOLSK=Object.keys(D.skillText).filter(s=>!INN.has(s)).map(s=>[s,val(s)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
 // 傳授戰法：用組隊推薦（slg/teamlib.js pick）依「這一隊」搭配，不再每人都拿全域最強的同兩招：
 // 自帶突擊要搭突擊／普攻類、主動戰法不堆太多、兵種技要符合隊伍兵種、增益要有可加成的對象，並參考戰報勝率。
-const kit=makeKit(D,{power:JSON.parse(fs.readFileSync(new URL('../skillpower.json',import.meta.url))),field:JSON.parse(fs.readFileSync(new URL('../field.json',import.meta.url)))});
+const kit=makeKit(D,{power:JSON.parse(fs.readFileSync(new URL('../skillpower.json',import.meta.url))),field:JSON.parse(fs.readFileSync(new URL('../field.json',import.meta.url))),official:JSON.parse(fs.readFileSync(new URL('../official.json',import.meta.url)))});
 const PLAN=new Map();
 function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const arm=bestArm(D,names)||'槍';
   const st=names.map(n=>({n,red:RED,st:fullRedStats(D,n,names,arm,LV,RED,FULL)})),pl=kit.pick(st,null,{},{arm});p=pl.sel;p.q=kit.quality(st,pl.sel,arm);PLAN.set(key,p)}return p}
 
-const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
+const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(v.r||5)===5&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
 const cands=[];
 for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<gens.length;k++){

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle} from '../slg/engine.js';
-const {D}=L;const kit=makeKit(D);
+const {D}=L;const OFFI=JSON.parse(fs.readFileSync(new URL('../official.json',import.meta.url)));const kit=makeKit(D,{official:OFFI});
 const R=L.rng(20261120),FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900;
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定');
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);

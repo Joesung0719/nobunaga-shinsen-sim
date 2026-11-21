@@ -447,8 +447,8 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=48';
-import {makeKit} from './slg/teamlib.js?v=4';
+import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=49';
+import {makeKit} from './slg/teamlib.js?v=5';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -485,7 +485,7 @@ const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-
 const SLG_KEY='shinsen-slg-v1';
 const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
 const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
-  skLv:DEFAULT_SKILL_LV,cmin:15,cmax:15,thr:70,nteam:1,rtab:'best',tgt:'land',opp:{preset:'0:5',gens:[]},
+  skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'best',tgt:'land',opp:{preset:'0:5',gens:[]},
   my:{gens:[{n:'立花誾千代',s:['',''],t:9900},{n:'立花道雪',s:['',''],t:9900},{n:'北條氏康',s:['',''],t:9900}],arm:'弓'}},load());
 let slgSet=null;
 if(SLG){
@@ -713,11 +713,11 @@ function renderTab(){
 
 // ---- team builder ----
 const J=f=>fetch(f,{cache:'no-cache'}).then(r=>r.json()).catch(()=>null);
-const [CARDS,POWER,FIELD,EX,R,RANK]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json'].map(J));
+const [CARDS,POWER,FIELD,EX,R,RANK,OFFICIAL]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json','official.json'].map(J));
 const CARD=new Map(CARDS.map(c=>[c.n,c])),RATE={5:.0016,4:.009,3:.0344};
 // 登用期望抽數 = 1 ÷ 該武將機率（名將登用公告；不計每 5 抽保底）
 const pulls=n=>{const c=CARD.get(n);const r=c?.s1?c.s1/100:RATE[c?.r||D.stats?.[n]?.r||5]||RATE[5];return 1/r};
-const KIT=makeKit(D,{power:POWER||{},tags:Object.fromEntries(Object.entries(EX||{}).map(([k,v])=>[k,v.tags||[]])),pulls,field:FIELD||{}});
+const KIT=makeKit(D,{power:POWER||{},tags:Object.fromEntries(Object.entries(EX||{}).map(([k,v])=>[k,v.tags||[]])),pulls,field:FIELD||{},official:OFFICIAL||[]});
 const ROSTER=new Map();
 const COST_CAP=20;   // team cost limit in game
 for(const c of CARDS)ROSTER.set(c.n,{n:c.n,r:D.stats?.[c.n]?.r||c.r,c:D.stats?.[c.n]?.c??c.c,img:c.id});
@@ -1236,7 +1236,8 @@ $('sug').onclick=async()=>{
 // ================= ② 一鍵推薦 =================
 const A=R?.assumptions||{lands:[4,5,6,7,8,9,10],cost:[15,20],troops:9900};
 const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
-const prow=(t,lv)=>t.w[lv]||[0,0];
+const STG={early:['初期',4,15,16],mid:['中期',7,17,17],late:['後期',10,18,20]};
+const prow=(t,lv)=>((S.stage&&S.stage!=='late'&&t.ws?.[S.stage])||t.w)[lv]||[0,0];
 const inRange=t=>t.c>=S.cmin&&t.c<=S.cmax;
 function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣本越多權重越大）
   const[w,left]=prow(t,S.lv),w2=(prow(t,9)[0]+prow(t,10)[0])/2,sim=(w+w2*2)/300+left/100*.1,n=t.f[1],wf=.5*Math.min(1,n/6);   // 低等級會飽和 100%，併看高兩級；戰報實戰分權重提高
@@ -1267,11 +1268,18 @@ function card(t,i){
   const gens=t.n.map((n,gi)=>{const g=R.gens[n];return el('div',{class:'gg'},el('b',{},(gi?'':'★')+n),el('span',{class:`rc r${g.r}`},`${g.r}★ Cost${g.c}`),el('span',{class:'sk'},[g.inn,...t.s[gi]].filter(Boolean).join('・')))});
   const f=KIT.fieldScore(t.n);
   const det=el('details',{},el('summary',{},'推薦理由'),el('ul',{class:'why'},...t.why.flatMap((l,gi)=>l.map(x=>el('li',{},el('b',{},t.n[gi]+'　'),x))),el('li',{},fieldLine(f))));
+  const upBox=[];
+  if(t.up?.length){
+    const show=(u,label)=>{const x=R.teams[u];if(!x)return null;const out=t.n.filter(n=>!x.n.includes(n)),inn=x.n.filter(n=>!t.n.includes(n));
+      return el('li',{},el('b',{},label+'　'),`${x.n.join('、')}（${ARMN[x.a]}・Cost ${x.c}）`,out.length&&out.length<3?`：換掉 ${out.join('、')}，換上 ${inn.join('、')}`:'',`；Lv9 ${prow(x,9)[0]}%・Lv10 ${prow(x,10)[0]}%`)};
+    const rows=t.up.flatMap(([c,one,full])=>[one>=0?show(one,`Cost ${c}・最少更換（1 張繼承券）`):null,full>=0?show(full,`Cost ${c}・全面換血`):null]).filter(Boolean);
+    upBox.push(el('details',{},el('summary',{},'Cost 提高後的升級路線'),el('ul',{class:'why'},...rows,el('li',{class:'note'},'玩家兩種思路：用最低資源只換一位，或不顧資源大換血組最強隊；後期隊伍多為 Cost 18～20。'))));
+  }
   const go=el('button',{class:'pbtn ghost',type:'button'},`載入到第 ${S.ti+1} 隊`);go.onclick=()=>{loadInto(S.ti,t.n,t.a);save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
   const acts=[go];
   if(S.teams.length<3&&!SLG){const add=el('button',{class:'pbtn ghost',type:'button'},'加為新一隊');add.onclick=()=>{S.teams.push(mkMy(t.n,t.a));S.ti=S.teams.length-1;S.my=S.teams[S.ti];trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};acts.push(add)}
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
-    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det),
+    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det,...upBox),
     el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('small',{},`Lv9：${prow(t,9)[0]}%・Lv10：${prow(t,10)[0]}%`)),
     el('div',{class:'acts'},...acts));
 }
@@ -1289,9 +1297,11 @@ function rankCard(t,i,k){
 function renderRec(){
   const opts=[];for(let c=A.cost[0];c<=A.cost[1];c++)opts.push(c);
   $('cmin').innerHTML=opts.map(c=>`<option${c===S.cmin?' selected':''}>${c}</option>`).join('');$('cmax').innerHTML=opts.map(c=>`<option${c===S.cmax?' selected':''}>${c}</option>`).join('');
-  $('cnote').textContent='開季初始三人 Cost 總和 15，之後隨建設／科技提高，上限可調到 20。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
+  $('cnote').textContent='練度檔位：初期搶資源、升級用的銀幣不多（銀幣用來開兵學、換戰法點數），所以初期模擬戰法 Lv4、中期 Lv7、後期 Lv10，兵學不計。開荒隊伍會隨劇本與建設提高 Cost，之後用繼承券換將；後期隊伍多為 Cost 18～20、沒人用紫將，所以這裡只推金將（5★），並假設你已有大部分武將、差在紅度，不計抽數。每隊都附「升級路線」：只換一位的最少更換，或不顧資源的全面換血。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
+  for(const[k,v]of Object.entries(STG)){const b=el('button',{class:'chip',type:'button','aria-pressed':String((S.stage||'late')===k),title:`戰法 Lv${v[1]}、Cost ${v[2]}～${v[3]}`},`${v[0]}（Cost ${v[2]}${v[2]===v[3]?'':'～'+v[3]}）`);b.onclick=()=>{S.stage=k;S.cmin=v[2];S.cmax=v[3];save();renderRec()};box.append(b)}
+  box.append(el('span',{class:'note'},'｜'));
   for(const[k,t]of[['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
   const L=$('rlist');
   if(!R){L.replaceChildren(el('p',{class:'note'},'推薦資料讀取失敗'));return}
