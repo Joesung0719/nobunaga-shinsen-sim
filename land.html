@@ -447,7 +447,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=47';
+import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=48';
 import {makeKit} from './slg/teamlib.js?v=4';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
@@ -501,6 +501,7 @@ function load(){
     const o=JSON.parse(localStorage.getItem(KEY))||{};
     // 戰法等級改為 Lv1～10（舊版是 1～5）：舊存檔的預設等級與個別等級都作廢，改用新預設
     if(o.rtab==='cheap')o.rtab='best';
+    for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))if(m.t>10000)m.t=10000;   // 每人兵力上限 1 萬（Joe）
     if(o.lvScale!==10){delete o.skLv;for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))m.sl={};o.lvScale=10}
     return o;
   }catch{return{}}
@@ -735,7 +736,7 @@ const kindOf=n=>D.kind?.[n]||null;
 const kindBadge=n=>{const k=kindOf(n);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
 const SKILL_POOL=SKILLS.filter(([n])=>kindOf(n)!=='內政');
 function normTeam(my){
-  my.fac=Object.assign({co:10,arm:5,ka:3,same:false},my.fac);
+  my.fac={co:10,arm:5,ka:3,same:my.fac?.same??true};   // Joe：建設、勢力、家門玩家一定會升滿，一律用全滿值，不給調整
   for(const m of my.gens){
     m.s=(m.s||['','']).map(x=>INNATE.has(x)||kindOf(x)==='內政'?'':x);while(m.s.length<2)m.s.push('');   // innate / 內政 picks saved by older versions
     m.sl=Object.fromEntries(Object.entries(m.sl||{}).filter(([n,v])=>(n===innateOf(m.n)||m.s.includes(n))&&v>=1&&v<=MAX_SKILL_LV));
@@ -1007,7 +1008,7 @@ function renderBuilder(){
     const skills=el('div',{class:'skills'},
       inn?skillTile(inn,'固有',()=>showSkill(inn,'固有戰法（不能傳承）'),m):el('div',{class:'skt empty'},el('span',{class:'kb'},'？'),el('div',{class:'t'},el('b',{},'固有戰法尚未收集')),el('span')),
       ...m.s.map((n,j)=>skillTile(n,`傳承 ${j+1}`,()=>pickSkill(i,j),m)));
-    const tr=el('input',{type:'range',min:'1000',max:'20000',step:'100',value:String(m.t),'aria-label':'兵力'});
+    const tr=el('input',{type:'range',min:'1000',max:'10000',step:'100',value:String(m.t),'aria-label':'兵力'});
     const tv=el('b',{},fmt(m.t));
     tr.oninput=()=>{tv.textContent=fmt(+tr.value)};
     tr.onchange=()=>{m.t=+tr.value;save();renderBuilder()};
@@ -1030,12 +1031,9 @@ function renderTeamBar(bonus){
   const al=armLevel();
   $('arms').replaceChildren(...ARMS.map(([k,label])=>{const b=el('button',{type:'button','aria-pressed':String(S.my.arm===k)},el('b',{},k[0]),el('small',{},label));b.onclick=()=>{S.my.arm=k;save();renderBuilder()};return b}));
   $('armInfo').replaceChildren(el('span',{class:'pill',html:`${S.my.arm}兵 <b>Lv${al.lv}</b>`}),el('span',{class:'pill'},`${ARM_CAMP[S.my.arm]} ${al.camp}`),el('span',{class:'pill'},`特性 +${al.tr}`),el('span',{class:'pill',html:`上限 ${al.cap}${al.raw>al.cap?`（超出 ${al.raw-al.cap} 級無效）`:''}`}));
-  const f=S.my.fac,set=(k,v)=>{f[k]=v;save();renderBuilder()};
-  const same=el('input',{type:'checkbox'});same.checked=f.same;same.onchange=()=>set('same',same.checked);
-  $('fac').replaceChildren(
-    el('span',{},`協力 Lv${f.co}`),pips(10,f.co,v=>set('co',v)),
-    el('span',{},`兵種營 Lv${f.arm}`),pips(5,f.arm,v=>set('arm',v)),
-    el('span',{},`家門 Lv${f.ka}`),el('div',{class:'row',style:'gap:10px'},pips(3,f.ka,v=>set('ka',v)),el('label',{},same,'三人同家門')));
+  const fsame=el('input',{type:'checkbox'});fsame.checked=!!S.my.fac.same;fsame.onchange=()=>{S.teams.forEach(t=>t.fac.same=fsame.checked);S.my.fac.same=fsame.checked;save();renderBuilder()};
+  $('fac').replaceChildren(el('span',{class:'note',style:'grid-column:1/-1'},'設施一律假設升到滿：協力 Lv10（三人同勢力才生效，最多 +7%；三人勢力不同時沒有，只能搭「合盟之陣」）、兵種營 Lv5、家門 Lv3（+3%）、軍學修習 Lv5（依兵種給屬性、傷害％與齊射／守禦／破軍）。合盟之陣依隊伍自動判定：三個不同勢力才會啟動。'),
+    el('label',{style:'grid-column:1/-1'},fsame,'三人同家門（勾了才算家門 +3%）'));
   const ts=teamStatPct().parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`));
   $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]),...ts);
 }
@@ -1132,7 +1130,7 @@ function calcOf(my){const old=S.my;S.my=my;try{const p=teamBonus().pct;return my
 const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
   const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]));
-  return{name:names[0]+'隊',side:0,arm:my.arm,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,f:D.stats?.[m.n]?.f,
+  return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,f:D.stats?.[m.n]?.f,
     st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
@@ -1253,7 +1251,7 @@ function loadInto(ti,names,arm,skills){
 }
 $('ai').onclick=async()=>{
   const note=$('aiNote');
-  const pool=(R?.teams||[]).filter(inRange).sort((a,b)=>composite(b)-composite(a)||(a.r[0]+a.r[1])-(b.r[0]+b.r[1]));
+  const pool=(R?.teams||[]).filter(inRange).sort((a,b)=>(b.q||0)-(a.q||0)||composite(b)-composite(a)||(a.r[0]+a.r[1])-(b.r[0]+b.r[1]));
   if(!pool.length){note.textContent='這個 Cost 範圍沒有資料，調整範圍再試。';return}
   const n=+$('nteam').value,picks=[],used=new Set();
   for(const t of pool){if(t.n.some(x=>used.has(x)))continue;picks.push(t);t.n.forEach(x=>used.add(x));if(picks.length>=n)break}
@@ -1304,7 +1302,7 @@ function renderRec(){
   // Joe：守軍 Lv6～8 本來就弱，Lv9～10 才強；排序以 Lv9、Lv10 勝率為主（模擬是 0 紅、戰法滿級，課金／練度更高的帳號只會更強）
   const lv2=Math.max(9,S.lv),w2=t=>prow(t,lv2)[0],avg=t=>(prow(t,9)[0]+prow(t,10)[0])/2;
   if(false){}
-  else if(S.rtab==='best'){note=`依打下 Lv9、Lv10 的平均模擬勝率排序前 5 隊（Lv6～8 守軍弱、幾乎都 100%，不拿來分高下；模擬是 0 紅、Lv50、戰法滿級，紅度與練度更高會再強一些）。`;list=rows.slice().sort((a,b)=>avg(b)-avg(a)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
+  else if(S.rtab==='best'){note=`先看搭配品質（只收戰法、兵種、突擊連動都成立的隊伍）、再依打下 Lv9、Lv10 的平均模擬勝率排序前 5 隊（Lv6～8 守軍弱、幾乎都 100%，不拿來分高下；模擬是 0 紅、Lv50、戰法滿級，紅度與練度更高會再強一些）。`;list=rows.slice().sort((a,b)=>(b.q||0)-(a.q||0)||avg(b)-avg(a)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5)}
   else if(S.rtab==='pro'){note='戰報裡玩家實際出場、實戰勝率高的搭配（樣本少，僅供參考）。';list=rows.filter(t=>t.f[1]>=1).sort((a,b)=>b.f[0]-a.f[0]).slice(0,6)}
   if(S.rtab==='rank'){
     const k=S.rred||'0',rk=(RANK?.[k]||[]).filter(t=>t.team.reduce((a,n)=>a+costOf(n),0)<=S.cmax&&t.team.reduce((a,n)=>a+costOf(n),0)>=S.cmin);

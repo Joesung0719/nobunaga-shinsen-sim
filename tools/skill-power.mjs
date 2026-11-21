@@ -5,7 +5,7 @@ import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle} from '../slg/engine.js';
 const {D}=L;const kit=makeKit(D);
-const R=L.rng(20261120),FAC={co:5,arm:5},TROOPS=9900;
+const R=L.rng(20261120),FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900;
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定');
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);
 const phys=n=>{const s=D.stats[n].st;return s.武勇[0]+s.武勇[1]*40>=s.智略[0]+s.智略[1]*40};

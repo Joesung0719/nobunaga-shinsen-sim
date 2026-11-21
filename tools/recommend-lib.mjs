@@ -40,8 +40,8 @@ export function teamStats(names,arm,lv,red,fac){
   });
 }
 export const armsWithSynergy=names=>{const o=new Set();for(const n of names)for(const t of D.stats[n]?.traits||[]){const a=traitFx(n,t).arm;for(const k in a||{})o.add(k)}return o};
-export const myTeam=(names,arm,st,skills,troops)=>({name:names[0]+'隊',side:0,arm,terrain:'平',
-  gens:names.map((n,i)=>({n,f:'',st:{...st[i]},troops,max:troops,skills:[innateOf(D,n),...skills[i]].filter(Boolean).map(ps),bg:null}))});
+export const myTeam=(names,arm,st,skills,troops)=>({name:names[0]+'隊',side:0,arm,study:true,terrain:'平',
+  gens:names.map((n,i)=>({n,f:D.stats[n]?.f||'',st:{...st[i]},troops,max:troops,skills:[innateOf(D,n),...skills[i]].filter(Boolean).map(ps),bg:null}))});
 const armOfGarrison=k=>D.reports.find(r=>r.t===k&&r.ty)?.ty||'騎';
 export function garrison(k,lv){
   const L=D.levels[lv],t=D.teams[k];
