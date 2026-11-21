@@ -28,10 +28,13 @@ function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const 
 
 const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(v.r||5)===5&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
+const LEAD=kit.LEAD;
+const PW0=n=>{const st=fullRedStats(D,n,[n],'槍',LV,RED);return Math.max(st.武勇,st.智略)+.5*st.統率+.3*st.速度};
 const cands=[];
 for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<gens.length;k++){
   const c=gens[i].c+gens[j].c+gens[k].c;if(c>CAP)continue;
-  cands.push([gens[i].n,gens[j].n,gens[k].n]);
+  const tm=[gens[i].n,gens[j].n,gens[k].n],tl=tm.filter(n=>LEAD.has(n)),tr=(tl.length?tl:tm).sort((x,y)=>PW0(y)-PW0(x));   // 大將位偏好有大將技的武將（沒有就任選，不設限制）
+  cands.push([tr[0],...[gens[i].n,gens[j].n,gens[k].n].filter(n=>n!==tr[0])]);
 }
 function mk(names,side,red=RED){
   const arm=bestArm(D,names)||'槍';

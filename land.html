@@ -1236,8 +1236,7 @@ $('sug').onclick=async()=>{
 // ================= ② 一鍵推薦 =================
 const A=R?.assumptions||{lands:[4,5,6,7,8,9,10],cost:[15,20],troops:9900};
 const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
-const STG={early:['初期',4,15,16],mid:['中期',7,17,17],late:['後期',10,18,20]};
-const prow=(t,lv)=>((S.stage&&S.stage!=='late'&&t.ws?.[S.stage])||t.w)[lv]||[0,0];
+const prow=(t,lv)=>t.w[lv]||[0,0];
 const inRange=t=>t.c>=S.cmin&&t.c<=S.cmax;
 function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣本越多權重越大）
   const[w,left]=prow(t,S.lv),w2=(prow(t,9)[0]+prow(t,10)[0])/2,sim=(w+w2*2)/300+left/100*.1,n=t.f[1],wf=.5*Math.min(1,n/6);   // 低等級會飽和 100%，併看高兩級；戰報實戰分權重提高
@@ -1297,11 +1296,9 @@ function rankCard(t,i,k){
 function renderRec(){
   const opts=[];for(let c=A.cost[0];c<=A.cost[1];c++)opts.push(c);
   $('cmin').innerHTML=opts.map(c=>`<option${c===S.cmin?' selected':''}>${c}</option>`).join('');$('cmax').innerHTML=opts.map(c=>`<option${c===S.cmax?' selected':''}>${c}</option>`).join('');
-  $('cnote').textContent='練度檔位：初期搶資源、升級用的銀幣不多（銀幣用來開兵學、換戰法點數），所以初期模擬戰法 Lv4、中期 Lv7、後期 Lv10，兵學不計。開荒隊伍會隨劇本與建設提高 Cost，之後用繼承券換將；後期隊伍多為 Cost 18～20、沒人用紫將，所以這裡只推金將（5★），並假設你已有大部分武將、差在紅度，不計抽數。每隊都附「升級路線」：只換一位的最少更換，或不顧資源的全面換血。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
+  $('cnote').textContent='Cost 範圍可自己調（預設 18～20）；推薦榜以戰法滿級、兵學不計模擬。開荒隊伍會隨劇本與建設提高 Cost，之後用繼承券換將；後期隊伍多為 Cost 18～20、沒人用紫將，所以這裡只推金將（5★），並假設你已有大部分武將、差在紅度，不計抽數。每隊都附「升級路線」：只換一位的最少更換，或不顧資源的全面換血。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
-  for(const[k,v]of Object.entries(STG)){const b=el('button',{class:'chip',type:'button','aria-pressed':String((S.stage||'late')===k),title:`戰法 Lv${v[1]}、Cost ${v[2]}～${v[3]}`},`${v[0]}（Cost ${v[2]}${v[2]===v[3]?'':'～'+v[3]}）`);b.onclick=()=>{S.stage=k;S.cmin=v[2];S.cmax=v[3];save();renderRec()};box.append(b)}
-  box.append(el('span',{class:'note'},'｜'));
   for(const[k,t]of[['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
   const L=$('rlist');
   if(!R){L.replaceChildren(el('p',{class:'note'},'推薦資料讀取失敗'));return}
