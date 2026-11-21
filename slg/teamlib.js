@@ -60,6 +60,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     const r={tier,heal,support:!p.dmg||!!p.alliance||p.kind==='指揮'||c.t==='combo'};
     TC.set(s,r);return r;
   }
+  // 大將位偏好（Joe 2026-11-21：大將通常只給有大將技的武將，但遊戲讓玩家自己配、模擬器不設限制，只當加分；大將技寫在武將自身（固有）戰法的說明裡，即 skillText[固有戰法].boss）。
+  // 例外：官方編制裡實際擔任過大將的武將一律算（目前只有阿市的夢幻泡影沒收到大將技說明，疑似資料缺口）。
+  const LEAD=new Set([...Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss),...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);
   // 官方編制先驗：戰法人氣、武將×戰法搭配次數
   const OF_S={},OF_GS={};let OF_MAX=1;
   for(const t of official)for(const g of t.gens)for(const sk of g.s)if(sk){OF_S[sk]=(OF_S[sk]||0)+1;OF_GS[g.n+'|'+sk]=(OF_GS[g.n+'|'+sk]||0)+1;OF_MAX=Math.max(OF_MAX,OF_S[sk])}
@@ -235,6 +238,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 組好之後的檢查：回傳 [{lv:'warn'|'ok', t}]，給畫面顯示「這組搭配有沒有問題」
   function check(team,sel,arm){
     const out=[],K=n=>kindOf(n),inn=team.map(g=>K(innateOf(D,g.n)));
+    if(LEAD.has(team[0].n))out.push({lv:'ok',t:`大將${team[0].n}有大將技（玩家通常讓有大將技的武將當大將；只是慣例，不是限制）`});
     team.forEach((g,i)=>{
       const mine=sel[i].filter(Boolean),all=[innateOf(D,g.n),...mine].filter(Boolean);
       if(inn[i]==='突擊'||mine.some(x=>K(x)==='突擊')){
@@ -249,5 +253,5 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     const ft=facType(team);if(ft==='mixed')out.push({lv:'note',t:'兩種勢力混搭：沒有同勢力協力，也不能配合盟之陣（官方編制較少見）'});
     return out;
   }
-  return{kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
+  return{LEAD,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
 }

@@ -15,7 +15,7 @@ const pulls=n=>1/(CARD.get(n)?.s1/100||RATE[L.rarityOf(n)]||RATE[5]);
 const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD,official:J('official.json')});
 const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900,LV=50,LANDS=[4,5,6,7,8,9,10];
 const R=L.rng(20261120),t0=Date.now(),log=m=>console.error(`[${((Date.now()-t0)/1000).toFixed(0)}s] ${m}`);
-// Joe 2026-11-21：第六季，玩家已有大部分武將、差在紅度，沒人用紫將 → 戰法等級分三檔：初期 Lv4／中期 Lv7／後期 Lv10（ws 欄；w 為後期），兵學不計；只推金將（5★），不算抽數／取得成本
+// Joe 2026-11-21：第六季，玩家已有大部分武將、差在紅度，沒人用紫將 → 戰法滿級（Lv10）、兵學不計；只推金將（5★），不算抽數／取得成本
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'&&L.rarityOf(n)===5),cost=L.costOf;
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);
 const mrg=(my,foe)=>{const A=L.clone(my),B=L.clone(foe);const r=battle(A,B,R);return(sumT(A)/sumM(A)-sumT(B)/sumM(B))+(r.res==='W'?.3:r.res==='L'?-.3:0)};
@@ -24,8 +24,6 @@ const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
 const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
 const mkTeam=(names,arm,sk,slv=null)=>{const st=L.teamStats(names,arm,LV,0,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS,slv)}};
-// 練度檔位（Joe 2026-11-21：初期要搶資源，升級用的銀幣不多；銀幣用來開兵學、換戰法點數）：初期戰法 Lv4、中期 Lv7、後期 Lv10；兵學本模擬一律不計。
-const STAGES={early:4,mid:7,late:10};
 function plan(names,arm){   // 組出戰法：回傳 sel、why
   const st=L.teamStats(names,arm,LV,0,FAC);
   const tm=names.map((n,i)=>({n,red:0,st:st[i]})),pl=kit.pick(tm,null,{},{arm});
@@ -57,7 +55,8 @@ for(const x of uniq.values()){
       const pl=plan(names,arm);if(!pl.q.ok){rej++;continue}   // 搭配不合格的直接不入榜
       const{team}=mkTeam(names,arm,pl.sel);let a=0;
       for(let q=0;q<4;q++)a+=mrg(team,FOE8[q%FOE8.length]);
-      if(!best||a>best.a)best={a,names,arm,pl}
+      const a2=a+(kit.LEAD.has(names[0])?.5:0);   // 大將有大將技的軟性加分（經驗偏好，不是限制）
+      if(!best||a2>best.a2)best={a,a2,names,arm,pl}
     }
   }
   if(best)mid.push({x,...best});
@@ -71,10 +70,9 @@ const teams=[];let k2=0;
 for(const m of fin){
   const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk);
   const w={};for(const lv of LANDS){const r=marchPct(team,lv,24);w[lv]=r}
-  const ws={};for(const[sn,sl]of Object.entries(STAGES)){if(sn==='late')continue;const tm=mkTeam(names,m.arm,sk,sl).team;ws[sn]={};for(const lv of LANDS)ws[sn][lv]=marchPct(tm,lv,12)}
   const src=[],gen=0,ks=0;   // 不再計抽數
   const f=kit.fieldScore(names);
-  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,r:[gen,ks,src],w,ws,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
+  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,r:[gen,ks,src],w,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
   if(++k2%300===0)log(`細算 ${k2}/${fin.length}`);
 }
 function marchPct(my,lv,reps){
