@@ -29,6 +29,13 @@ function plan(names){const key=names.join('|');let p=PLAN.get(key);if(!p){const 
 const gens=Object.entries(D.stats).filter(([n,v])=>v.c&&(v.r||5)===5&&(POOL==='all'||!['限定','PK'].includes(v.season))).map(([n,v])=>({n,c:v.c,s:v.season}));
 // 3 人組合（Cost 總和 ≤ CAP；3 人皆須有固有戰法文字）
 const LEAD=kit.LEAD;
+// 官方大名錄先驗（2026-11-21 拆解後加入）：只靠「對隨機隊的模擬勝率」排名時，榜單被傷害數字誇張的武將（真柄直隆）佔滿、八成是三勢力拼盤，
+// 和官方高手的配法差很遠（官方同勢力 68%、三勢力 18%）。引擎沒有補血、發動率、準備回合這些因果，所以排序分 = 勝率 + 小幅加分（只調排序，不設限制）：
+//  · 同勢力（吃協力；真田昌幸／德川家康的勢力可變已算進去）+0.12（官方 68% 同勢力、18% 三勢力合盟，引擎的合盟之陣加成偏強）；
+//  · 隊員在官方編制出現的熟悉度（出現 4 次以上滿分）最多 +0.10（官方榜 66 位武將出現過；沒出現不代表不好，只是沒有高手驗證，引擎又高估傷害數字誇張的人）。
+const OFF=JSON.parse(fs.readFileSync(new URL('../official.json',import.meta.url)));
+const OFN={};for(const t of OFF)for(const g of t.gens)OFN[g.n]=(OFN[g.n]||0)+1;
+const bonus=t=>{const f=kit.facsOf(t.map(n=>({n})));return(f.every(x=>x&&x===f[0])?.12:0)+.10*t.reduce((a,n)=>a+Math.min(1,(OFN[n]||0)/4),0)/t.length};
 const PW0=n=>{const st=fullRedStats(D,n,[n],'槍',LV,RED);return Math.max(st.武勇,st.智略)+.5*st.統率+.3*st.速度};
 const cands=[];
 for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<gens.length;k++){
@@ -48,10 +55,10 @@ const pickN=(arr,n)=>{const o=[];while(o.length<n)o.push(arr[Math.floor(rng()*ar
 const pw=n=>{const st=fullRedStats(D,n,[n],'槍',LV,RED);return Math.max(st.武勇,st.智略)+.5*st.統率+.3*st.速度+120*val(innateOf(D,n))};
 const PW=Object.fromEntries(gens.map(g=>[g.n,pw(g.n)]));
 // 搭配品質是硬性門檻：戰法組不合格的隊伍（突擊沒連動、兵種技不符、主動堆太多…）不進榜
-const pool0=cands.map(t=>[t,t.reduce((a,n)=>a+PW[n],0)]).sort((a,b)=>b[1]-a[1]).slice(0,60000).map(x=>x[0]).filter(t=>plan(t).q.ok).slice(0,20000);
+const pool0=cands.map(t=>[t,t.reduce((a,n)=>a+PW[n],0)+(kit.facsOf(t.map(n=>({n}))).every((x,_,f)=>x&&x===f[0])?80:0)]).sort((a,b)=>b[1]-a[1]).slice(0,60000).map(x=>x[0]).filter(t=>plan(t).q.ok).slice(0,20000);
 // 階段 1：粗篩（12 支隨機隊試算）
 const field=pickN(pool0,12);
-const s1=pool0.map(t=>({t,w:field.reduce((a,f)=>a+duel(t,f),0)/field.length})).sort((a,b)=>b.w-a.w).slice(0,300);
+const s1=pool0.map(t=>({t,w:field.reduce((a,f)=>a+duel(t,f),0)/field.length})).sort((a,b)=>b.w+bonus(b.t)-a.w-bonus(a.t)).slice(0,300);
 // 階段 2：循環賽
 const SIMS2=SIMS*2;
 for(const x of s1){x.g=0;x.n=0}
@@ -60,9 +67,9 @@ for(let i=0;i<s1.length;i++)for(let j=i+1;j<s1.length;j++){
   s1[i].g+=w/SIMS2;s1[j].g+=1-w/SIMS2;s1[i].n++;s1[j].n++;
 }
 // 階段 3：前 40 名對粗篩的 300 強各打 12 場，降低雜訊
-s1.sort((a,b)=>b.g/b.n-a.g/a.n);
+s1.sort((a,b)=>b.g/b.n+bonus(b.t)-a.g/a.n-bonus(a.t));
 for(const x of s1.slice(0,40)){let w=0,c=0;for(const y of s1){if(y===x)continue;for(let k=0;k<12;k++){const r=battle(mk(x.t,0),mk(y.t,1),rng).res;w+=r==='W'?1:r==='D'?.5:0;c++}}x.g=w;x.n=c}
-const out=s1.slice(0,40).map(x=>({team:x.t,cost:x.t.reduce((a,n)=>a+D.stats[n].c,0),winRate:+(x.g/x.n).toFixed(3),arm:bestArm(D,x.t),
-  skills:Object.fromEntries(x.t.map((n,i)=>[n,[innateOf(D,n),...plan(x.t)[i]]])),seasons:x.t.map(n=>D.stats[n].season)})).sort((a,b)=>b.winRate-a.winRate);
+const out=s1.slice(0,40).map(x=>({team:x.t,cost:x.t.reduce((a,n)=>a+D.stats[n].c,0),winRate:+(x.g/x.n).toFixed(3),score:+(x.g/x.n+bonus(x.t)).toFixed(3),arm:bestArm(D,x.t),
+  skills:Object.fromEntries(x.t.map((n,i)=>[n,[innateOf(D,n),...plan(x.t)[i]]])),seasons:x.t.map(n=>D.stats[n].season)})).sort((a,b)=>b.score-a.score);
 console.log(JSON.stringify({cap:CAP,red:RED,lv:LV,pool:POOL,candidates:cands.length,top:out.slice(0,TOP)},null,1));
 if(process.env.OUT)fs.writeFileSync(process.env.OUT,JSON.stringify(out));
