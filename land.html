@@ -448,7 +448,7 @@ input[type=range]{accent-color:var(--gold)}
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
 import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
-import {makeKit} from './slg/teamlib.js?v=6';
+import {makeKit} from './slg/teamlib.js?v=7';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -485,7 +485,7 @@ const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-
 const SLG_KEY='shinsen-slg-v1';
 const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
 const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
-  skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'best',tgt:'land',opp:{preset:'0:5',gens:[]},
+  skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'official',want:'',tgt:'land',opp:{preset:'0:5',gens:[]},
   my:{gens:[{n:'立花誾千代',s:['',''],t:9900},{n:'立花道雪',s:['',''],t:9900},{n:'北條氏康',s:['',''],t:9900}],arm:'弓'}},load());
 let slgSet=null;
 if(SLG){
@@ -500,7 +500,7 @@ function load(){
   try{
     const o=JSON.parse(localStorage.getItem(KEY))||{};
     // 戰法等級改為 Lv1～10（舊版是 1～5）：舊存檔的預設等級與個別等級都作廢，改用新預設
-    if(o.rtab==='cheap')o.rtab='best';
+    if(o.rtab==='cheap'||o.rtab==='best')o.rtab='official';   // 2026-11-21：一鍵推薦預設改成「官方編制」
     for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))if(m.t>10000)m.t=10000;   // 每人兵力上限 1 萬（Joe）
     if(o.lvScale!==10){delete o.skLv;for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))m.sl={};o.lvScale=10}
     return o;
@@ -713,7 +713,7 @@ function renderTab(){
 
 // ---- team builder ----
 const J=f=>fetch(f,{cache:'no-cache'}).then(r=>r.json()).catch(()=>null);
-const [CARDS,POWER,FIELD,EX,R,RANK,OFFICIAL]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json','official.json'].map(J));
+const [CARDS,POWER,FIELD,EX,R,RANK,OFFICIAL,OREC]=await Promise.all(['data.json','skillpower.json','field.json','generals_extra.json','recommend.json','rank.json','official.json','official-rec.json'].map(J));
 const CARD=new Map(CARDS.map(c=>[c.n,c])),RATE={5:.0016,4:.009,3:.0344};
 // 登用期望抽數 = 1 ÷ 該武將機率（名將登用公告；不計每 5 抽保底）
 const pulls=n=>{const c=CARD.get(n);const r=c?.s1?c.s1/100:RATE[c?.r||D.stats?.[n]?.r||5]||RATE[5];return 1/r};
@@ -1293,16 +1293,57 @@ function rankCard(t,i,k){
     el('div',{class:'pc'},el('b',{},pc(t.winRate)),el('small',{},'榜內平均勝率')),
     el('div',{class:'acts'},go,opp));
 }
+// ---- 官方編制（一鍵推薦的底）：官方大名錄編制原樣，戰法照官方原配；只有指定「官方編制裡沒有的武將」時才做最小替換（換 1 位，其餘照原樣）----
+const FULLFAC={co:10,arm:5,ka:3,same:true};
+function ofCard(r,i){
+  const go=el('button',{class:'pbtn ghost',type:'button'},`載入到第 ${S.ti+1} 隊`);
+  go.onclick=()=>{loadInto(S.ti,r.names,r.arm,r.names.map(n=>r.skills[n]||[]));save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
+  const cost=r.names.reduce((a,n)=>a+costOf(n),0);
+  return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
+    el('div',{},el('div',{class:'gl'},...r.names.map((n,gi)=>{const sw=r.swap===gi;return el('div',{class:'gg'},el('b',{},(gi?'':'★')+n+(sw?'（替換）':'')),el('span',{class:'rc'},`Cost${costOf(n)}`),el('span',{class:'sk'},[innateOf(n),...(r.skills[n]||[])].filter(Boolean).join('・')+(sw?'　←本系統依官方出現過的戰法挑':'')))})),
+      el('div',{class:'meta'},`${ARMN[r.arm]||r.arm}${r.armOfficial?'（官方標示）':'（官方沒標，依隊伍特性推算）'}・總 Cost ${cost}・官方「${r.sec}」第 ${r.rank} 名${r.swap!=null?`・官方原隊：${r.orig.join('、')}`:'・與官方原隊完全相同'}`)),
+    el('div',{class:'pc'},el('b',{},pc(r.winRate)),el('small',{},'官方隊互打勝率')),
+    el('div',{class:'acts'},go));
+}
+function renderOfficial(L,empty){
+  const gens=Object.keys(D.stats).filter(n=>costOf(n)>0&&(D.stats[n].r||CARD.get(n)?.r||5)===5).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  const sel=el('select',{class:'sel','aria-label':'指定武將'},el('option',{value:''},'不指定（官方編制原樣）'),...gens.map(n=>el('option',{value:n,...(S.want===n?{selected:''}:{})},n)));
+  sel.onchange=e=>{S.want=e.target.value;save();renderRec()};
+  const head=el('div',{class:'fl',style:'margin-bottom:8px'},el('span',{class:'lbl'},'指定武將'),sel,el('span',{class:'note'},'官方編制原樣＝官方大名錄截圖轉錄（戰法完整的 123 隊）；排序用官方隊互打的模擬勝率。'));
+  const inR=r=>{const c=r.names.reduce((a,n)=>a+costOf(n),0);return c>=S.cmin&&c<=S.cmax};
+  let rows=[];
+  const asRow=(t,extra={})=>({names:t.team,arm:t.arm,armOfficial:t.armOfficial,skills:t.skills,sec:t.sec,rank:t.rank,winRate:t.winRate,orig:t.team,...extra});
+  if(!S.want)rows=OREC.map(t=>asRow(t)).filter(inR).slice(0,10);
+  else{
+    rows=OREC.filter(t=>t.team.includes(S.want)).map(t=>asRow(t)).filter(inR).slice(0,10);
+    if(!rows.length){   // 官方沒有這位武將：每個官方編制換掉 1 位（優先同勢力、同固有戰法類型），其餘兩位戰法照官方原配
+      const w=S.want,cand=[];
+      for(const t of OREC)for(let j=0;j<3;j++){
+        const names=[...t.team];names[j]=w;const c=names.reduce((a,n)=>a+costOf(n),0);if(c<S.cmin||c>S.cmax)continue;
+        const sc=(D.stats[w].f===D.stats[t.team[j]].f?2:0)+(KIT.kindOf(innateOf(w))===KIT.kindOf(innateOf(t.team[j]))?1:0)+(j===0?(KIT.LEAD.has(w)?1:-2):0);
+        cand.push({t,j,names,sc});
+      }
+      cand.sort((a,b)=>b.sc-a.sc||b.t.winRate-a.t.winRate);
+      for(const x of cand.slice(0,6)){
+        const st=x.names.map(n=>({n,red:0,st:fullRedStats(D,n,x.names,x.t.arm,50,0,FULLFAC)})),picks=x.names.map((n,k)=>k===x.j?[]:x.t.skills[n]);
+        const pl=KIT.pick(st,picks,{},{arm:x.t.arm,officialOnly:true});
+        rows.push(asRow(x.t,{names:x.names,skills:Object.fromEntries(x.names.map((n,k)=>[n,pl.sel[k]])),swap:x.j,orig:x.t.team}));
+      }
+    }
+  }
+  L.replaceChildren(head,...(rows.length?rows.map((r,i)=>ofCard(r,i)):empty('這個 Cost 範圍沒有符合的官方編制')));
+}
 function renderRec(){
   const opts=[];for(let c=A.cost[0];c<=A.cost[1];c++)opts.push(c);
   $('cmin').innerHTML=opts.map(c=>`<option${c===S.cmin?' selected':''}>${c}</option>`).join('');$('cmax').innerHTML=opts.map(c=>`<option${c===S.cmax?' selected':''}>${c}</option>`).join('');
   $('cnote').textContent='Cost 範圍可自己調（預設 18～20）；推薦榜以戰法滿級、兵學不計模擬。開荒隊伍會隨劇本與建設提高 Cost，之後用繼承券換將；後期隊伍多為 Cost 18～20、沒人用紫將，所以這裡只推金將（5★），並假設你已有大部分武將、差在紅度，不計抽數。每隊都附「升級路線」：只換一位的最少更換，或不顧資源的全面換血。預先算好的推薦榜假設：協力 Lv5、兵種營 Lv5、沒有家門加成；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
-  for(const[k,t]of[['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
+  for(const[k,t]of[['official','官方編制'],['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
   const L=$('rlist');
   if(!R){L.replaceChildren(el('p',{class:'note'},'推薦資料讀取失敗'));return}
   const empty=m=>[el('p',{class:'note',style:'text-align:center;padding:16px'},m)];
+  if(S.rtab==='official'){renderOfficial(L,empty);return}
   const rows=R.teams.filter(inRange);let list=[],note='';
   // 低等級土地（Lv4～6）守軍太弱，模擬勝率常常全部飽和成 100%，分不出隊伍好壞：
   // 所以同時看「再高兩級」的勝率當壓力測試，只留下兩關都過關的隊伍，並用較高等級的勝率與戰報實戰分排序。
