@@ -449,7 +449,7 @@ input[type=range]{accent-color:var(--gold)}
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
 import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
 import {makeKit} from './slg/teamlib.js?v=7';
-import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=1';
+import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -1060,11 +1060,12 @@ function autofill(ti,reset){
   WHY[ti]=pl.why;
   // 兵學方向／節點、自由配點：空的就依建議補上（reset＝全部重推薦）；自己選過的不動
   t.gens.forEach((m,i)=>{
-    const r=ROSTER.get(m.n)?.r,b=adviseBingaku(KIT,D,m.n,r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st);
+    const r=ROSTER.get(m.n)?.r,b=adviseBingaku(KIT,D,m.n,r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st,teamCtx(t));
     if(b&&(reset||!m.bg))m.bg=b.sel;
-    if(reset||!ptsUsed(m)){m.pts=advisePoints(stt[i].st,ptsPool(m)).pts;clampPts(m)}
+    if(reset||!ptsUsed(m)){m.pts=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills:[innateOf(m.n),...m.s].filter(Boolean),team:teamCtx(t)}).pts;clampPts(m)}
   });
 }
+function teamCtx(t){return{names:t.gens.map(g=>g.n),skillsOf:Object.fromEntries(t.gens.map(g=>[g.n,g.s.filter(Boolean)]))}}
 function renderTeams(){
   const box=$('tteams');if(SLG){box.hidden=true;return}
   box.replaceChildren(el('span',{class:'lbl'},'隊伍'));
@@ -1102,7 +1103,7 @@ function renderAdvice(){
     aSk.length?el('div',{},`可搭兵種技（開場直接生效、整隊吃到）：${aSk.map(x=>KIT.ps(x).text?`${x}`:x).join('、')}；目前${my.gens.some(m=>m.s.some(x=>aSk.includes(x)))?'已裝上':'沒裝，若有可考慮換掉最弱的戰法'}`):null,
     checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null);
   const cards=my.gens.map((m,i)=>{
-    const r=ROSTER.get(m.n)?.r,skills=[innateOf(m.n),...m.s].filter(Boolean),b=adviseBingaku(KIT,D,m.n,r,skills,stt[i].st),pt=advisePoints(stt[i].st,ptsPool(m));
+    const r=ROSTER.get(m.n)?.r,skills=[innateOf(m.n),...m.s].filter(Boolean),b=adviseBingaku(KIT,D,m.n,r,skills,stt[i].st,teamCtx(my)),pt=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills,team:teamCtx(my)});
     const mine=m.bg&&b&&JSON.stringify(m.bg)!==JSON.stringify(b.sel);
     return el('div',{class:'ac'},el('b',{class:'nm'},`${i===0?'★ ':''}${m.n}`),el('span',{class:'note'},`　${r}★・${stt[i].st.武勇>=stt[i].st.智略?'武勇型':'智略型'}`),
       el('dl',{},
@@ -1113,7 +1114,7 @@ function renderAdvice(){
         el('dt',{},'配點'),el('dd',{},`${Object.entries(m.pts||{}).filter(([,v])=>v).map(([k,v])=>k+' +'+v).join('、')||'尚未配點'}（共 ${ptsPool(m)} 點）`,el('small',{},pt.why)),
         el('dt',{},'兵種'),el('dd',{},`${my.arm}兵`,el('small',{},ar||''))));
   });
-  box.replaceChildren(head,top,...cards,el('div',{class:'row'},Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto'},'照建議重配兵學與配點（覆蓋目前的）'),{onclick:()=>{autofill(S.ti,false);my.gens.forEach((m,i)=>{const b=adviseBingaku(KIT,D,m.n,ROSTER.get(m.n)?.r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st);if(b)m.bg=b.sel;m.pts=advisePoints(stt[i].st,ptsPool(m)).pts;clampPts(m)});save();renderBuilder()}})));
+  box.replaceChildren(head,top,...cards,el('div',{class:'row'},Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto'},'照建議重配兵學與配點（覆蓋目前的）'),{onclick:()=>{autofill(S.ti,false);my.gens.forEach((m,i)=>{const b=adviseBingaku(KIT,D,m.n,ROSTER.get(m.n)?.r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st,teamCtx(my));if(b)m.bg=b.sel;m.pts=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills:[innateOf(m.n),...m.s].filter(Boolean),team:teamCtx(my)}).pts;clampPts(m)});save();renderBuilder()}})));
 }
 function renderLvBar(){
   const box=$('lvDefault');box.replaceChildren(el('span',{class:'lbl'},'預設'));

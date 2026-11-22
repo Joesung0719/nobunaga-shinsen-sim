@@ -2,6 +2,7 @@
 // 全部是推估：沒有官方公式，權重來自戰報歸納（突擊傷害占贏方輸出 18%／輸方 10%、普攻約 21～25%、主動 17～25%）與引擎的傷害公式。
 import {TREES,DIRS,RULE,capOf,dirOf,hasTree,cleanSel} from './bingaku.js';
 import {innateOf} from './engine.js?v=50';
+import {planBingaku,planPoints} from './playbook.js';
 
 // 兵學節點效果鍵 → 權重（1 = 造成傷害 +1%）。依這位武將的戰法組成調整。
 function weights(kit,D,g,skills){
@@ -29,7 +30,7 @@ function qiScore(t,W){
 const nodeVal=(fx,W)=>Object.entries(fx||{}).reduce((a,[k,v])=>a+(W.w[k]||0)*v,0);
 
 // 回傳 {sel, dirs:[{id,score}], why:[...]}；沒有兵學樹或 3★ 以下回 null
-export function adviseBingaku(kit,D,n,r,skills,st){
+export function adviseBingaku(kit,D,n,r,skills,st,team){
   const cap=capOf(r);if(!cap||!hasTree(n))return null;
   const W=weights(kit,D,{st},skills);
   const rank=[];
@@ -45,17 +46,21 @@ export function adviseBingaku(kit,D,n,r,skills,st){
     rank.push({id:d.id,score:sum+(qs?qs.s*1.2:0),take,qi:qs?.q.n||null,qiWhy:qs?.q.t||'',t});
   }
   rank.sort((a,b)=>b.score-a.score);
-  const b=rank[0];if(!b)return null;
+  // 先定位再選方向（playbook：補血→臨戰、持續傷害／控制→機略、減傷／反擊→陣立、突擊→武略）；方向內的節點仍用上面的權重配點
+  const pb=planBingaku(kit,D,n,skills.filter(s=>s!==innateOf(D,n)),st,team);
+  const b=rank.find(x=>x.id===pb.dir)||rank[0];if(!b)return null;
+  if(pb.qi&&b.id===pb.dir&&b.t.qi.some(q=>q.n===pb.qi)){b.qi=pb.qi;b.qiWhy=pb.qiWhy}
   const sel=cleanSel({d:b.id,q:b.qi,z:b.take},r,n);
-  const why=[`方向「${b.id}」（${b.t.sub}）：這位武將${W.nRush?`有 ${W.nRush} 個突擊戰法，突擊傷害與普攻強化最值錢`:W.nAct?`以 ${W.nAct} 個主動戰法輸出為主`:'沒有主動／突擊輸出，偏重傷害與防禦加成'}，${W.phys?'屬於武勇型（兵刃）':'屬於智略型（謀略）'}，四個方向裡這個加成總值最高`];
+  const why=[`先定位：${pb.why}`,`方向「${b.id}」（${b.t.sub}）：${pb.reason}`];
   for(const[nm,lv]of Object.entries(sel.z)){const z=b.t.zheng.find(x=>x.n===nm);why.push(`「${nm}」Lv${lv}：${z.t[lv-1]}`)}
   if(sel.q)why.push(`奇「${sel.q}」（不花點）：${b.qiWhy}`);
-  return{sel,why,alt:rank.slice(1,3).map(x=>x.id)};
+  return{sel,why,alt:pb.alt.filter(x=>x!==b.id).slice(0,2)};
 }
 
 // 自由配點：全部加在主要輸出屬性（武勇型加武勇、智略型加智略）。
 // 理由：傷害係數 = 1 + (攻方屬性 − 守方屬性) ÷ 280，輸出屬性每 +1 點，傷害約 +0.35%；速度只影響出手順序，統率只減少兵刃傷害，輸出主力優先堆輸出屬性。
-export function advisePoints(st,pool){
+export function advisePoints(st,pool,ctx){
+  if(ctx){const p=planPoints(ctx.kit,ctx.D,ctx.n,ctx.skills.filter(s=>s!==innateOf(ctx.D,ctx.n)),st,pool,ctx.team);return{pts:p.pts,why:p.why}}
   const k=st.武勇>=st.智略?'武勇':'智略';
   return{pts:{[k]:pool},why:`${pool} 點全加${k}：${k==='武勇'?'兵刃（普攻、突擊多為兵刃）':'謀略'}傷害與${k}成正比，其他屬性邊際效益較低`};
 }
