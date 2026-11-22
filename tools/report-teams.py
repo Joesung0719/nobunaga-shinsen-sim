@@ -35,17 +35,19 @@ for r in rows[1:]:
     res=r[ix['結果']];t=str(r[ix['時間']])
     if res not in FL:continue
     a=[x.strip() for x in str(r[ix['左武將']]).split('、')];b=[x.strip() for x in str(r[ix['右武將']]).split('、')]
-    add(a,FL[res][0],t,0);add(b,FL[res][1],t,1)
+    add(a,FL[res][0],t,0);add(b[::-1],FL[res][1],t,1)   # 戰報武將欄：左方是 大將、副將、副將；右方畫面鏡射，是 副將、副將、大將（對官方已知大將驗證：左 46/53、右 39/41）→ 右方反轉成大將在前
 def fac(n):
     f=[ST[x]['f'] for x in n]
     return 'same' if len(set(f))==1 else 'alliance' if len(set(f))==3 else 'mixed'
 def build():
   pass
+OFF={'|'.join(sorted(x['n'] for x in t['gens'])):[x['n'] for x in t['gens']] for t in json.load(open('official.json'))}
 out=[]
 attach()
 for k,d in teams.items():
     n=sum(d[x] for x in 'wdl')
     lead=d['ord'].most_common(1)[0][0].split(',')
+    if k in OFF:lead=OFF[k]   # 官方編制有這隊就用官方的大將順序（官方圖由上到下、由左而右＝大將、副將、副將）
     sk={g:[s for s,_ in c.most_common(4)] for g,c in d['sk'].items()}
     out.append({'n':lead,'w':d['w'],'d':d['d'],'l':d['l'],'cost':sum(ST[x]['c'] for x in lead),'fac':fac(lead),'eb':d.get('eb',0),'sk':sk,'skn':{g:dict(c.most_common(4)) for g,c in d['sk'].items()}})
 out.sort(key=lambda x:-(x['w']+x['d']+x['l']))
