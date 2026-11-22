@@ -48,7 +48,7 @@ const cands=[];
 for(let i=0;i<gens.length;i++)for(let j=i+1;j<gens.length;j++)for(let k=j+1;k<gens.length;k++){
   const c=gens[i].c+gens[j].c+gens[k].c;if(c>CAP)continue;
   const tm=[gens[i].n,gens[j].n,gens[k].n];if(close(tm)<2)continue;
-  const tl=tm.filter(n=>LEAD.has(n)),tr=(tl.length?tl:tm).sort((x,y)=>(OFL[y]||0)-(OFL[x]||0)||PW0(y)-PW0(x));   // 大將位偏好有大將技的武將（沒有就任選，不設限制）
+  const tr=kit.leaderFirst(tm);   // 大將：大將技 > Cost > 指揮型 > 政務（官方猜中 79%）
   cands.push([tr[0],...[gens[i].n,gens[j].n,gens[k].n].filter(n=>n!==tr[0])]);
 }
 function mk(names,side,red=RED){

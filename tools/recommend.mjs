@@ -49,14 +49,13 @@ const ARMS=['騎','弓','槍','鐵炮'];
 const mid=[];let done=0,rej=0;
 for(const x of uniq.values()){
   let best=null;
-  for(let li=0;li<3;li++){
-    const names=[x.names[li],...x.names.filter((_,i)=>i!==li)];
+  // 大將由規則決定（大將技 > Cost > 指揮型 > 政務，見 teamlib leaderFirst），不再靠 4 次隨機模擬挑——那樣大將位幾乎是雜訊，Cost6 常被排到大將
+  { const names=kit.leaderFirst(x.names);
     for(const arm of ARMS){
       const pl=plan(names,arm);if(!pl.q.ok){rej++;continue}   // 搭配不合格的直接不入榜
       const{team}=mkTeam(names,arm,pl.sel);let a=0;
       for(let q=0;q<4;q++)a+=mrg(team,FOE8[q%FOE8.length]);
-      const a2=a+(kit.LEAD.has(names[0])?.5:0);   // 大將有大將技的軟性加分（經驗偏好，不是限制）
-      if(!best||a2>best.a2)best={a,a2,names,arm,pl}
+      if(!best||a>best.a)best={a,a2:a,names,arm,pl}
     }
   }
   if(best)mid.push({x,...best});
