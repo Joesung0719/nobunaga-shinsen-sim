@@ -92,9 +92,13 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 大將位偏好（Joe 2026-11-21：大將通常只給有大將技的武將，但遊戲讓玩家自己配、模擬器不設限制，只當加分；大將技寫在武將自身（固有）戰法的說明裡，即 skillText[固有戰法].boss）。
   // 例外：官方編制裡實際擔任過大將的武將一律算（目前只有阿市的夢幻泡影沒收到大將技說明，疑似資料缺口）。
   const LEAD=new Set([...Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss),...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);
-  // 大將位排序（2026-11-22 Joe 問「為何常把 Cost6 當大將」）：官方 148 隊大將 147 隊有大將技；隊裡有 Cost7 時 127 隊中 124 隊由 Cost7 當大將（98%）。
-  // 規則＝ 有大將技 > Cost 高 > 固有戰法是指揮型 > 政務高；用在官方 148 隊猜大將命中 117 隊（79%），隨機猜約 42%。只是排序偏好，使用者手動組隊不受限。
-  const leadKey=n=>[LEAD.has(n)?1:0,D.stats[n].c||0,D.stats[n].kind==='指'?3:D.stats[n].kind==='被'?1:0,D.stats[n].st?.政務?.[0]||0];
+  // 大將位排序（Joe 2026-11-22：有大將技的武將都有資格當大將，Cost 7 不該自動壓過 Cost 6，只是不要把強力大將排成副將）。
+  // 排序＝ 有大將技 > 「官方大將率」（貝氏收縮：官方當大將次數＋先驗 .3，權重 2 場；Cost 完全不參與）> 固有戰法指揮型 > 政務高。
+  // 官方常當大將的人（前田利家、伊達晴宗、福島正則…不論 Cost）排前面；沒有官方紀錄的人先驗都一樣，再看固有戰法型態與政務。
+  // 官方 148 隊留一法猜大將命中 135 隊（91%；舊的只看 Cost 為 117 隊）。只是排序偏好，手動組隊不受限。
+  const OFLEAD={},OFAPP={};for(const t of official){t.gens.forEach((g,i)=>{OFAPP[g.n]=(OFAPP[g.n]||0)+1;if(i===0)OFLEAD[g.n]=(OFLEAD[g.n]||0)+1})}
+  const leadRate=n=>((OFLEAD[n]||0)+2*.3)/((OFAPP[n]||0)+2);
+  const leadKey=n=>[LEAD.has(n)?1:0,leadRate(n),D.stats[n].kind==='指'?1:0,D.stats[n].st?.政務?.[0]||0];
   const leadCmp=(a,b)=>{const x=leadKey(a),y=leadKey(b);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return y[i]-x[i];return 0};
   const leaderFirst=names=>[...names].sort(leadCmp);
   // 官方編制先驗：戰法人氣、武將×戰法搭配次數
