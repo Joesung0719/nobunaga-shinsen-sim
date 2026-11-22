@@ -21,7 +21,9 @@ import {parseSkill,innateOf} from './engine.js?v=50';
 // 命中率 規則版 7.9%→17.8%、含官方先驗 28%→36%（留出測試半邊平均 19.7%→23.5%，訓練半邊 30.5%，有過擬合，數字只當參考）。
 export const TU={b0:.35,bm:1.2,bd:.2,heal:1.22,healNone:1.4,pGS:2,pS:.3,
   cat:{兵種:.6,連擊:1.25,主動謀略傷害:.7,主動控制:.5,主動增益:1.1,被動:.8},
-  grade:{A:.55,B:.35}};   // 官方 738 個戰法槽裡 A 級只占約 4%、B 級幾乎沒有（金將以 S 級戰法為主）
+  grade:{A:.55,B:.35},
+  // 2026-11-22 Joe：兵種技給「統率或武勇高」的人帶（看這招吃哪項能力：三河武士／鐵炮僧兵隊／僧兵隊吃統率；越後先手組／大太刀力士隊吃武勇）；armStat＝全隊該能力最高者的加成倍率（其餘人除以它）
+  armStat:2,rushActPen:.85};   // 官方 738 個戰法槽裡 A 級只占約 4%、B 級幾乎沒有（金將以 S 級戰法為主）
 export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}={}){
   const PS=new Map(),ps=(n,lv=null)=>{const k=n+'|'+lv;if(!PS.has(k))PS.set(k,parseSkill(n,D,lv));return PS.get(k)};
   const SRC={};for(const[g,s]of Object.entries(D.teach))(SRC[s]??=[]).push(g);
@@ -35,7 +37,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 兵種技有些（三河武士、越後先手組…）資料裡沒有傳授來源武將，仍列入候選（來源待補，不計抽數）
   // 官方編制（official.json）出現過、但資料庫還沒有「來源武將」的戰法（直言極諫、立身之志、追亡逐北…）也列入候選（來源待補，不計抽數，數量 1）
   const OFS=new Set(official.flatMap(t=>t.gens.flatMap(g=>g.s)).filter(Boolean));
-  const POOL=[...new Set([...Object.keys(SRC),...Object.keys(D.skillText||{}).filter(s=>D.skillText[s].kind==='兵種'),...OFS])].filter(s=>D.skillText?.[s]).filter(usable);
+  // 2026-11-22：候選池改為「說明文字有建模的所有非專屬戰法」。過去只收有傳授來源的，規則版（官方 gens 清空）會漏掉誘敵深入、疑兵盜城、南蠻東渡、追亡逐北等
+  // 「資料庫還沒收到傳授來源」的戰法——但 Joe 的隊伍與玩家站戰法榜都常用（來源待補，不計抽數，數量照一般規則）。
+  const POOL=[...new Set([...Object.keys(SRC),...Object.keys(D.skillText||{}),...OFS])].filter(s=>D.skillText?.[s]).filter(usable);
   // 戰報歸納（tools/report-patterns.py，67 場）：隊伍實際發動的突擊戰法 0 / 1 / 2 種 → 勝率 40% / 61% / 68%；主動戰法 3 種的隊勝率只有 37%（0～1 種 53～56%）。
   // 突擊戰法只在「普通攻擊命中後」判定，所以：自帶突擊的武將，其他戰法要選突擊（每次普攻多一次觸發機會）或能多打普攻／提高突擊發動率的戰法；
   // 純主動戰法（要準備、機率低）對他沒有加成。
@@ -160,6 +164,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         if(!arm||(p.arm&&p.arm!==arm))return{v:0,tips:[]};
         if(sel.some(l=>l.some(x=>kindOf(x)==='兵種'&&!ps(x).alliance)))return{v:0,tips:[]};
         v=Math.max(v,.9)*1.12;tips.push(`兵種技：開場直接生效、整隊吃到（隊伍是${arm}兵）`);
+        const st1=scaleStat(s);if(st1&&TU.armStat!==1){const top=Math.max(...sts.map(x=>x[st1]));if(g.st[st1]>=top){v*=TU.armStat;tips.push(`${st1}是全隊最高，兵種技吃${st1}（玩家讓統率／武勇高的人帶）`)}else v/=Math.sqrt(TU.armStat)}
       }
       if(p.kind==='突擊'){
         if(innK==='突擊'){v*=1.35;tips.push('自帶突擊，再配突擊戰法：每次普攻命中都多一次觸發機會（戰報：突擊技傷害占贏方輸出 18%、輸方 10%）')}
@@ -169,7 +174,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         else{v*=.8;tips.push('隊內突擊戰法已經夠多，邊際效益低')}
       }else if(innK==='突擊'||mine.some(x=>kindOf(x)==='突擊')){
         if(feedsAtk(s)){v*=1.25;tips.push('能多打普攻／提高突擊發動率，幫自帶突擊多觸發')}
-        else if(p.kind==='主動'){v*=.6;tips.push('自帶突擊卻選純主動戰法：主動戰法不會觸發突擊，已降權（戰報：這類組合多半輸）')}
+        else if(p.kind==='主動'){v*=TU.rushActPen;tips.push('自帶突擊卻選純主動戰法：主動戰法不會觸發突擊，已降權（戰報：這類組合多半輸）')}
       }
       if(p.kind==='主動'&&nAct>=7){v*=.7;tips.push(`隊內已有 ${nAct} 個主動戰法（含自帶），再加邊際效益低（官方編制一般 3～6 個）`)}
       for(const b of p.buf||[]){
