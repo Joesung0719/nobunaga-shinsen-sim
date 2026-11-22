@@ -67,7 +67,7 @@ for(const n of GENS){
     arm:ARMN[arm],armWhy:armReason(D,arm,[n])||'依特性與能力推算',innate:inn,
     teaches:Object.entries(SRCS).filter(([s,a])=>a.includes(n)).map(([s])=>s),
     need,rec:{skills:d.sel,alt:d.cand.slice(2),why:d.why},bingaku:bg?{dir:bg.sel.d,sel:bg.sel,why:bg.why}:null,
-    points:advisePoints(d.st,10).why};
+    points:advisePoints(d.st,10,{kit,D,n,skills,team:null}).why};
 }
 // ===== 回測：檔案推導（單人）vs 官方配法 =====
 const T=OFF.filter(t=>t.gens.length===3&&t.gens[0].s[0]);
