@@ -92,6 +92,11 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 大將位偏好（Joe 2026-11-21：大將通常只給有大將技的武將，但遊戲讓玩家自己配、模擬器不設限制，只當加分；大將技寫在武將自身（固有）戰法的說明裡，即 skillText[固有戰法].boss）。
   // 例外：官方編制裡實際擔任過大將的武將一律算（目前只有阿市的夢幻泡影沒收到大將技說明，疑似資料缺口）。
   const LEAD=new Set([...Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss),...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);
+  // 大將位排序（2026-11-22 Joe 問「為何常把 Cost6 當大將」）：官方 148 隊大將 147 隊有大將技；隊裡有 Cost7 時 127 隊中 124 隊由 Cost7 當大將（98%）。
+  // 規則＝ 有大將技 > Cost 高 > 固有戰法是指揮型 > 政務高；用在官方 148 隊猜大將命中 117 隊（79%），隨機猜約 42%。只是排序偏好，使用者手動組隊不受限。
+  const leadKey=n=>[LEAD.has(n)?1:0,D.stats[n].c||0,D.stats[n].kind==='指'?3:D.stats[n].kind==='被'?1:0,D.stats[n].st?.政務?.[0]||0];
+  const leadCmp=(a,b)=>{const x=leadKey(a),y=leadKey(b);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return y[i]-x[i];return 0};
+  const leaderFirst=names=>[...names].sort(leadCmp);
   // 官方編制先驗：戰法人氣、武將×戰法搭配次數
   const OF_S={},OF_GS={};let OF_MAX=1;
   for(const t of official)for(const g of t.gens)for(const sk of g.s)if(sk){OF_S[sk]=(OF_S[sk]||0)+1;OF_GS[g.n+'|'+sk]=(OF_GS[g.n+'|'+sk]||0)+1;OF_MAX=Math.max(OF_MAX,OF_S[sk])}
@@ -329,5 +334,5 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     const ft=facType(team);if(ft==='mixed')out.push({lv:'note',t:'兩種勢力混搭：沒有同勢力協力，也不能配合盟之陣（官方編制較少見）'});
     return out;
   }
-  return{facsOf,catOf,LEAD,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
+  return{facsOf,catOf,LEAD,leaderFirst,leadCmp,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
 }
