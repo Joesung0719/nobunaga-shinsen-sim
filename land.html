@@ -485,7 +485,7 @@ const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-
 const SLG_KEY='shinsen-slg-v1';
 const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
 const S=Object.assign({lv:6,max:30000,cur:30000,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
-  skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'field',want:'',tgt:'land',opp:{preset:'0:5',gens:[]},
+  skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'field',rlv:9,want:'',tgt:'land',opp:{preset:'0:5',gens:[]},
   my:{gens:[{n:'立花誾千代',s:['',''],t:10000},{n:'立花道雪',s:['',''],t:10000},{n:'北條氏康',s:['',''],t:10000}],arm:'弓'}},load());
 let slgSet=null;
 if(SLG){
@@ -1264,7 +1264,7 @@ $('ai').onclick=async()=>{
   note.textContent=`已載入 ${S.teams.length} 隊：${parts.join('；')}（對手：${targetLabel()}；戰法依庫存推薦，各隊不重複裝同一份，等級用預設 Lv${S.skLv}）。${fieldLine(KIT.fieldScore(picks[0].n))}`;
 };
 function card(t,i){
-  const[w,left]=prow(t,S.lv),res=t.r[0]+t.r[1];
+  const rl=S.rlv||9,[w,left]=prow(t,rl),res=t.r[0]+t.r[1],pro=S.rtab==='pro',fw=Math.round(t.f[0]*100);
   const gens=t.n.map((n,gi)=>{const g=R.gens[n];return el('div',{class:'gg'},el('b',{},(gi?'':'★')+n),el('span',{class:`rc r${g.r}`},`${g.r}★ Cost${g.c}`),el('span',{class:'sk'},[g.inn,...t.s[gi]].filter(Boolean).join('・')))});
   const f=KIT.fieldScore(t.n);
   const det=el('details',{},el('summary',{},'推薦理由'),el('ul',{class:'why'},...t.why.flatMap((l,gi)=>l.map(x=>el('li',{},el('b',{},t.n[gi]+'　'),x))),el('li',{},fieldLine(f))));
@@ -1279,8 +1279,8 @@ function card(t,i){
   const acts=[go];
   if(S.teams.length<3&&!SLG){const add=el('button',{class:'pbtn ghost',type:'button'},'加為新一隊');add.onclick=()=>{S.teams.push(mkMy(t.n,t.a));S.ti=S.teams.length-1;S.my=S.teams[S.ti];trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};acts.push(add)}
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
-    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${w}%`})),det,...upBox),
-    el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`打下 Lv${S.lv}・剩兵 ${left}%`),el('small',{},`Lv9：${prow(t,9)[0]}%・Lv10：${prow(t,10)[0]}%`)),
+    el('div',{},el('div',{class:'gl'},...gens),el('div',{class:'meta'},`${ARMN[t.a]}・總 Cost ${t.c}${t.f[1]?`・戰報樣本最少 ${t.f[1]} 場${t.f[1]<5?'（少，僅供參考）':''}`:'・戰報沒出現過'}`),el('div',{class:'mini'},el('i',{style:`width:${pro?fw:w}%`})),det,...upBox),
+    pro?el('div',{class:'pc'},el('b',{},fw+'%'),el('small',{},`戰報實戰勝率・樣本最少 ${t.f[1]} 場`),el('small',{},`模擬（0 紅、Lv50）Lv9：${prow(t,9)[0]}%・Lv10：${prow(t,10)[0]}%`)):el('div',{class:'pc'},el('b',{},w+'%'),el('small',{},`模擬打下 Lv${rl}・剩兵 ${left}%`),el('small',{},`Lv9：${prow(t,9)[0]}%・Lv10：${prow(t,10)[0]}%`)),
     el('div',{class:'acts'},...acts));
 }
 function rankCard(t,i,k){
@@ -1367,6 +1367,7 @@ function renderRec(){
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
   for(const[k,t]of[['field','戰報實戰'],['official','官方編制'],['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
+  if(S.rtab==='best'){const sel=el('select',{id:'rlv','aria-label':'顯示的守軍等級',style:'width:auto;display:inline-block;margin-left:6px'},...[6,7,8,9,10].map(v=>el('option',{value:String(v),...(v===(S.rlv||9)?{selected:''}:{})},`Lv${v}`)));sel.onchange=()=>{S.rlv=+sel.value;save();renderRec()};box.append(el('span',{class:'note',style:'margin-left:8px'},'顯示守軍等級'),sel)}
   const L=$('rlist');
   if(!R){L.replaceChildren(el('p',{class:'note'},'推薦資料讀取失敗'));return}
   const empty=m=>[el('p',{class:'note',style:'text-align:center;padding:16px'},m)];
@@ -1378,8 +1379,8 @@ function renderRec(){
   // Joe：守軍 Lv6～8 本來就弱，Lv9～10 才強；排序以 Lv9、Lv10 勝率為主（模擬是 0 紅、戰法滿級，課金／練度更高的帳號只會更強）
   const lv2=Math.max(9,S.lv),w2=t=>prow(t,lv2)[0],avg=t=>(prow(t,9)[0]+prow(t,10)[0])/2;
   if(false){}
-  else if(S.rtab==='best'){note=`只收戰法、兵種、突擊連動都成立的隊伍，依打下 Lv9、Lv10 的平均模擬勝率排序前 5 隊（搭配分只在勝率接近時分高下）（Lv6～8 守軍弱、幾乎都 100%，不拿來分高下；模擬是 0 紅、Lv50、戰法滿級，紅度與練度更高會再強一些）。`;list=rows.slice().sort((a,b)=>avg(b)-avg(a)||(b.q||0)-(a.q||0)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5);const top=list[0],t10=top?prow(top,10)[0]:0;if(top&&t10<50)note+=`　⚠ 注意：以 0 紅、Lv50 計，這個 Cost 範圍沒有任何一隊能穩定打下 Lv10（最高 ${Math.max(...rows.map(t=>prow(t,10)[0]))}%），所以排名是「模擬中相對最強」，不是「打得下」；紅度、練度、兵學、裝備更高會明顯改善。`}
-  else if(S.rtab==='pro'){note='戰報裡玩家實際出場、實戰勝率高的搭配（樣本少，僅供參考）。';list=rows.filter(t=>t.f[1]>=1).sort((a,b)=>b.f[0]-a.f[0]).slice(0,6)}
+  else if(S.rtab==='best'){note=`只收戰法、兵種、突擊連動都成立的隊伍，依所選守軍等級（預設 Lv9）的模擬勝率排序前 5 隊（打下率是 0 的隊伍不列）（搭配分只在勝率接近時分高下）（Lv6～8 守軍弱、幾乎都 100%，不拿來分高下；模擬是 0 紅、Lv50、戰法滿級，紅度與練度更高會再強一些）。`;list=rows.filter(t=>prow(t,S.rlv||9)[0]>0).sort((a,b)=>prow(b,S.rlv||9)[0]-prow(a,S.rlv||9)[0]||avg(b)-avg(a)||(b.q||0)-(a.q||0)||prow(b,S.lv)[1]-prow(a,S.lv)[1]||(a.r[0]+a.r[1])-(b.r[0]+b.r[1])).slice(0,5);const top=list[0],t10=top?prow(top,10)[0]:0;if(top&&(S.rlv||9)>=10&&t10<50)note+=`　⚠ 注意：以 0 紅、Lv50 計，這個 Cost 範圍沒有任何一隊能穩定打下 Lv10（最高 ${Math.max(...rows.map(t=>prow(t,10)[0]))}%），所以排名是「模擬中相對最強」，不是「打得下」；紅度、練度、兵學、裝備更高會明顯改善。`}
+  else if(S.rtab==='pro'){note='戰報裡玩家實際出場、實戰勝率高的搭配，大字是戰報實戰勝率（樣本少，僅供參考）；下方小字是我們 0 紅、Lv50 的模擬，與實戰差距大是因為玩家的紅度、練度、兵學、裝備都更高。';list=rows.filter(t=>t.f[1]>=1&&t.f[0]>0).sort((a,b)=>b.f[0]-a.f[0]||b.f[1]-a.f[1]).slice(0,6)}
   if(S.rtab==='rank'){
     const k=S.rred||'0',rk=(RANK?.[k]||[]).filter(t=>t.team.reduce((a,n)=>a+costOf(n),0)<=S.cmax&&t.team.reduce((a,n)=>a+costOf(n),0)>=S.cmin);
     const sw=el('div',{class:'fl',style:'margin-bottom:8px'},...[['0','0 紅（資源最省）'],['5','5 紅（滿紅）']].map(([v,t])=>{const b=el('button',{class:'chip',type:'button','aria-pressed':String(k===v)},t);b.onclick=()=>{S.rred=v;save();renderRec()};return b}),
