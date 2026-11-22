@@ -85,10 +85,11 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       innK:ik,
       prep:ik==='主動'&&/準備\d回合/.test(x),   // 固有是要準備的主動 → 運勝之鼻／疑心暗鬼才有用
       selfCombo:/連擊|每回合可以普通攻擊2次/.test(x),   // 固有本身就帶連擊（成田甲斐）→ 突擊戰法吃滿，不再需要連擊戰法
-      atk:ik==='突擊'||/連擊|每回合可以普通攻擊|亂舞|可觸發普通攻擊效果|普通攻擊之後|普通攻擊時/.test(x.replace(/受到普通攻擊時/g,'')),   // 靠普攻打的人（連擊、亂舞、突擊）
+      atk:ik==='突擊'||/連擊|每回合可以普通攻擊|亂舞|可觸發普通攻擊效果|普通攻擊之後|普通攻擊後|普通攻擊時/.test(x.replace(/受到普通攻擊時/g,'')),   // 靠普攻打的人（連擊、亂舞、突擊）
       wantAct:/(發動|成功發動)[^，。]{0,6}主動(或突擊)?戰法|自身主動戰法的發動機率/.test(x)||/前\d回合主動、突擊戰法發動率/.test(tr),   // 固有／特性要靠「發動主動戰法」觸發
       tank:/受到(普通攻擊|兵刃傷害|傷害)時/.test(x)||/受到普通攻擊的機率|被敵方戰法選中的機率/.test(tr),   // 被打型（剛猛、威迫）：被打才觸發的戰法才有用
-      both:/兵刃[^。]{0,80}謀略|謀略[^。]{0,80}兵刃/.test(x),   // 固有兩種傷害都會打（文武雙全才吃得滿）
+      both:/兵刃[^。]{0,80}謀略|謀略[^。]{0,80}兵刃/.test(x),
+      rushFed:ik!=='突擊'&&/(可觸發|觸發)[^，。]{0,12}突擊/.test(x),   // 固有自己會觸發突擊（古今獨步反擊可觸發普攻效果及突擊）→ 戰法全帶突擊   // 固有兩種傷害都會打（文武雙全才吃得滿）
     };
   };
   const SYN=['奇謀','麻痺','封擊','混亂','無策','疲弊','威壓','亂舞','連擊','火傷','中毒','消沉','離反','鐵壁','規避','挑釁','先攻'];
@@ -102,7 +103,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 官方 148 隊留一法猜大將命中 135 隊（91%；舊的只看 Cost 為 117 隊）。只是排序偏好，手動組隊不受限。
   const OFLEAD={},OFAPP={};for(const t of official){t.gens.forEach((g,i)=>{OFAPP[g.n]=(OFAPP[g.n]||0)+1;if(i===0)OFLEAD[g.n]=(OFLEAD[g.n]||0)+1})}
   const leadRate=n=>((OFLEAD[n]||0)+2*.3)/((OFAPP[n]||0)+2);
-  const leadKey=n=>[LEAD.has(n)?1:0,leadRate(n),D.stats[n].kind==='指'?1:0,D.stats[n].st?.政務?.[0]||0];
+  const leadKey=n=>[LEAD.has(n)?1:0,(F(n).tank&&F(n).innK==='被動')?0:1,leadRate(n),D.stats[n].kind==='指'?1:0,D.stats[n].st?.政務?.[0]||0];
   const leadCmp=(a,b)=>{const x=leadKey(a),y=leadKey(b);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return y[i]-x[i];return 0};
   const leaderFirst=names=>[...names].sort(leadCmp);
   // 官方編制先驗：戰法人氣、武將×戰法搭配次數
@@ -119,6 +120,10 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     return f};
   const facType=team=>{const fs=facsOf(team);return fs.every(Boolean)&&new Set(fs).size===1?'same':fs.every(Boolean)&&new Set(fs).size===team.length?'alliance':'mixed'};
 
+  // 輔助型：女性，或固有戰法不是傷害型（治療／增益／控制）。固有就是傷害戰法的智將（毛利元就、明智光秀…）是輸出，帶主動攻擊戰法，不自動套補血（Joe 2026-11-23：毛利智略成長最高，要帶主動攻擊戰法）。
+  const isSup=(n,st)=>{if(FEMALE.has(n))return true;const t=D.skillText?.[innateOf(D,n)]?.tags||'';if(/兵刃|謀略|兵謀/.test(t))return false;return roleOf(st)==='mag'};
+  // 固有戰法的「代價」：「以無法獲得X狀態為代價」→ 帶會給X的戰法就浪費（上杉謙信軍神不能獲得亂舞，不能帶一力當先）
+  const costBan=n=>{const m=innTxt(n).match(/以無法(?:獲得|發動|施加|使用)([^，。為]{1,8}?)(?:狀態)?為代價/);return m?m[1]:null};
   // team: [{n, red, st:{武勇,智略,統率,速度}}]  picks: [[skill..],..]（已選，其餘由評估補滿到每人 2 個）
   function pick(team,picks=null,reserved={},ctx={}){
     const arm=ctx.arm||null;
@@ -145,6 +150,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       if(ss){const lowers=[innateOf(D,g.n),...(sel[i]||[])].filter(x=>x&&x!==s&&new RegExp('自身'+ss+'(降低|下降|減少)').test(ps(x).text||''));
         if(lowers.length){v*=.05;tips.push(`衝突：${lowers[0]}會降低自身${ss}，與吃${ss}的${s}互斥`)}}
       if(ss){const r=g.st[ss]/avg(ss),own=g.st[ss]/((g.st.武勇+g.st.智略+g.st.統率+g.st.速度)/4),m=Math.max(.85,Math.min(1.25,1+.3*(r-1)+.2*(own-1)));v*=m;if(m>1.04)tips.push(`受${ss}影響，${g.n}的${ss}${r>1?'比隊友高':'是自己的強項'}（先看武將自身能力）`);else if(m<.95)tips.push(`受${ss}影響，但${g.n}的${ss}偏低，已降權`)}
+      {const ban=costBan(g.n);if(ban&&new RegExp('(獲得|進入|賦予)[^，。]{0,4}'+ban).test(p.text||''))return{v:0,tips:[`衝突：${g.n}的固有戰法以「無法獲得${ban}」為代價，這招會給${ban}，不能帶`]}}
+      {const top3=Math.max(g.st.武勇,g.st.智略,g.st.統率),teamTop=Math.max(...sts.map(x=>x.統率));
+        if((ss==='統率'||/自身統率(提高|增加)/.test(p.text||''))&&g.st.統率>=top3&&g.st.統率>=teamTop){const self=/自身統率(提高|增加)/.test(p.text||'')&&p.kind!=='被動'&&p.kind!=='兵種';v=Math.max(v,self?.6:.3)*(self?6:1.5);tips.push(`${g.n}統率是自己與全隊最高，${self?'加統率的戰法（挑釁自己扛）':'統率型戰法（吃統率）'}最划算`)}}
       const sources=SRC[s]||[],fo=facOf(g.n);
       if(sources.some(x=>x!==g.n&&facOf(x)===fo)){v*=1.04;tips.push(`來源武將與${g.n}同勢力（${fo}）`)}
       const sh=tagsOf(g.n).filter(t=>sources.some(x=>tagsOf(x).includes(t)));
@@ -190,18 +198,21 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       if(p.prep){const m=.9+.02*red;v*=m;if(red<=1)tips.push('紅度低，準備型戰法降權')}
       else if(p.rate!=null&&red<=2&&p.rate>=.4){v*=1+.08*(p.rate-.4)*(5-red)/5;tips.push('紅度低，偏好發動率高的戰法')}
       // —— Joe 的觀念：謀將／女性帶補血與輔助，輔助依 發動率>減傷>增傷>能力 排序；武勇型帶突擊、連擊、增傷 ——
-      const sup=roleOf(g.st)==='mag'||FEMALE.has(g.n),to=tierOf(s);
+      const sup=isSup(g.n,g.st),to=tierOf(s);
       if(to.support){
         const m=to.tier?TIER_M[to.tier]:1,mh=to.heal?TU.heal:1;
         if(sup){const mm=Math.max(m,mh);if(mm>1){v=Math.max(v,.02)*mm;tips.push(`${FEMALE.has(g.n)?'女性':'謀將'}${g.n}帶輔助：${to.heal?'補血':TIER_N[to.tier]}（輔助優先序：提高戰法發動率＞減傷＞增傷＞增加能力）`)}}
         else if(m>1){v*=1+(m-1)*.5;if(m>=1.2)tips.push(`輔助戰法：${TIER_N[to.tier]}`)}
+        if(sup&&p.kind!=='兵種'&&!(/自身統率(提高|增加)/.test(p.text||'')&&g.st.統率>=Math.max(g.st.武勇,g.st.智略)&&g.st.統率>=Math.max(...sts.map(x=>x.統率)))&&(to.heal||to.tier==='cut'||p.status||['seal','taunt','taunt2'].includes(p.fx?.open?.t||p.fx?.cast?.t))&&sel[i].some(x=>{const o=tierOf(x),q=ps(x);return kindOf(x)!=='兵種'&&o.support&&(o.heal||o.tier==='cut'||q.status)})){v*=.5;tips.push('補血、控場、降傷取一，這位已經有一個，第二格改帶輸出或發動率')}
       }else if(!sup&&(p.kind==='突擊'||p.fx?.cast?.t==='combo')){v*=1.1}
       if(/女性/.test(p.text||'')){if(FEMALE.has(g.n)){v*=1.25;tips.push('這招對女性武將有額外加成')}else v*=.9}
       // 隊伍分工：官方編制 98% 至少有一個補血來源、76% 至少一個減傷、78% 至少一個控制（封擊／挑釁／混亂…）
       const cov=pred=>ctx.assumeCover||team.some((tg,j)=>[innateOf(D,tg.n),...sel[j]].some(x=>x&&pred(tierOf(x),ps(x)))),
         isCtl=!!(p.status||['seal','taunt','taunt2'].includes(p.fx?.open?.t||p.fx?.cast?.t));
+      if(to.heal&&!sup&&team.some((tg,j)=>j!==i&&isSup(tg.n,tg.st))){v*=.55;tips.push('隊內已有輔助型武將負責補血，輸出型武將第二、三招優先帶攻擊戰法')}
+      if(to.heal&&!sup&&/謀略|兵刃|兵謀/.test(D.skillText?.[innateOf(D,g.n)]?.tags||'')){v*=.6;tips.push('固有本身是輸出／控制傷害，第二、三招優先帶主動攻擊戰法（Joe：毛利元就）')}
       if(to.heal){const hn=team.reduce((a,tg,j)=>a+[innateOf(D,tg.n),...sel[j]].filter(x=>x&&tierOf(x).heal).length,0);
-        if(!cov(o=>o.heal)){v*=TU.healNone;tips.push('隊內還沒有補血來源（官方編制 98% 至少有一個）')}else if(hn>=3)v*=.8}
+        if(!cov(o=>o.heal)){if(sup){v*=TU.healNone;tips.push('隊內還沒有補血來源（官方編制 98% 至少有一個），由輔助型武將補')}else v*=.85}else if(hn>=3)v*=.8}
       if(to.tier==='cut'&&!cov(o=>o.tier==='cut')){v*=1.25;tips.push('隊內還沒有減傷（官方編制 76% 至少有一個）')}
       if(isCtl&&!cov((o,pp)=>pp.status||['seal','taunt','taunt2'].includes(pp.fx?.open?.t||pp.fx?.cast?.t))){v*=1.15;tips.push('隊內還沒有控制（封擊／挑釁／混亂，官方編制 78% 至少有一個）')}
       // —— 官方編制逐位拆解出的因果規則（說明文字可推；權重是推估，只調排序、不設限制）——
@@ -209,8 +220,10 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         const selfRate=b2.includes('rateAct')&&(p.buf||[]).some(y=>y.k==='rateAct'&&y.to==='self');
         // 1. 固有是主動 → 自身主動發動率／自帶主動傷害類；固有不是主動 → 這類沒有對象
         if(selfRate||/自帶主動戰法.{0,10}(傷害|發動)/.test(x)){if(f.innK==='主動'){v*=1.5;tips.push(`${g.n}固有是主動戰法，自身主動發動率類戰法直接加成自帶戰法`)}else if(f.innK){v*=.55;tips.push(`${g.n}固有不是主動戰法，吃不到這招的發動率加成`)}}
+        // 1b. 固有是「普通攻擊後」才出額外傷害的主動（破陣亂舞）→ 增加普攻傷害＋給亂舞的主動直接放大（Joe：酒井一力當先優先）
+        if(f.innK==='主動'&&/普通攻擊後/.test(innTxt(g.n))&&p.kind==='主動'&&/普通攻擊傷害(提高|增加)/.test(x)&&/亂舞/.test(x)){v=Math.max(v,2)*1.8;tips.push(`${g.n}固有靠普通攻擊後出傷害，增加普攻傷害並給亂舞的戰法直接放大固有`)}
         // 2. 準備型自帶主動 → 運勝之鼻／疑心暗鬼（跳過準備／準備時加成）
-        if(/需要準備的自帶主動|自帶準備主動/.test(x)){if(f.prep){v=Math.max(v,.8)*1.9;tips.push(`${g.n}固有戰法要準備，這招能跳過準備或在準備時加成（官方北條綱成、松永久秀必帶）`)}else v*=.25}
+        if(/需要準備的自帶主動|自帶準備主動/.test(x)){if(f.prep){v=Math.max(v,.8)*3.5;tips.push(`${g.n}固有戰法要準備，這招能跳過準備或在準備時加成（官方北條綱成、松永久秀必帶）`)}else v*=.25}
         // 3. 靠普攻打的人（連擊、亂舞、突擊）→ 突擊／連擊類；不吃普攻的主動戰法降權
         if(f.atk&&f.innK!=='突擊'&&p.kind==='突擊'&&f.selfCombo){v*=1.35;tips.push(`${g.n}固有自帶連擊（每回合普攻 2 次），突擊判定翻倍 → 帶突擊戰法`)}
         if(f.atk&&f.innK!=='突擊'&&feedsAtk(s)&&p.kind!=='突擊'){if(f.selfCombo)v*=.7;else{v=Math.max(v,1.1)*1.4;tips.push(`${g.n}固有靠普通攻擊（亂舞），連擊／增加普攻的戰法直接放大固有`)}}
@@ -225,6 +238,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         if(to.heal){if(D.skillText?.[s]?.target==='自己')v*=.6;if(/偶數回合/.test(x))v*=.6}
         // 3e. 被打型（龍造寺隆信…）普攻不是主力，突擊戰法效益低
         if(f.tank&&!f.atk&&p.kind==='突擊')v*=.7
+        if(f.rushFed){if(p.kind==='突擊'){v*=1.8;tips.push(`${g.n}固有的反擊會觸發突擊，兩招都裝突擊戰法（Joe：本多忠勝）`)}else if(p.kind==='主動'&&!feedsAtk(s))v*=.6}
+        // 妻木熙子型固有（敵軍全體都處於持續性狀態才補血）→ 隊內多帶持續傷害戰法（明智光秀的囊沙之計、方今之時）
+        if(team.some(tg=>/敵軍全體都處於持續性狀態/.test(innTxt(tg.n)))&&/持續受到傷害|火傷|水攻|中毒|潰走|消沉/.test(x)){v=Math.max(v,.8)*1.6;tips.push('隊內有固有補血要敵軍全體持續性狀態的武將，持續傷害戰法讓它觸發')}
         // 4. 固有要「發動主動戰法」才觸發 → 主動戰法多帶
         if(f.wantAct&&p.kind==='主動'){v*=1.3;tips.push(`${g.n}的固有／特性靠「發動主動戰法」觸發，主動戰法越多越好`)}
         else if(f.wantAct&&(p.kind==='指揮'||p.kind==='被動'||p.kind==='兵種')&&!(p.buf||[]).some(y=>y.k==='rateAct'))v*=.9;
@@ -340,7 +356,19 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     });
     const nAct=[...inn,...sel.flat().filter(Boolean).map(K)].filter(k=>k==='主動').length;
     if(nAct>=7)out.push({lv:'warn',t:`整隊有 ${nAct} 個主動戰法，比官方編制常見的 3～6 個還多`});
-    const ft=facType(team);if(ft==='mixed')out.push({lv:'note',t:'兩種勢力混搭：沒有同勢力協力，也不能配合盟之陣（官方編制較少見）'});
+    {const hi=team.filter(t=>Math.max(t.st.統率||0,t.st.速度||0)>=220).map(t=>t.n);
+      if(!hi.length)out.push({lv:'warn',t:'隊內沒有統率或速度達 220 的武將：Joe 的經驗是單一武將統率或速度 220 以上，對上滿紅對手比較不吃虧、強度較高；可靠裝備、加成、兵種累加（引擎數值含設施加成，僅供參考）'});
+      else out.push({lv:'ok',t:`統率／速度 220 以上：${hi.join('、')}`})}
+    const ft=facType(team);if(ft==='mixed')out.push({lv:'warn',t:`勢力混搭（${facsOf(team).join('、')}）：沒有同勢力協力（約 +7% 全能力），也不是三勢力皆不同的合盟之陣。群雄同在一隊也算同勢力有加成，除非要搭合盟之陣，盡量同勢力`});
+    // 兵種特性對不上隊伍兵種（石川數正馬弓術放在足輕隊用不到）
+    {const AM={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
+      for(const g of team){const ts=(D.stats[g.n]?.traits||[]).map(t=>t.match(/^([馬弓槍炮器]+)術(I{1,3})$/)).filter(Boolean);
+        if(ts.length&&!ts.some(m=>[...m[1]].some(c=>AM[c]===arm)))out.push({lv:'warn',t:`${g.n}的兵種特性（${ts.map(m=>m[0]).join('、')}）對${arm}兵隊沒有加成`})}}
+    // 固有有條件：大將要同時打兵刃與謀略（壽桂尼尼御台）／敵全體要有持續性狀態（妻木熙子內賢之助）
+    {const b=F(team[0].n);
+      for(const g of team){const x=innTxt(g.n);
+        if(/我軍大將[\s\S]{0,90}離反及攻心/.test(x)&&!(b.both||b.innK==='突擊'))out.push({lv:'warn',t:`${g.n}的固有給大將離反＋攻心，大將${team[0].n}不是兵謀／突擊型，離反效果會浪費（適合兵謀＋突擊大將，例如今川義元）`});
+        if(/敵軍全體都處於持續性狀態/.test(x)){const dots=team.reduce((a,t)=>a+[innateOf(D,t.n),...(sel[team.indexOf(t)]||[])].filter(y=>y&&/持續受到傷害|火傷|水攻|中毒|潰走|消沉/.test(ps(y).text||'')).length,0);if(dots<2)out.push({lv:'warn',t:`${g.n}的固有補血要「敵軍全體都處於持續性狀態」才觸發，隊內持續傷害來源只有 ${dots} 個，建議搭明智光秀（方今之時、囊沙之計）這類`})}}}
     return out;
   }
   return{facsOf,catOf,LEAD,leaderFirst,leadCmp,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
