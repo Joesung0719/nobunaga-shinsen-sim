@@ -69,6 +69,8 @@ export function planPoints(kit,D,n,skills,st,pool,team){
   return{main,pts:{[main]:pool},why};
 }
 
+const planMain=(raw,f)=>{const v=['武勇','智略','統率'].map(k=>[k,f.votes[k]+(raw[k]||0)/1000]).sort((a,b)=>b[1]-a[1]);return v[0][0]};
+
 // ③兵學方向（決策順序見 README／四隊口述）：補血≥2→臨戰；持續傷害／控制輸出→機略；減傷／反擊／被打型→陣立；突擊輸出→武略。
 const DIRN={武略:'普通攻擊強化',陣立:'防禦能力強化',機略:'戰法能力強化',臨戰:'輔助能力強化'};
 export function planBingaku(kit,D,n,skills,st,team){
@@ -88,7 +90,7 @@ export function planBingaku(kit,D,n,skills,st,team){
   let qi=null,qiWhy='';
   if(dir==='機略'){if(f.dot&&has('詭計百出')){qi='詭計百出';qiWhy='持續性狀態傷害 +18%（戰法以持續傷害為主）'}else if(f.ctl&&has('軍律擾亂')){qi='軍律擾亂';qiWhy='施加控制後降低目標統率與智略（戰法能造成控制）'}}
   else if(dir==='臨戰'){if(f.heal>=1.5&&has('鼓舞奮迅')){qi='鼓舞奮迅';qiWhy='治療友軍時使其傷害提高（多招補血）'}else if(f.ctl&&has('掎手之策')){qi='掎手之策';qiWhy='施加控制時使目標受傷提高（戰法能造成封擊等控制）'}else if(f.heal>=1&&has('救援心得')){qi='救援心得';qiWhy='治療最低兵力友軍時使其減傷'}}
-  else if(dir==='陣立'){if(f.hit&&has('先陣誘敵')){qi='先陣誘敵';qiWhy='前3回合提高被普攻機率，讓被打觸發型戰法（反擊）多發動'}else if(has('反討之計')){qi='反討之計';qiWhy='被控制時反擊一次'}else if(has('生生不息')){qi='生生不息';qiWhy='行動開始時有機率回血'}}
+  else if(dir==='陣立'){if(f.hit&&has('先陣誘敵')){qi='先陣誘敵';qiWhy='前3回合提高被普攻機率，讓被打觸發型戰法（反擊）多發動'}else if(f.ctl&&has('挫其銳氣')){qi='挫其銳氣';qiWhy='施加控制時使目標傷害降低（戰法能造成麻痺等控制，邊控邊削弱對手輸出）'}else if(planMain(raw,f)==='武勇'&&has('勇猛果敢')){qi='勇猛果敢';qiWhy='減少受到的謀略傷害（受武勇影響），武勇型武將補上謀略防禦'}else if(has('反討之計')){qi='反討之計';qiWhy='被控制時反擊一次'}else if(has('生生不息')){qi='生生不息';qiWhy='行動開始時有機率回血'}}
   else if(dir==='武略'){if(f.rush&&has('虛實自在')){qi='虛實自在';qiWhy='每回合有機率連擊，連擊多一次普攻就多一次突擊判定'}else if(f.rush&&has('兵勢連鎖')){qi='兵勢連鎖';qiWhy='突擊戰法傷害逐次提高'}}
   const REASON={臨戰:'補血／輔助戰法為主，兵學補強輔助效果',機略:'戰法以持續傷害或控制為主，兵學強化戰法效果',陣立:'減傷、護盾或被打觸發型戰法為主（或隊友提供護盾），兵學拉高存活',武略:'靠突擊輸出，兵學強化普攻與連擊'};
   const why=`定位：${[f.dot?`持續傷害 ${f.dot}`:'',f.ctl?`控制 ${f.ctl}`:'',f.heal?`補血 ${f.heal}`:'',f.mit?`減傷／護盾 ${f.mit}`:'',f.rush?`突擊 ${f.rush}`:'',f.dmg?`傷害戰法 ${f.dmg}`:''].filter(Boolean).join('、')||'輔助型'}${tm?`；隊友提供減傷 ${tm}`:''}`;
