@@ -23,7 +23,7 @@ const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=
 // 原始屬性代理分（Lv50）：先篩掉明顯弱的組合
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
 const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
-const mkTeam=(names,arm,sk,slv=null)=>{const st=L.teamStats(names,arm,LV,0,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS,slv)}};
+const mkTeam=(names,arm,sk,slv=null,red=0)=>{const st=L.teamStats(names,arm,LV,red,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS,slv)}};
 function plan(names,arm){   // 組出戰法：回傳 sel、why
   const st=L.teamStats(names,arm,LV,0,FAC);
   const tm=names.map((n,i)=>({n,red:0,st:st[i]})),pl=kit.pick(tm,null,{},{arm});
@@ -68,24 +68,26 @@ const _unused=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const s
 const teams=[];let k2=0;
 for(const m of fin){
   const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk);
-  const w={};for(const lv of LANDS){const r=marchPct(team,lv,24);w[lv]=r}
+  const w={};for(const lv of LANDS){const r=marchPct(team,lv,8);w[lv]=r}
+  const wr={};for(const rd of [3,5]){const tm=mkTeam(names,m.arm,sk,null,rd).team;wr[rd]={};for(const lv of [8,9,10])wr[rd][lv]=marchPct(tm,lv,6)}   // 3 紅／5 紅（只算 Lv8～10，低等級已飽和）
   const src=[],gen=0,ks=0;   // 不再計抽數
   const f=kit.fieldScore(names);
-  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,r:[gen,ks,src],w,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
+  teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,w3:wr[3],w5:wr[5],r:[gen,ks,src],w,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
   if(++k2%300===0)log(`細算 ${k2}/${fin.length}`);
 }
 function marchPct(my,lv,reps){
-  const keys=L.garrisonsAt(lv),w=D.levels[lv].waves||1;let win=0,left=0;
-  for(let i=0;i<reps;i++){const ks=[...keys].sort(()=>R()-.5).slice(0,w);const me=L.clone(my);let ok=true;
-    for(const k of ks){const r=battle(me,L.garrison(k,lv),R);if(r.res!=='W'){ok=false;break}}
-    if(ok){win++;left+=sumT(me)/sumM(me)}}
-  return[Math.round(win/reps*100),win?Math.round(left/win*100):0]
+  // 守軍一隊一隊打（戰報裡每場都是「我方一隊 vs 一支守軍」，各自有勝負，不必一口氣連打整級）：
+  // 勝率＝對該級每一支守軍隊各打 reps 次的平均；整級連打（兵力不補）另存第三格僅供參考
+  const keys=L.garrisonsAt(lv),w=D.levels[lv].waves||1;let win=0,left=0,n=0,chain=0;
+  for(const k of keys)for(let i=0;i<reps;i++){const me=L.clone(my);const r=battle(me,L.garrison(k,lv),R);n++;if(r.res==='W'){win++;left+=sumT(me)/sumM(me)}}
+  for(let i=0;i<Math.max(4,reps>>1);i++){const ks=[...keys].sort(()=>R()-.5).slice(0,w);const me=L.clone(my);let ok=true;for(const k of ks){if(battle(me,L.garrison(k,lv),R).res!=='W'){ok=false;break}}if(ok)chain++}
+  return[Math.round(win/n*100),win?Math.round(left/win*100):0,Math.round(chain/Math.max(4,reps>>1)*100)]
 }
 const names=new Set(teams.flatMap(t=>[...t.n,...t.r[2]]));
 const info=n=>({r:L.rarityOf(n),c:cost(n),f:D.stats[n].f,season:D.stats[n].season,inn:L.innateOf(D,n),tags:TAGS[n]||[],pulls:Math.round(pulls(n)),st:Object.fromEntries(['武勇','智略','統率','速度'].map(k=>[k,Math.round(statsAt(D,n,LV,L.rarityOf(n))[k])]))});
 const gens=Object.fromEntries([...names].map(n=>[n,info(n)]));
-const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
-  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 10000 兵；打下一級土地 = 依序打完該級所有守軍隊（兵力不補、平局算失敗），24 次模擬；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
+const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,reds:[0,3,5],troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
+  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 10000 兵；勝率 = 對該級每一支守軍隊各打 8 次的平均（一隊打一支守軍，平局算沒贏；整級連打不補兵的成功率另存、僅供參考）；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
 // ---- 升級路線：Cost 提高後用繼承券換將 ----
 // 最少更換＝只換一位（繼承券 1 張，其餘兩人沿用）；全面換血＝不顧資源，直接換成該 Cost 內最強的另一組。
 const sc=t=>(t.w[9][0]+t.w[10][0])/2;
