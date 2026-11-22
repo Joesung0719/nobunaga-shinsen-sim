@@ -1,6 +1,6 @@
 // 開荒隊伍推薦 v3：總 Cost 15～20 的所有三人組合 → 引擎模擬打各級土地守軍 → 輸出 recommend.json。
 // 戰法由 slg/teamlib.js 評估（武將特性、勢力／一門、發動機率、干擾、紅度＋戰報實戰紀錄），同隊戰法依「數量」不重複。
-// 假設（頁面也會寫出來）：武將 Lv50、0 紅（最省資源）、戰法滿級、設施 協力 Lv5／兵種營 Lv5、每人 9900 兵。
+// 假設（頁面也會寫出來）：武將 Lv50、0 紅（最省資源）、戰法滿級、設施 協力 Lv5／兵種營 Lv5、每人 10000 兵。
 // 用法：node tools/recommend.mjs     （先跑過 tools/skill-power.mjs 與 tools/mine-reports.py）
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
@@ -13,7 +13,7 @@ const CARD=new Map(CARDS.map(c=>[c.n,c]));
 const RATE={5:0.0016,4:0.009,3:0.0344};
 const pulls=n=>1/(CARD.get(n)?.s1/100||RATE[L.rarityOf(n)]||RATE[5]);
 const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD,official:J('official.json')});
-const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900,LV=50,LANDS=[4,5,6,7,8,9,10];
+const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=10000,LV=50,LANDS=[4,5,6,7,8,9,10];
 const R=L.rng(20261120),t0=Date.now(),log=m=>console.error(`[${((Date.now()-t0)/1000).toFixed(0)}s] ${m}`);
 // Joe 2026-11-21：第六季，玩家已有大部分武將、差在紅度，沒人用紫將 → 戰法滿級（Lv10）、兵學不計；只推金將（5★），不算抽數／取得成本
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'&&L.rarityOf(n)===5),cost=L.costOf;
@@ -85,7 +85,7 @@ const names=new Set(teams.flatMap(t=>[...t.n,...t.r[2]]));
 const info=n=>({r:L.rarityOf(n),c:cost(n),f:D.stats[n].f,season:D.stats[n].season,inn:L.innateOf(D,n),tags:TAGS[n]||[],pulls:Math.round(pulls(n)),st:Object.fromEntries(['武勇','智略','統率','速度'].map(k=>[k,Math.round(statsAt(D,n,LV,L.rarityOf(n))[k])]))});
 const gens=Object.fromEntries([...names].map(n=>[n,info(n)]));
 const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
-  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 9900 兵；打下一級土地 = 依序打完該級所有守軍隊（兵力不補、平局算失敗），24 次模擬；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
+  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 10000 兵；打下一級土地 = 依序打完該級所有守軍隊（兵力不補、平局算失敗），24 次模擬；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
 // ---- 升級路線：Cost 提高後用繼承券換將 ----
 // 最少更換＝只換一位（繼承券 1 張，其餘兩人沿用）；全面換血＝不顧資源，直接換成該 Cost 內最強的另一組。
 const sc=t=>(t.w[9][0]+t.w[10][0])/2;

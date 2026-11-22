@@ -6,7 +6,7 @@ import {makeKit} from '../slg/teamlib.js';
 import {battle,bestArm} from '../slg/engine.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const kit=makeKit(D,{power:J('skillpower.json'),field:J('field.json')});
-const R=L.rng(20261121),FAC={co:10,arm:5,ka:3,same:true},TROOPS=9900;
+const R=L.rng(20261121),FAC={co:10,arm:5,ka:3,same:true},TROOPS=10000;
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);
 const FOES=[8,9].flatMap(lv=>L.garrisonsAt(lv).map(k=>L.garrison(k,lv)));
 function winrate(names,arm,sk,reps=3){const st=L.teamStats(names,arm,50,5,FAC),my=L.myTeam(names,arm,st,sk,TROOPS);let w=0,n=0,left=0;

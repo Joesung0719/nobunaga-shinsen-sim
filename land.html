@@ -484,9 +484,9 @@ const wavesOf=lv=>D.levels[lv].waves||1;
 const SLG=new URLSearchParams(location.search).get('slg')?.match(/^(mine|enemy)-([0-2])$/);
 const SLG_KEY='shinsen-slg-v1';
 const KEY=SLG?'shinsen-land-slgedit':'shinsen-land-v1';
-const S=Object.assign({lv:6,max:29700,cur:29700,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
+const S=Object.assign({lv:6,max:30000,cur:30000,wounded:0,dead:0,wins:0,log:[],tab:'stats',team:'',
   skLv:DEFAULT_SKILL_LV,cmin:18,cmax:20,thr:70,nteam:1,rtab:'field',want:'',tgt:'land',opp:{preset:'0:5',gens:[]},
-  my:{gens:[{n:'立花誾千代',s:['',''],t:9900},{n:'立花道雪',s:['',''],t:9900},{n:'北條氏康',s:['',''],t:9900}],arm:'弓'}},load());
+  my:{gens:[{n:'立花誾千代',s:['',''],t:10000},{n:'立花道雪',s:['',''],t:10000},{n:'北條氏康',s:['',''],t:10000}],arm:'弓'}},load());
 let slgSet=null;
 if(SLG){
   try{slgSet=JSON.parse(localStorage.getItem(SLG_KEY))||{}}catch{slgSet={}}
@@ -501,7 +501,7 @@ function load(){
     const o=JSON.parse(localStorage.getItem(KEY))||{};
     // 戰法等級改為 Lv1～10（舊版是 1～5）：舊存檔的預設等級與個別等級都作廢，改用新預設
     if(o.rtab==='cheap'||o.rtab==='best'||o.rtab==='official')o.rtab='field';   // 2026-11-21：一鍵推薦預設改成「官方編制」
-    for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))if(m.t>10000)m.t=10000;   // 每人兵力上限 1 萬（Joe）
+    for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))if(m.t>10000||m.t===9900)m.t=10000;   // 每人兵力上限 1 萬（Joe）
     if(o.lvScale!==10){delete o.skLv;for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))m.sl={};o.lvScale=10}
     return o;
   }catch{return{}}
@@ -579,7 +579,7 @@ function renderArmy(){
   $('maxTroops').value=S.max;
   $('go').disabled=S.cur<=0;
 }
-$('maxTroops').onchange=e=>{const v=Math.max(1000,Math.min(60000,+e.target.value||29700));S.cur=Math.min(S.cur,v);if(S.max<v&&S.cur===S.max)S.cur=v;S.max=v;save();renderArmy()};
+$('maxTroops').onchange=e=>{const v=Math.max(1000,Math.min(60000,+e.target.value||30000));S.cur=Math.min(S.cur,v);if(S.max<v&&S.cur===S.max)S.cur=v;S.max=v;save();renderArmy()};
 $('heal').onclick=()=>{S.cur=Math.min(S.max,S.cur+S.wounded);S.wounded=0;save();renderArmy()};
 $('refill').onclick=()=>{S.cur=S.max;S.wounded=0;save();renderArmy()};
 
@@ -1043,7 +1043,7 @@ $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S
 // ================= 多隊・戰法庫存・戰法等級 =================
 const ALLN=Object.keys(D.stats||{}).filter(n=>D.stats[n].c).sort((a,b)=>D.stats[a].c-D.stats[b].c||a.localeCompare(b,'zh-Hant'));
 const costOf=n=>+D.stats?.[n]?.c||0;
-const mkMy=(names,arm,fac)=>({gens:names.map(n=>({n,s:['',''],t:9900,red:0,pts:{},sl:{}})),arm:arm||'騎',fac:{...(fac||S.my.fac)}});
+const mkMy=(names,arm,fac)=>({gens:names.map(n=>({n,s:['',''],t:10000,red:0,pts:{},sl:{}})),arm:arm||'騎',fac:{...(fac||S.my.fac)}});
 function usedAll(skip){const u={};S.teams.forEach((t,ti)=>t.gens.forEach((m,gi)=>m.s.forEach((x,j)=>{if(!x||(skip&&skip[0]===ti&&skip[1]===gi&&skip[2]===j))return;u[x]=(u[x]||0)+1})));return u}
 function trimStock(){const u={};for(const t of S.teams)for(const m of t.gens)m.s=m.s.map(x=>{if(!x)return x;if(x===innateOf(m.n)||(u[x]||0)>=KIT.count(x)){delete m.sl[x];return ''}u[x]=(u[x]||0)+1;return x})}
 const WHY={};
@@ -1234,7 +1234,7 @@ $('sug').onclick=async()=>{
   out.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{const m=my.gens[+b.dataset.i];m.n=b.dataset.n;m.bg=null;m.sl={};m.s=['',''];m.pts={};trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})});
 };
 // ================= ② 一鍵推薦 =================
-const A=R?.assumptions||{lands:[4,5,6,7,8,9,10],cost:[15,20],troops:9900};
+const A=R?.assumptions||{lands:[4,5,6,7,8,9,10],cost:[15,20],troops:10000};
 const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
 const prow=(t,lv)=>t.w[lv]||[0,0];
 const inRange=t=>t.c>=S.cmin&&t.c<=S.cmax;
@@ -1258,7 +1258,7 @@ $('ai').onclick=async()=>{
   S.teams=picks.map(t=>{const m=mkMy(t.n,t.a,S.my.fac);if(t._sk)m.gens.forEach(g=>{g.s=[...(t._sk[g.n]||[]),'',''].slice(0,2)});return m});S.ti=0;S.my=S.teams[0];
   S.teams.forEach((_,i)=>autofill(i));trimStock();save();renderAll();
   note.textContent='組隊完成，模擬中…';await pause();
-  const tr=A.troops||9900,parts=[],oldTgt=S.tgt;
+  const tr=A.troops||10000,parts=[],oldTgt=S.tgt;
   for(let ti=0;ti<S.teams.length;ti++){const t=S.teams[ti],r=await simulate(()=>buildMine(t),30,tr);parts.push(`第 ${ti+1} 隊 ${t.gens.map(g=>g.n).join('、')}（Cost ${t.gens.reduce((a,g)=>a+costOf(g.n),0)}）約 ${pc(r.w)}`);await pause()}
   note.textContent=`已載入 ${S.teams.length} 隊：${parts.join('；')}（對手：${targetLabel()}；戰法依庫存推薦，各隊不重複裝同一份，等級用預設 Lv${S.skLv}）。${fieldLine(KIT.fieldScore(picks[0].n))}`;
 };
