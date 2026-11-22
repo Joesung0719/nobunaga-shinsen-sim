@@ -146,7 +146,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 
 <script type="module">
 import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
-const [D,CARDS,EXTRA]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json()),fetch('generals_extra.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))]);
+const [D,CARDS,EXTRA,PROF]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json()),fetch('generals_extra.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),fetch('profiles.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>null)]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -299,6 +299,24 @@ function bingakuBox(g){
 const dlg=$('sheet');
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
 dlg.addEventListener('close',()=>{if(location.hash)history.replaceState(null,'',location.pathname)});
+function profileBox(n){
+  const P=PROF?.gens?.[n];if(!P)return el('div',{},el('h4',{},'AI 檔案與建議'),el('p',{class:'note'},'金將（5★）才有檔案'));
+  const li=a=>el('ul',{class:'note',style:'margin:4px 0 8px 18px;padding:0'},...a.map(x=>el('li',{},x)));
+  const off=PROF.per?.[n];
+  const gp=Object.entries(PROF.gaps||{}).filter(([,v])=>v.includes(n)).map(([k])=>k);
+  return el('div',{},el('h4',{},'AI 檔案與建議'),
+    el('p',{class:'note'},`定位：${P.role}，強項 ${P.topStat.join('、')}；建議兵種 ${P.arm}（${P.armWhy}）`),
+    el('b',{},'固有戰法怎麼看'),
+    li([`${P.innate.skill}（${P.innate.kind||'?'}${P.innate.rate?'・'+P.innate.rate:''}）：${P.innate.trig.join('；')||'—'}`,...(P.innate.cost.length?['代價：'+P.innate.cost.join('、')]:[]),...(P.innate.scales.length?['吃：'+P.innate.scales.join('、')]:[])]),
+    el('b',{},'所以第 2、3 戰法需要'),li(P.need),
+    el('b',{},`建議戰法：${P.rec.skills.join('、')}`),
+    li(P.rec.why.map(w=>w.length>150?w.slice(0,150)+'…':w)),
+    P.rec.alt?.length?el('p',{class:'note'},`備選：${P.rec.alt.join('、')}`):null,
+    off?el('p',{class:'note'},`官方編制出現 ${off.t/2} 次，實際帶：${Object.entries(off.sk).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+'×'+v).join('、')}；與建議吻合 ${off.h}/${off.t}`):el('p',{class:'note'},'官方編制沒有出現過這位，無法對照'),
+    P.bingaku?el('div',{},el('b',{},`兵學建議：${P.bingaku.dir}`),li(P.bingaku.why)):el('p',{class:'note'},'兵學：這位的兵學樹尚未收集，判斷不了'),
+    gp.length?el('p',{class:'unk'},'判斷不了的部分：'+gp.join('；')):null,
+    el('p',{class:'note'},'檔案與建議由說明文字推導（tools/profiles.mjs），單人視角；隊伍補位（補血、減傷、控制）另在組隊分析處理。'));
+}
 function openGeneral(n){
   const g=G.get(n);if(!g)return;const x=g.x;
   history.replaceState(null,'',`#${encodeURIComponent(n)}`);
@@ -328,6 +346,7 @@ function openGeneral(n){
       el('div',{},el('h4',{},'特性'),traits),
       el('div',{},el('h4',{},'固有戰法'),inn?skillCard(inn,{withHolders:false}):el('p',{class:'note'},'尚未收集')),
       el('div',{},el('h4',{},'傳授戰法'),teach?skillCard(teach):el('p',{class:'note'},'尚未收集')),
+      profileBox(n),
       bingakuBox(g)));
   if(!dlg.open)dlg.showModal();
   dlg.scrollTop=0;

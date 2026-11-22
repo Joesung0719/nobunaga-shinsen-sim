@@ -128,6 +128,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         if(i===fastest){v*=1.1;tips.push('速度最快，先手施放干擾')}
       }
       const ss=scaleStat(s);
+      // 相容檢查：戰法吃某項能力（受X影響），而這位武將自己的固有戰法／已選戰法會把自身X降低 → 互斥（例：今川義元海道第一降統率，不能配吃統率的戮力同心）
+      if(ss){const lowers=[innateOf(D,g.n),...(sel[i]||[])].filter(x=>x&&x!==s&&new RegExp('自身'+ss+'(降低|下降|減少)').test(ps(x).text||''));
+        if(lowers.length){v*=.05;tips.push(`衝突：${lowers[0]}會降低自身${ss}，與吃${ss}的${s}互斥`)}}
       if(ss){const r=g.st[ss]/avg(ss),own=g.st[ss]/((g.st.武勇+g.st.智略+g.st.統率+g.st.速度)/4),m=Math.max(.85,Math.min(1.25,1+.3*(r-1)+.2*(own-1)));v*=m;if(m>1.04)tips.push(`受${ss}影響，${g.n}的${ss}${r>1?'比隊友高':'是自己的強項'}（先看武將自身能力）`);else if(m<.95)tips.push(`受${ss}影響，但${g.n}的${ss}偏低，已降權`)}
       const sources=SRC[s]||[],fo=facOf(g.n);
       if(sources.some(x=>x!==g.n&&facOf(x)===fo)){v*=1.04;tips.push(`來源武將與${g.n}同勢力（${fo}）`)}
@@ -181,7 +184,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       }else if(!sup&&(p.kind==='突擊'||p.fx?.cast?.t==='combo')){v*=1.1}
       if(/女性/.test(p.text||'')){if(FEMALE.has(g.n)){v*=1.25;tips.push('這招對女性武將有額外加成')}else v*=.9}
       // 隊伍分工：官方編制 98% 至少有一個補血來源、76% 至少一個減傷、78% 至少一個控制（封擊／挑釁／混亂…）
-      const cov=pred=>team.some((tg,j)=>[innateOf(D,tg.n),...sel[j]].some(x=>x&&pred(tierOf(x),ps(x)))),
+      const cov=pred=>ctx.assumeCover||team.some((tg,j)=>[innateOf(D,tg.n),...sel[j]].some(x=>x&&pred(tierOf(x),ps(x)))),
         isCtl=!!(p.status||['seal','taunt','taunt2'].includes(p.fx?.open?.t||p.fx?.cast?.t));
       if(to.heal){const hn=team.reduce((a,tg,j)=>a+[innateOf(D,tg.n),...sel[j]].filter(x=>x&&tierOf(x).heal).length,0);
         if(!cov(o=>o.heal)){v*=TU.healNone;tips.push('隊內還沒有補血來源（官方編制 98% 至少有一個）')}else if(hn>=3)v*=.8}
