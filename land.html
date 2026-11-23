@@ -64,7 +64,7 @@ input[type=number],select{background:var(--ink);color:var(--paper);border:1px so
 .rep .rh{margin:10px 0 2px;padding:2px 8px;background:rgba(227,183,90,.12);color:var(--gold,#e3b75a);font-weight:700;border-radius:4px}
 .rep .rs{color:var(--muted);font-size:.74rem;margin:0 0 4px 8px}
 .rep .ln{padding-left:8px;border-left:3px solid transparent}
-.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}
+.rep .cb{color:#7db6ee}.rep .cr{color:#e8806f}.rep .sk{margin:4px 0 1px;font-weight:700}.rep .sk i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;margin-right:6px;padding:0 5px;border-radius:9px;background:#8a6d2a;color:#fff;font-size:.72rem}.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}
 .rep .ln.me{border-color:#5aa0e3}.rep .ln.en{border-color:#d4574a}
 .rep .ln small{color:var(--muted)}.rep .ln .dm{color:#e6806f}.rep .ln .hl{color:#7fcf8f}.rep .ln .st{color:#cfa85a}
 .rep .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:760px){.rep .cmp{grid-template-columns:1fr}}
@@ -657,7 +657,7 @@ function marchEngine(lv,ks,start,P){
     const dl=[G.gens[1].troops,G.gens[2].troops,G.gens[0].troops];
     out.push({k:ks[i],res:r.res,dead,wounded:loss-dead,dl,r:null,
       rep:{wave:i+1,k:ks[i],res:r.res,rounds:r.rounds,log:r.log,names:[me.gens.map(g=>g.n),G.gens.map(g=>g.n)],
-        t0:[m0,e0],t1:[me.gens.map(g=>g.troops),G.gens.map(g=>g.troops)],spd:[me.gens.map(g=>g.st.速度),G.gens.map(g=>g.st.速度)],arms:[my.arm,G.arm],cont:i===start&&!!P}});
+        t0:[m0,e0],t1:[me.gens.map(g=>g.troops),G.gens.map(g=>g.troops)],spd:[me.gens.map(g=>g.st.速度),G.gens.map(g=>g.st.速度)],stats:[me.gens.map(g=>({...g.st})),G.gens.map(g=>({...g.st}))],arms:[my.arm,G.arm],cont:i===start&&!!P}});
     if(r.res!=='W'||sumT(me)<=0)break;
   }
   S.cur=Math.max(0,Math.round(sumT(me)*sc));S.gt={k:my.gens.map(m=>m.n).join('|'),cur:S.cur,t:me.gens.map(g=>g.troops)};
@@ -666,30 +666,46 @@ function marchEngine(lv,ks,start,P){
 }
 // ---- 戰報顯示：格式貼近遊戲戰報詳情（每回合：誰發動、普攻／戰法、損傷／回復、剩餘兵力）----
 const fm=n=>Math.round(n).toLocaleString('en-US');
-function repLines(w,log){   // → [{round, lines:[html], sum}]
-  const tr=[w.t0[0].slice(),w.t0[1].slice()],nm=(s,i)=>`<b>${w.names[s][i]}</b>`,rounds=[];let cur=null;
+const CTRL=new Set(['麻痺','混亂','威壓','無策','封擊','挑釁','牽制']);
+function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊戲戰報：「X由於Y【技能】的傷害，損失了兵力N（剩M）」「效果已施加」「統率降低了8.00%(變化)(結果)」
+  const tr=[w.t0[0].slice(),w.t0[1].slice()],rounds=[];let cur=null,last=null;
+  const kills=[w.names[0].map(()=>0),w.names[1].map(()=>0)],resc=[w.names[0].map(()=>0),w.names[1].map(()=>0)];
+  const nm=(s,i)=>`<span class="${s===0?'cb':'cr'}">[${w.names[s][i]}]</span>`;
   const close=()=>{if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
-  const tgt=t=>{
-    if(t.heal!=null){tr[t.side][t.i]=t.left;return`${nm(t.side,t.i)} <span class="hl">回復 ${fm(t.heal)}</span><small>（剩 ${fm(t.left)}）</small>`}
+  const stv=(s,i,k)=>w.stats?.[s]?.[i]?.[k];
+  const push=h=>cur.lines.push(h);
+  const head=(side,i)=>{if(!last||last.side!==side||last.i!==i){last={side,i};
+    push(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 ${fm(kills[side][i])}　救援 ${fm(resc[side][i])}　速度 ${w.spd?w.spd[side][i].toFixed(2):'?'}</span></div>`)}};
+  const sk=(e,name,kind)=>push(`<div class="sk ${e.side===0?'me':'en'}"><i>${kind==='普攻'?'普':(kind||'').slice(0,1)}</i>${name}</div>`);
+  const eff=(t,e,name)=>{
+    const by=nm(e.side,e.i),who=nm(t.side,t.i);
+    if(t.heal!=null){tr[t.side][t.i]=t.left;if(t.i!==e.i||t.side!==e.side)resc[e.side][e.i]+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
     if(t.v!=null){tr[t.side][t.i]=t.left;
-      if(t.shield)return`${nm(t.side,t.i)} <span class="st">鐵壁，免受傷害</span>`;
-      if(t.evade)return`${nm(t.side,t.i)} <span class="st">迴避</span>`;
-      return`${nm(t.side,t.i)} <span class="dm">損傷 ${fm(t.v)}</span>${t.crit?`<span class="st">（${t.dtype==='謀略'?'奇謀':'會心'}）</span>`:''}<small>（剩 ${fm(t.left)}${t.dtype?'・'+t.dtype:''}）</small>${t.rout?' <b>潰敗</b>':''}`}
-    if(t.status)return`${nm(t.side,t.i)} <span class="st">${t.status}</span>`;
+      if(t.shield)return`${who}由於【鐵壁】，免受${by}【${name}】的傷害`;
+      if(t.evade)return`${who}迴避了${by}【${name}】的攻擊`;
+      if(t.side!==e.side)kills[e.side][e.i]+=t.v;
+      return`${who}由於${by}【${name}】的傷害，損失了兵力 <span class="dm">${fm(t.v)}</span><small>（${fm(t.left)}）</small>${t.crit?`<span class="st">　${t.dtype==='謀略'?'奇謀':'會心'}</span>`:''}<small>・${t.dtype||''}</small>${t.rout?' <b>潰敗</b>':''}`}
+    if(t.status){const m=t.status;
+      if(CTRL.has(m))return`${who}「<span class="st">${m}</span>」效果已施加`;
+      let r=m.match(/^(武勇|智略|統率|速度)\s*([+-])\s*(\d+(?:\.\d+)?)(%?)/),out=[];
+      const two=m.match(/^統率智略\s*([+-])\s*(\d+(?:\.\d+)?)%/);
+      const fmtS=(k,sg,v,pc)=>{const b=stv(t.side,t.i,k),d=pc?(b!=null?b*v/100:null):v,res=b!=null&&d!=null?b+(sg==='-'?-d:d):null;
+        return`${who}${k}${sg==='-'?'降低':'提高'}了${pc?v.toFixed(2)+'%':Math.round(v)}${d!=null&&pc?`(${d.toFixed(2)})`:''}${res!=null?`(${res.toFixed(2)})`:''}`};
+      if(two)return['統率','智略'].map(k=>fmtS(k,two[1],+two[2],true)).join('<br>');
+      if(r)return fmtS(r[1],r[2],+r[3],!!r[4]);
+      return`${who}<span class="st">${m}</span>`}
     return''};
-  const kills=[w.names[0].map(()=>0),w.names[1].map(()=>0)],resc=[w.names[0].map(()=>0),w.names[1].map(()=>0)];let last=null;
-  const L=(side,html,i)=>{   // 遊戲格式：每位武將行動前有標頭（兵力、殺敵、救援、速度），底下逐行列出效果
-    if(!last||last.side!==side||last.i!==i){last={side,i};
-      cur.lines.push(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 ${fm(kills[side][i])}　救援 ${fm(resc[side][i])}　速度 ${w.spd?w.spd[side][i].toFixed(2):'?'}</span></div>`)}
-    cur.lines.push(`<div class="ln ${side===0?'me':'en'}">${html}</div>`)};
-  const tally=(e)=>{for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side)kills[e.side][e.i]+=t.v;if(t.heal!=null&&t.i!==e.i)resc[e.side][e.i]+=t.heal}};
   for(const e of log){
-    if(e.type==='round'){close();cur={round:e.round,lines:[]}}
-    else if(!cur)continue;
-    else if(e.type==='stun')L(e.side,`${nm(e.side,e.i)} <span class="st">${e.why}，無法行動</span>`,e.i);
-    else if(e.type==='prep')L(e.side,`${nm(e.side,e.i)} 準備【${e.skill}】`,e.i);
-    else if(e.type==='atk'){L(e.side,`${nm(e.side,e.i)} ${e.combo?'連擊':'普通攻擊'} → ${(e.tg||[]).map(tgt).filter(Boolean).join('、')||'（無目標）'}`,e.i);tally(e)}
-    else if(e.type==='skill'){L(e.side,`${nm(e.side,e.i)} 【${e.skill}】<small>${e.kind||''}${e.guess?'・推估':''}</small> → ${(e.tg||[]).map(tgt).filter(Boolean).join('、')||'（無效果）'}`,e.i);tally(e)}
+    if(e.type==='round'){close();cur={round:e.round,lines:[]};last=null;continue}
+    if(!cur)continue;
+    if(e.type==='stun'){head(e.side,e.i);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
+    else if(e.type==='prep'){head(e.side,e.i);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
+    else if(e.type==='atk'||e.type==='skill'){
+      head(e.side,e.i);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
+      sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
+      const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
+      for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
+      if(!ls.length)push(`<div class="ln ${e.side===0?'me':'en'}"><small>${nm(e.side,e.i)}發動【${name}】（無可見效果）</small></div>`)}
   }
   close();return rounds;
 }
