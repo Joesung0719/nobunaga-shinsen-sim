@@ -263,11 +263,29 @@ export function battle(A,B,R=Math.random){
     if(g.gc.鬼謀!==undefined)g.lj=(g.lj||0)+1+4*g.gc.鬼謀;   // 鬼謀：攻心 1~5%
   }
   // 戰報用：行動者當下速度，與有狀態變化的目標當下四維（顯示「統率降低了…(變化)(結果)」用）
+  // 另外每次事件後比對各武將的四維與 tm（% 加成）有沒有變動，變動就補一筆 stat／buff 事件（誰、哪項、數值、來源、持續到第幾回合），
+  // 這樣沒有明寫成事件的增減益（文武雙全、開場兵學／裝備／特性／指揮戰法…）也看得到。來源不明的標「接近【某戰法】」。
+  const LBL={dmg:'造成傷害提高',taken:'受到傷害降低',dmgBlade:'兵刃傷害提高',dmgStrat:'謀略傷害提高',takenBlade:'受兵刃傷害降低',takenStrat:'受謀略傷害降低',crit:'會心率',critS:'奇謀率',critSDmg:'奇謀傷害',critDmg:'會心傷害',rateAct:'主動戰法發動率',rateActNI:'主動戰法發動率',dmgAtk:'普攻傷害提高',dmgAct:'主動戰法傷害提高',dmgRush:'突擊戰法傷害提高',dmgPrep:'準備戰法傷害提高',weak:'造成傷害降低',weakBlade:'兵刃傷害降低',weakStrat:'謀略傷害降低',statDown:'統率智略降低',guard:'受到傷害降低',expose:'受到傷害提高',evade:'規避率',pierce:'無視防禦',takenAtkRush:'受普攻突擊傷害降低',heal:'治療效果提高',healIn:'受治療效果提高',rushRate:'突擊發動率',takenAct:'受主動戰法傷害降低',takenCmd:'受指揮被動傷害降低'};
+  const lastB=T.map(t=>t.gens.map(g=>({...g.b}))),seenTm=T.map(t=>t.gens.map(()=>new Set())),SK4=['武勇','智略','統率','速度'];
+  let started=false;
   const ev=(e)=>{
     const a=e.side!=null&&T[e.side]?.gens[e.i];
     if(a?.b)e.spd=Math.round(a.b.速度*100)/100;
-    for(const t of e.tg||[])if(t.status){const m=T[t.side]?.gens[t.i];if(m?.b)t.b={武勇:m.b.武勇,智略:m.b.智略,統率:m.b.統率,速度:m.b.速度}}
-    log.push(e)};
+    const cov=new Set();
+    for(const t of e.tg||[])if(t.status){const m=T[t.side]?.gens[t.i];if(m?.b){t.b={武勇:m.b.武勇,智略:m.b.智略,統率:m.b.統率,速度:m.b.速度};cov.add(t.side+'|'+t.i)}}
+    const flush=why=>T.forEach((t,s)=>t.gens.forEach((m,i)=>{if(!m.b)return;
+      for(const k of SK4){const d=m.b[k]-lastB[s][i][k];if(Math.abs(d)<=0.005)continue;lastB[s][i][k]=m.b[k];
+        if(cov.has(s+'|'+i)){continue}
+        const sb=[...(m.sb||[])].reverse().find(x=>x.k===k&&(x.v>0)===(d>0));
+        log.push({type:'stat',side:s,i,k,d,res:m.b[k],cause:m.cz?.[k]||why,until:sb?sb.until:99});if(m.cz)delete m.cz[k]}
+      for(const x of m.tm){if(seenTm[s][i].has(x))continue;seenTm[s][i].add(x);if(!LBL[x.k])continue;
+        log.push({type:'buff',side:s,i,k:x.k,label:LBL[x.k],v:x.v,until:x.until,src:x.src?.n||null,cause:why})}}));
+    if(e.type==='round'&&!started){started=true;flush('開場效果（特性、兵學、裝備、軍學、指揮戰法）');
+      T.forEach((t,s)=>t.gens.forEach((m,i)=>{for(const[k,v]of Object.entries(m.bx||{}))if(typeof v==='number'&&v)log.push({type:'buff',side:s,i,k,label:LBL[k]||('兵學：'+k),v,until:99,src:null,cause:'兵學'})}));   // 兵學數值（進階、神算、協同…）整場生效
+      log.push(e);return}   // 開場的增減益排在第 1 回合之前
+    log.push(e);
+    flush(e.type==='round'?'回合開始／效果到期':`接近【${e.skill||'普通攻擊'}】`);
+  };
   const BG='兵學';
   // 軍學修習（設施，Lv5 全滿；玩家一律滿級）：依隊伍兵種給屬性與傷害／受傷％；t.study 才生效（守軍沒有）
   for(const t of T)if(t.study){const S=STUDY[t.arm];if(S)for(const g of t.gens){
@@ -371,7 +389,7 @@ export function battle(A,B,R=Math.random){
     if(d.tc.kouro){const n=d.bs.kouro||0;if(n<3&&d.dmgIn>=(n+1)*.1*d.max){d.bs.kouro=n+1;d.lfv=(d.lfv||0)+3}}   // 紅爐點雪：離反
     if(g.tc.hime&&dtype==='兵刃'){g.bs.hime=(g.bs.hime||0)+1;if(g.bs.hime%6===0&&(g.bs.himeU||0)<2){g.bs.himeU=(g.bs.himeU||0)+1;healTo(src,lowest(src),g,.98)}}   // 姬城督
     if(g.tc.bando&&dtype==='兵刃'&&d.b.統率<d.st.統率&&R()<.55&&(g.bs.bando||0)<3){g.bs.bando=(g.bs.bando||0)+1;g.b.武勇+=8;g.sb.push({k:'武勇',v:8,until:round+1})}   // 坂東太郎
-    if(g.wen){const k=dtype==='謀略'?0:1;if(g.wc[k]<g.wen.max){g.wc[k]++;g.b[k?'智略':'武勇']+=g.wen.v}}   // 文武雙全
+    if(g.wen){const k=dtype==='謀略'?0:1;if(g.wc[k]<g.wen.max){g.wc[k]++;g.b[k?'智略':'武勇']+=g.wen.v;(g.cz=g.cz||{})[k?'智略':'武勇']=`文武雙全（第${g.wc[k]}次）`}}   // 文武雙全
     // 離間之計：離反／攻心，依造成的傷害恢復自身兵力
     if(g.lj&&g.troops>0){const h=Math.min(g.max-g.troops,Math.round(v*g.lj*1.25/100));if(h>0)g.troops+=h}
     if(g.lfv&&g.troops>0){const h=Math.min(g.max-g.troops,Math.round(v*g.lfv/100));if(h>0)g.troops+=h}   // 離反：依造成的傷害恢復自身兵力
@@ -696,7 +714,7 @@ export function battle(A,B,R=Math.random){
     }
   }
   if(round>K.rounds)round=K.rounds;
-  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','dots','stBuffs','purged','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl','ix','lfv','hitBy','cr','k3','baba','rwp','rwu','noPrepR'])delete g[k]}
+  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','dots','stBuffs','purged','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl','ix','lfv','hitBy','cr','k3','baba','rwp','rwu','noPrepR','cz'])delete g[k]}
   ev({type:'end',res});
   return{res,log,rounds:round};
 }
