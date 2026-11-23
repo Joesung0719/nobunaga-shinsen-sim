@@ -66,7 +66,7 @@ input[type=number],select{background:var(--ink);color:var(--paper);border:1px so
 .rep .ln{padding-left:8px;border-left:3px solid transparent}
 .rep .cb{color:#7db6ee}.rep .cr{color:#e8806f}.rep .sk{margin:4px 0 1px;font-weight:700}.rep .sk i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;margin-right:6px;padding:0 5px;border-radius:9px;background:#8a6d2a;color:#fff;font-size:.72rem}.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}
 .rep .ln.me{border-color:#5aa0e3}.rep .ln.en{border-color:#d4574a}
-.rep .ln small{color:var(--muted)}.rep .ln .dm{color:#e6806f}.rep .ln .hl{color:#7fcf8f}.rep .ln .st{color:#cfa85a}
+.rep .ln.fx{opacity:.92;font-size:.77rem;padding-left:20px}.rep .ln small{color:var(--muted)}.rep .ln .dm{color:#e6806f}.rep .ln .hl{color:#7fcf8f}.rep .ln .st{color:#cfa85a}
 .rep .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:760px){.rep .cmp{grid-template-columns:1fr}}
 .rep table{font-size:.76rem}
 .verdict{font-family:var(--display);font-weight:900;font-size:2.2rem;letter-spacing:.2em;min-height:1.3em;text-align:center}
@@ -461,7 +461,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=51';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=52';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=7';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
@@ -701,7 +701,11 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
     return''};
   for(const e of log){
     if(e.type==='round'){close();cur={round:e.round,lines:[]};last=null;continue}
+    if(!cur&&(e.type==='stat'||e.type==='buff'))cur={round:0,lines:[]};
     if(!cur)continue;
+    if(e.type==='stat'){const who=nm(e.side,e.i),b0=bc[e.side][e.i][e.k];bc[e.side][e.i][e.k]=e.res;
+      push(`<div class="ln ${e.side===0?'me':'en'} fx">${who}${e.k}${e.d>0?'提高':'降低'}了${Math.abs(e.d).toFixed(2)}${b0?`（${(Math.abs(e.d)/b0*100).toFixed(2)}%）`:''}(${e.res.toFixed(2)})<small>　來源：${e.cause}${e.until<99?`・持續至第 ${e.until} 回合`:'・整場'}</small></div>`);continue}
+    if(e.type==='buff'){push(`<div class="ln ${e.side===0?'me':'en'} fx">${nm(e.side,e.i)}【${e.label}】${e.v>=0?'+':''}${(+e.v).toFixed(2)}%<small>　來源：${e.src?'['+e.src+'] ':''}${e.cause}${e.until<99?`・持續至第 ${e.until} 回合`:'・整場'}</small></div>`);continue}
     if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
     else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
     else if(e.type==='atk'||e.type==='skill'){
@@ -750,7 +754,7 @@ function waveNode(w,open){
   const rows=[0,1].flatMap(s=>w.names[s].map((x,i)=>{const q=st[s][i];return`<tr><td>${s?'守':'我'}</td><td>${x}</td><td>${q.atk}</td><td>${Object.entries(q.sk).map(([k,v])=>`${k}×${v}`).join('、')||'—'}</td><td>${fm(q.dmg)}</td><td>${fm(q.taken)}</td><td>${fm(q.heal)}</td></tr>`}));
   body.append(el('div',{class:'scrollx',html:`<table><tr><th></th><th>武將</th><th>普攻</th><th>戰法發動次數</th><th>造成傷害</th><th>承受傷害</th><th>回復</th></tr>${rows.join('')}</table>`}));
   for(const r of repLines(w,w.log)){
-    body.append(el('div',{class:'rh'},`第 ${r.round} 回合`),el('div',{html:r.lines.join('')||'<div class="rs">（無行動）</div>'}),
+    body.append(el('div',{class:'rh'},r.round===0?'戰鬥開始（開場效果）':`第 ${r.round} 回合`),el('div',{html:r.lines.join('')||'<div class="rs">（無行動）</div>'}),
       el('div',{class:'rs',html:`回合末兵力　我方 ${r.sum[0]}　守軍 ${r.sum[1]}`}));
   }
   const dl=el('button',{class:'chip',type:'button',style:'margin:8px 0'},'下載這場戰報 CSV（欄位同 events.csv）');
