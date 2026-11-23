@@ -426,6 +426,7 @@ input[type=range]{accent-color:var(--gold)}
       <div class="mid">
         <div class="verdict idle" id="verdict">待出征</div>
         <button class="btn" id="go" type="button">出征</button>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px"><button class="sbtn" id="resetDef" type="button" style="width:auto">守軍重置</button><button class="sbtn" id="retest" type="button" style="width:auto">重測（守軍重置＋兵力補滿）</button></div>
         <div class="loss" id="loss" aria-live="polite"></div>
         <div class="loss" id="pend" style="color:var(--gold,#d4a94f)"></div>
       </div>
@@ -847,6 +848,10 @@ function attack(){
   renderArmy();renderDefender();renderTab();renderPend();renderRep();
 }
 $('go').onclick=attack;
+// 戰平後守軍會保留殘兵 5 分鐘；要重測同一場就直接重置，不必等
+function resetDef(){S.pend=null;shown=null;save();renderPend();renderDefender()}
+$('resetDef').onclick=resetDef;
+$('retest').onclick=()=>{S.cur=S.max;S.wounded=0;S.gt=null;resetDef();renderArmy();attack()};
 // 平局: the garrison keeps its losses for 5 minutes, then resets to full
 const PEND_MS=5*60*1000;
 function pendLive(){const P=S.pend;return P&&P.lv===S.lv&&Date.now()<P.until?P:null}
