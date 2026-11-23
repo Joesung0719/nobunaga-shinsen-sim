@@ -468,6 +468,12 @@ import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
+// 野盜 Lv10（Joe 的開拓戰報）：每隊 3 將 × 12,000 兵（= 36,000）、守將 Lv50、全 5★、共 3 隊依序打；武將取 Lv10 土地守軍的武將池。
+// 戰報確認：兵力、等級、稀有度、下列 5 位的實際戰法。推估：隊伍組成與其餘武將戰法／兵種沿用 Lv10 土地守軍隊伍（戰報沒有逐隊完整收）。
+const lvName=lv=>lv==="B10"?"野盜 Lv10":`Lv${lv}`;
+const BANDIT='B10';
+D.levels[BANDIT]={...D.levels[10],per:(D.bandits?.[10]?.troops||36000)/3,waves:D.bandits?.[10]?.teams||3,bandit:1,note:'野盜：每隊 3 將 × 12,000 兵（36,000）、守將 Lv50 全 5★，共 3 隊依序打（戰報確認）；守軍武將取 Lv10 土地守軍武將池、戰法依戰報確認的 5 位，其餘沿用土地守軍（推估）'};
+const BANDIT_SK={壽桂尼:['尼御台','深謀遠慮','所領役帳'],北條氏康:['相模之獅','振旅凱歌','草木皆兵'],今川義元:['海道第一','百戰磨煉','前後夾擊'],本多正信:['非常之器','所領役帳','大智不智'],榊原康政:['無想掃討','乘勝追擊','死中求活']};
 const RES={W:'勝利',D:'平局',L:'敗北'};
 const GRADE={5:'S',4:'A',3:'B'};
 const REF=28500;            // PK1 attackers looked full at 9500 per general
@@ -485,7 +491,7 @@ for(const r of D.reports){
 const byLv=lv=>D.reports.filter(r=>r.lv===lv);
 // PK1 armies were often already worn down from earlier fights, so their loss rate is only used where no PK2 report exists.
 const lossReps=lv=>{const p2=byLv(lv).filter(r=>r.srv===2);return p2.length?p2:byLv(lv)};
-const teamsAt=lv=>[...new Set(byLv(lv).map(r=>r.t))];
+const teamsAt=lv=>lv===BANDIT?Object.keys(D.teams).filter(k=>/^l10[a-z]$/.test(k)):[...new Set(byLv(lv).map(r=>r.t))];
 function deathShare(lv){
   const xs=D.reports.filter(r=>r.lv===lv&&r.deathShare!=null).map(r=>r.deathShare);
   const all=D.reports.filter(r=>r.deathShare!=null).map(r=>r.deathShare);
@@ -536,9 +542,11 @@ function renderLevels(){
     b.onclick=()=>{S.lv=lv;S.team='';S.pend=null;shown=null;save();renderAll()};
     box.append(b);
   }
+  {const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.lv===BANDIT)},'野盜 Lv10');
+   b.onclick=()=>{S.lv=BANDIT;S.team='';S.pend=null;shown=null;S.eng=true;save();renderAll()};box.append(b)}
   const L=D.levels[S.lv],reps=byLv(S.lv),per=perTroops(S.lv);
   const w=reps.filter(r=>r.res==='W').length,d=reps.filter(r=>r.res==='D').length,l=reps.filter(r=>r.res==='L').length;
-  const lr=lossReps(S.lv),avg=lr.reduce((a,r)=>a+r.rate,0)/lr.length;
+  const lr=lossReps(S.lv),avg=lr.length?lr.reduce((a,r)=>a+r.rate,0)/lr.length:0;
   const st=(k,v,s='')=>el('div',{class:'stat'},el('div',{class:'k'},k),el('div',{class:'v',html:`${v}<small>${s}</small>`}));
   $('spec').replaceChildren(
     st('守將等級',`Lv${L.glv}`),
@@ -546,7 +554,7 @@ function renderLevels(){
     st('守軍總兵力',per?fmt(per*3):'?',wavesOf(S.lv)>1?` × ${wavesOf(S.lv)} 隊`:''),
     st('觀測守軍',teamsAt(S.lv).length,'組'),
     st('實戰勝／平／敗',`${w}/${d}/${l}`,`共 ${reps.length} 場`),
-    st('平均我方戰損',(lr[0].srv===1?'≈':'')+pct(avg),'含傷兵'));
+    st('平均我方戰損',lr.length?(lr[0].srv===1?'≈':'')+pct(avg):'—','含傷兵'));
   $('lvNote').textContent=L.note;
 }
 
@@ -558,7 +566,7 @@ function renderTeamSel(){
   sel.value=S.team;
   sel.onchange=()=>{S.team=sel.value;shown=null;save();renderDefender()};
 }
-function typeOf(k,lv){const r=D.reports.find(r=>r.t===k&&r.lv===lv&&r.ty);return r?r.ty:'?'}
+function typeOf(k,lv){const r=D.reports.find(r=>r.t===k&&(lv===BANDIT?true:r.lv===lv)&&r.ty);return r?r.ty:'?'}
 function renderDefender(){
   const lv=S.lv,per=perTroops(lv);
   const k=shown?.t||S.team||null;
@@ -633,7 +641,7 @@ function fight(lv,k,dl0){   // one battle against garrison team k; dl0 = troops 
 }
 // ---- 引擎逐回合出征（2026-11-23）：用組隊頁這隊跑 battle()，並保留逐回合戰報 ----
 let REP=null;   // 最近一次出征的逐回合戰報（不存檔）
-const ENG=()=>S.eng!==false;
+const ENG=()=>S.lv===BANDIT||S.eng!==false;
 function renderMode(){
   const box=$('modeBar');box.replaceChildren(el('span',{class:'lbl'},'出征方式'));
   for(const[v,t]of[[true,'引擎逐回合（用組隊頁這一隊，可看戰報）'],[false,'抽樣實戰戰報（舊）']]){
@@ -830,7 +838,7 @@ function attack(){
     const left=pool.filter(k=>!ks.includes(k));ks.push(pick(left.length?left:pool));
   }
   let out=[];
-  if(ENG()){
+  if(ENG()||lv===BANDIT){
     if(!ready(S.my)){$('loss').textContent='我方要選滿 3 位不同、有屬性資料的武將（組隊頁）。';return}
     out=marchEngine(lv,ks,start,P);REP=out.map(f=>f.rep);
   }else{
@@ -892,7 +900,7 @@ function renderTab(){
       const lr=lossReps(lv),est=lr[0].srv===1?'≈':'';
       const avg=lr.reduce((a,r)=>a+r.rate,0)/lr.length,mx=Math.max(...lr.map(r=>r.rate));
       const avgLoss=p2.length?p2.reduce((a,r)=>a+r.loss,0)/p2.length:null;
-      return[`Lv${lv}`,`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3)+(wavesOf(lv)>1?` ×${wavesOf(lv)}`:''):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
+      return[lvName(lv),`Lv${D.levels[lv].glv}`,per?fmt(per):'?',per?fmt(per*3)+(wavesOf(lv)>1?` ×${wavesOf(lv)}`:''):'?',teamsAt(lv).length,reps.length,`${c('W')}/${c('D')}/${c('L')}`,est+pct(avg),est+pct(mx),avgLoss!=null?fmt(avgLoss):'—'];
     });
     const lands=Object.entries(D.lands||{}).map(([k,v])=>[k==='空地'?'空地':`Lv${k}`,fmt(v.troops),'+'+v.prestige,v.silver?(v.approx?'≈':'')+fmt(v.silver):'—',v.food?(v.approx?'≈':'')+fmt(v.food):'—']);
     const bandits=Object.entries(D.bandits||{}).map(([k,v])=>[`Lv${k} 野盜`,fmt(v.troops),v.teams,v.labor]);
@@ -908,7 +916,7 @@ function renderTab(){
       const types=[...new Set(reps.map(r=>r.ty).filter(Boolean))].join('、');
       return[gName(t[2]),`${gName(t[0])}、${gName(t[1])}`,types,t.map(g=>g.s.join('／')).join('<br>'),`${c('W')}/${c('D')}/${c('L')}`];
     });
-    body.replaceChildren(table([`Lv${S.lv} 大將`,'副將','兵種','戰法（副將、副將、大將）','勝/平/敗'],rows));
+    body.replaceChildren(table([`${lvName(S.lv)} 大將`,'副將','兵種','戰法（副將、副將、大將）','勝/平/敗'],rows));
   }else if(S.tab==='reports'){
     const rows=byLv(S.lv).map(r=>{
       const t=D.teams[r.t];
@@ -1387,8 +1395,8 @@ function oppBg(g,i,stt,names,pl){   // 對手兵學：依建議配滿（建議�
 }
 const armOfG=k=>D.reports.find(r=>r.t===k&&r.ty)?.ty||'騎';
 function garrison(k,lv){const L=D.levels[lv],t=D.teams[k];   // 守軍戰法等級沒有資料，用滿級
-  return{name:t[2].n+'隊',side:1,arm:armOfG(k),terrain:'城',key:k,gens:[t[2],t[0],t[1]].map(g=>({n:g.n,st:statsAt(D,g.n,L.glv,g.r),troops:L.per,max:L.per,skills:g.s.map(x=>KIT.ps(x)),bg:null}))}}
-const keysAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv}[a-z]$`).test(k));
+  return{name:t[2].n+'隊',side:1,arm:armOfG(k),terrain:'城',key:k,gens:[t[2],t[0],t[1]].map(g=>({n:g.n,st:statsAt(D,g.n,L.glv,g.r),troops:L.per,max:L.per,skills:(L.bandit&&BANDIT_SK[g.n]||g.s).map(x=>KIT.ps(x)),bg:null}))}}
+const keysAt=lv=>Object.keys(D.teams).filter(k=>new RegExp(`^l${lv===BANDIT?10:lv}[a-z]$`).test(k));
 const pause=()=>new Promise(r=>setTimeout(r));
 // 對手：打土地守軍（依序打完該級所有守軍隊，兵力不補、平局算失敗），或對戰隊伍
 function oppSpec(){return(S.opp.gens||[]).filter(g=>g.n)}
@@ -1407,7 +1415,7 @@ async function simulate(mkMe,N,tr,yieldEvery=0){
   return{w:W/N,d:Dr/N,l:L/N,left:W?lf/W:0,score:(W+Dr/2)/N};
 }
 const pc=x=>Math.round(x*100)+'%';
-const targetLabel=()=>S.tgt==='land'?`Lv${S.lv} 土地守軍（${D.levels[S.lv].waves||1} 隊依序全勝）`:`對戰隊伍 ${oppSpec().map(g=>g.n).join('、')||'（未選）'}`;
+const targetLabel=()=>S.tgt==='land'?`${lvName(S.lv)} 土地守軍（${D.levels[S.lv].waves||1} 隊依序全勝）`:`對戰隊伍 ${oppSpec().map(g=>g.n).join('、')||'（未選）'}`;
 // ================= ④ 模擬結果 =================
 function setOppPreset(v){
   const[k,i]=v.split(':'),t=RANK?.[k]?.[+i];if(!t)return;
@@ -1415,9 +1423,9 @@ function setOppPreset(v){
 }
 function renderPredict(){
   const bar=$('tgtbar');bar.replaceChildren(el('span',{class:'lbl'},'對手'));
-  for(const[k,t]of[['land',`打土地守軍 Lv${S.lv}（同上方目標）`],['opp','對戰隊伍（對手隊）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.tgt===k)},t);b.onclick=()=>{S.tgt=k;save();renderPredict()};bar.append(b)}
+  for(const[k,t]of[['land',`打土地守軍 ${lvName(S.lv)}（同上方目標）`],['opp','對戰隊伍（對手隊）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.tgt===k)},t);b.onclick=()=>{S.tgt=k;save();renderPredict()};bar.append(b)}
   const box=$('oppBox');box.replaceChildren();
-  if(S.tgt==='land'){box.append(el('p',{class:'note'},`依序打完 Lv${S.lv} 的 ${D.levels[S.lv].waves||1} 隊守軍（守將 Lv${D.levels[S.lv].glv}、每人 ${fmt(D.levels[S.lv].per)} 兵，${D.levels[S.lv].note}）。守軍戰法沒有等級資料，用滿級；我方用組隊頁的最終屬性、戰法等級與兵學。`));return}
+  if(S.tgt==='land'){box.append(el('p',{class:'note'},`依序打完 ${lvName(S.lv)} 的 ${D.levels[S.lv].waves||1} 隊守軍（守將 Lv${D.levels[S.lv].glv}、每人 ${fmt(D.levels[S.lv].per)} 兵，${D.levels[S.lv].note}）。守軍戰法沒有等級資料，用滿級；我方用組隊頁的最終屬性、戰法等級與兵學。`));return}
   if(!S.opp.gens.length)setOppPreset(S.opp.preset||'0:5');
   const sel=el('select',{class:'sel','aria-label':'對手預設'},el('option',{value:''},'自訂（下方）'),...['0','5'].flatMap(k=>(RANK?.[k]||[]).slice(0,10).map((t,i)=>el('option',{value:`${k}:${i}`},`${k} 紅榜 #${i+1}：${t.team.join('、')}`))));
   sel.value=S.opp.preset||'';sel.onchange=()=>{if(sel.value)setOppPreset(sel.value);else S.opp.preset='';save();renderPredict()};
@@ -1452,7 +1460,7 @@ $('run').onclick=async()=>{
     const lv=S.lv,per=[];for(const k of keysAt(lv)){let W=0,Dr=0;const M=30;for(let i=0;i<M;i++){const x=battle(clone(mk()),garrison(k,lv));if(x.res==='W')W++;else if(x.res==='D')Dr++}per.push([k,W/M,Dr/M]);await pause()}
     const reps=D.reports.filter(x=>x.lv===lv),rw=reps.filter(x=>x.res==='W').length;
     html+=`<div class="scrollx"><table><tr><th>守軍隊</th><th>守將</th><th>單打勝率</th><th>平局</th></tr>${per.map(([k,w,d])=>`<tr><td>${k}</td><td>${D.teams[k][2].n}隊</td><td>${pc(w)}</td><td>${pc(d)}</td></tr>`).join('')}</table></div>
-    <p class="note">對照：先鋒服玩家實戰戰報 Lv${lv} 共 ${reps.length} 場，勝率 ${reps.length?pc(rw/reps.length):'—'}（見下方⑤戰報估算）。</p>`;
+    <p class="note">對照：先鋒服玩家實戰戰報 ${lvName(lv)} 共 ${reps.length} 場，勝率 ${reps.length?pc(rw/reps.length):"—"}（見下方⑤戰報估算）。</p>`;
   }
   out.innerHTML=html;$('prog').textContent='';
 };
