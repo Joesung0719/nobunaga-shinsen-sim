@@ -704,7 +704,7 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
     if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
     else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
     else if(e.type==='atk'||e.type==='skill'){
-      if(!(e.type==='skill'&&e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
+      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
       sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
       const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
       for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
@@ -716,7 +716,7 @@ function repStats(w){
   const n=[0,1].map(s=>w.names[s].map(()=>({atk:0,sk:{},dmg:0,taken:0,heal:0})));
   for(const e of w.log){
     if(e.type==='atk'){n[e.side][e.i].atk++;for(const t of e.tg||[])if(t.v!=null){n[e.side][e.i].dmg+=t.v;n[t.side][t.i].taken+=t.v}}
-    else if(e.type==='skill'){const x=n[e.side][e.i],k=`${e.skill}`;x.sk[k]=(x.sk[k]||0)+1;
+    else if(e.type==='skill'){const x=n[e.side][e.i],k=e.kind==='持續'?`${e.skill}（持續傷害結算）`:`${e.skill}`;x.sk[k]=(x.sk[k]||0)+1;
       for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side){x.dmg+=t.v;n[t.side][t.i].taken+=t.v}if(t.v!=null&&t.side===e.side)n[t.side][t.i].taken+=t.v;if(t.heal!=null)n[t.side][t.i].heal+=t.heal}}
   }
   return n;
