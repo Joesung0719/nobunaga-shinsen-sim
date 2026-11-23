@@ -156,6 +156,9 @@ function parseSkill0(name,D){
   const tm=x.match(/對敵軍(單體|全體|群體（\d(?:-\d)?人）)/);
   sk.n=targetCount(tm?tm[1]:/^敵軍/.test(t.target||'')?t.target:'單體');
   if(dm)sk.dmg=hi(dm[1],dm[2])/100;
+  // 持續性狀態（火傷／水攻／中毒／潰走／消沉…）：「每回合持續受到傷害（傷害率a→b%…），持續N回合」或「X狀態（傷害率a→b%…），持續N回合」（官方：不可疊加、可被刷新）
+  {const dt=x.match(/持續受到傷害（傷害率([\d.]+)%(?:→([\d.]+)%)?[^）]*）[^。]{0,40}?持續(\d)回合/)||x.match(/(?:火傷|水攻|中毒|潰走|消沉)(?:狀態|效果)?（傷害率([\d.]+)%(?:→([\d.]+)%)?[^）]*）[^。]{0,40}?持續(\d)回合/);
+    if(dt){sk.dot={v:hi(dt[1],dt[2])/100,dur:+dt[3]};if(sk.dmg&&Math.abs(sk.dmg-sk.dot.v)<1e-9&&!/造成[^，。]{0,6}(兵刃|謀略)傷害/.test(x))delete sk.dmg}}
   if(hm){sk.heal=hi(hm[1],hm[2])/100;sk.healSelf=/治療自身|為自身進行治療/.test(x)&&!/我軍/.test(x.slice(0,x.indexOf('治療')))}
   sk.prepN=+(x.match(/^準備(\d)回合/)?.[1]||0);sk.prep=sk.prepN>0;   // 準備 N 回合（過去只認 1 回合，準備2回合的怪力無雙被當成即發，傷害被高估）
   const cm=x.match(/(?:有([\d.]+)%(?:→([\d.]+)%)?機率[^，。]{0,12}?)?(?:使其|並使其|使敵軍\S{0,8}?|對其施加|施加)(?:進入)?(?:持續(\d)回合的)?(威壓|麻痺|混亂|無策|封擊)(?:、(威壓|麻痺|混亂|無策|封擊))?(?:狀態)?(?:[^。]{0,6}?持續(\d)回合)?/);
@@ -192,7 +195,7 @@ export function battle(A,B,R=Math.random){
   // per-battle state: stat buffs, statuses, prepared skills, 兵學 values (fx) and timed 兵學 effects (tm)
   for(const t of T)for(const g of t.gens){
     g.b={...g.st};g.fx={};g.prep=null;g.start=g.troops;
-    g.bx=g.bg?.fx||{};g.q=g.bg?.q||null;g.tm=[];g.cnt={反討之計:3,明鏡:2};g.lj=0;g.first=0;g.sealR=0;g.tn=null;g.sb=[];g.sh=0;g.cb=0;g.imm=0;
+    g.bx=g.bg?.fx||{};g.q=g.bg?.q||null;g.tm=[];g.dots=[];g.cnt={反討之計:3,明鏡:2};g.lj=0;g.first=0;g.sealR=0;g.tn=null;g.sb=[];g.sh=0;g.cb=0;g.imm=0;
     g.wen=g.skills.find(s=>s.fx?.open?.t==='bunbu')?.fx.open||null;g.wc=[0,0];g.go=g.skills.find(s=>s.fx?.open?.t==='gokihata')?.fx.open||null;
     for(const s of g.skills)if(s.self&&s.modeled==='text')for(const k of s.self.ks)g.b[k]+=s.self.v;
     if(g.bx.spd)g.b.速度+=g.bx.spd;
@@ -207,7 +210,7 @@ export function battle(A,B,R=Math.random){
   // 指揮／被動戰法的單純增益（buf）：戰鬥開始時套到自己／全隊／隨機友軍，屬性直接加，其餘走 tm（到第 r 回合）
   for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.buf&&!(sk.arm&&t.arm!==sk.arm))for(const b of sk.buf){
     const tg=b.to==='self'?[g]:b.to==='team'?t.gens:pickN(t.gens,b.n,R);
-    for(const m of tg){if(b.k.startsWith('stat:'))m.b[b.k.slice(5)]+=b.v;else m.tm.push({k:b.k,v:b.v,until:b.r})}
+    for(const m of tg){if(b.k.startsWith('stat:')){m.b[b.k.slice(5)]+=b.v;(g.stBuffs=g.stBuffs||[]).push({m,k:b.k.slice(5),v:b.v})}else m.tm.push({k:b.k,v:b.v,until:b.r,src:g})}
   }});
   // 合盟之陣：三人勢力各不相同、大將自帶戰法（skills[0]）是主動或突擊才生效
   for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.alliance){
@@ -225,7 +228,7 @@ export function battle(A,B,R=Math.random){
   }})});
   // 協同：隨機友軍單體造成的傷害提高
   for(const t of T)t.gens.forEach((g,i)=>{if(g.bx.ally){const j=Math.floor(R()*t.gens.length);t.gens[j].tm.push({k:'dmg',v:g.bx.ally,until:99})}});
-  const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round?x.v:0),0);
+  const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round&&!(x.src&&x.src.troops<=0)?x.v:0),0);   // 官方：持有者陣亡後，其指揮戰法效果失效
   const timed=(g,k,v,n)=>g.tm.push({k,v,until:round+n-1});   // 持續 n 回合（含本回合）
   const routed=t=>t.gens[0].troops<=0;
   // kind: 'atk' 普通攻擊、戰法類型（主動／突擊／指揮／被動）或 '兵學'；prep: 準備後發動的主動戰法
@@ -262,7 +265,7 @@ export function battle(A,B,R=Math.random){
   }
   const healAmt=(g,rate)=>Math.sqrt(g.troops)*K.base*rate*(1+(g.b.智略-80)/220);
   function healTo(t,j,g,rate){
-    const m=t.gens[j];if(m.troops<=0)return null;
+    const m=t.gens[j];if(!m||m.troops<=0)return null;
     const v=Math.round(Math.min(m.max-m.troops,healAmt(g,rate)*(1+M(g,'heal')/100)*(1+M(m,'healIn')/100)));
     if(v<=0)return null;m.troops+=v;return{side:t.side,i:j,heal:v,left:m.troops};
   }
@@ -287,6 +290,11 @@ export function battle(A,B,R=Math.random){
     if(sk.dmg){
       const ids=pickN(aliveIdx(e),sk.n[0]+Math.floor(R()*(sk.n[1]-sk.n[0]+1)),R);
       for(const j of ids){const h=hit(t,ti,i,e,j,sk.dmg,sk.dtype,sk.kind,!!o?.prepared);if(h)tg.push(h)}
+    }
+    if(sk.dot){   // 施加持續傷害：同一戰法再次施加只刷新回合、不疊加
+      const dj=tg.length&&tg.every(x=>x.v!=null)?tg.map(x=>x.i):pickN(aliveIdx(e),sk.n[1],R);
+      for(const j of dj){const d=e.gens[j];if(d.troops<=0)continue;const old=d.dots.find(x=>x.name===sk.name&&x.ti===ti&&x.i===i);
+        if(old)old.until=round+sk.dot.dur;else d.dots.push({name:sk.name,t,ti,i,v:sk.dot.v,dtype:sk.dtype==='auto'?'auto':sk.dtype,until:round+sk.dot.dur,from:round})}
     }
     if(sk.status){
       for(const j of (tg.length?tg.map(x=>x.i):pickN(aliveIdx(e),sk.n[1],R)))if(e.gens[j].troops>0&&R()<sk.status.p){
@@ -317,6 +325,10 @@ export function battle(A,B,R=Math.random){
   }
   outer:for(round=1;round<=K.rounds;round++){
     ev({type:'round',round});
+    // 持續性狀態每回合結算（施加後的下一回合起；按施加者當下屬性算，官方是施加時快照，這裡為近似）
+    for(const dt of T)for(let dj=0;dj<dt.gens.length;dj++){const d=dt.gens[dj];if(!d.dots.length||d.troops<=0)continue;
+      d.dots=d.dots.filter(x=>x.until>=round);
+      for(const x of d.dots)if(round>x.from&&d.troops>0&&x.t.gens[x.i].troops>0){const h=hit(x.t,x.ti,x.i,dt,dj,x.v,x.dtype,'dot');if(h)ev({type:'skill',side:x.t.side,i:x.i,skill:x.name,kind:'持續',tg:[h]})}}
     // 軍學能力：只模擬截圖寫明的足輕 守禦（第5回合，我軍群體2人，治療率100%）
     for(const t of T)if(t.study&&t.gens.some(g=>g.troops>0)){
       const al=aliveIdx(t);
@@ -350,13 +362,18 @@ export function battle(A,B,R=Math.random){
     T.forEach((t,ti)=>t.gens.forEach((g,i)=>{if(g.troops>0)order.push([ti,i,g.b.速度+(round===1?M(g,'spd1'):0)+(g.first===round?1000:0)+R()*4])}));
     order.sort((a,b)=>b[2]-a[2]);
     for(const[ti,i]of order){
+      for(const tt of T)for(const dg of tt.gens)if(dg.troops<=0&&dg.stBuffs&&!dg.purged){dg.purged=1;for(const b of dg.stBuffs)b.m.b[b.k]-=b.v}   // 陣亡者給的屬性加成一併失效
       const t=T[ti],g=t.gens[i],e=T[1-ti];
       if(g.troops<=0)continue;
       const fx=g.fx;
       const tick=()=>{for(const k in fx)if(--fx[k]<=0)delete fx[k]};
       if(g.bx.shield)timed(g,'guard',g.bx.shield,1);   // 神祕
       if(g.q==='生生不息'&&R()<.4){const h=healTo(t,i,g,.5);if(h)ev({type:'skill',side:t.side,i,skill:'生生不息',kind:BG,tg:[h]})}
-      if(fx.威壓||(fx.麻痺&&R()<.3)||(fx.混亂&&R()<.5)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':fx.麻痺?'麻痺':'混亂'});tick();continue}
+      if(fx.威壓||(fx.麻痺&&R()<.3)||(fx.混亂&&R()<.5)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':fx.麻痺?'麻痺':'混亂'});
+        if(g.prep&&R()<.5){g.prep=null;g.pl=0;ev({type:'skill',side:t.side,i,skill:'準備被打斷',kind:'控制',tg:[]})}   // 官方：準備期間受到控制可能被打斷（機率未知，先設 50%，Joe 2026-11-23）
+        // 官方：麻痺「不影響指揮戰法與被動戰法」、指揮／被動戰法「不受控制效果影響」→ 被控制時，每回合判定的指揮／被動戰法照常發動
+        for(const sk of g.skills){if(sk.each&&sk.kind!=='主動'&&sk.modeled!=='none'&&!(sk.arm&&t.arm!==sk.arm)&&R()<sk.rate)useSkill(t,ti,i,sk)}
+        tick();continue}
       if(g.prep){if(g.pl>0)g.pl--;else{useSkill(t,ti,i,g.prep,{prepared:true});g.prep=null}}
       for(const sk of g.skills){const o=sk.fx?.open;if(o?.t==='shiten'&&round<=o.rounds&&R()<.8){const al=aliveIdx(e);if(al.length){
         const a1=[...al].sort((x,y)=>e.gens[y].b.武勇-e.gens[x].b.武勇)[0],a2=[...al].sort((x,y)=>e.gens[y].b.智略-e.gens[x].b.智略)[0];
@@ -416,7 +433,7 @@ export function battle(A,B,R=Math.random){
     }
   }
   if(round>K.rounds)round=K.rounds;
-  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl'])delete g[k]}
+  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','dots','stBuffs','purged','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl'])delete g[k]}
   ev({type:'end',res});
   return{res,log,rounds:round};
 }

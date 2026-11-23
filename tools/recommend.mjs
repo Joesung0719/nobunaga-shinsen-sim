@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle,statsAt} from '../slg/engine.js';
+import {adviseBingaku} from '../slg/advisor.js';
+import {compile as bgCompile} from '../slg/bingaku.js';
 const {D,CARDS}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const POWER=J('skillpower.json'),FIELD=J('field.json'),EX=J('generals_extra.json');
 const TAGS=Object.fromEntries(Object.entries(EX).map(([k,v])=>[k,v.tags||[]]));
@@ -23,7 +25,11 @@ const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=
 // 原始屬性代理分（Lv50）：先篩掉明顯弱的組合
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
 const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
-const mkTeam=(names,arm,sk,slv=null,red=0)=>{const st=L.teamStats(names,arm,LV,red,FAC);return{st,team:L.myTeam(names,arm,st,sk,TROOPS,slv)}};
+// 兵學全開（Joe 2026-11-23：劇本裡能打玩家的都是 45 級以上、兵學一定全開）：每位用 adviseBingaku 選最適合的方向／奇／正節點，再 compile 成戰鬥數值
+const mkTeam=(names,arm,sk,slv=null,red=0,bg=false)=>{const st=L.teamStats(names,arm,LV,red,FAC),team=L.myTeam(names,arm,st,sk,TROOPS,slv);
+  if(bg){const ctx={names,skillsOf:Object.fromEntries(names.map((n,i)=>[n,sk[i]]))};
+    team.gens.forEach((g,i)=>{const n=names[i],adv=adviseBingaku(kit,D,n,L.rarityOf(n),[L.innateOf(D,n),...sk[i]].filter(Boolean),st[i],ctx);g.bg=adv?bgCompile(adv.sel,L.rarityOf(n),red,n):null})}
+  return{st,team}};
 function plan(names,arm){   // 組出戰法：回傳 sel、why
   const st=L.teamStats(names,arm,LV,0,FAC);
   const tm=names.map((n,i)=>({n,red:0,st:st[i]})),pl=kit.pick(tm,null,{},{arm});
@@ -67,9 +73,9 @@ for(let c=CMIN;c<=CMAX;c++)fin.push(...mid.filter(m=>m.x.c===c).sort((a,b)=>b.a-
 const _unused=(names,sk)=>{const src=new Set();for(const s of sk.flat()){const so=kit.SRC[s]||[];if(!so.length)continue;const g=so.reduce((a,x)=>pulls(x)<pulls(a)?x:a);if(!names.includes(g))src.add(g)}return src};
 const teams=[];let k2=0;
 for(const m of fin){
-  const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk);
+  const names=m.names,sk=m.pl.sel,{team}=mkTeam(names,m.arm,sk,null,0,true);
   const w={};for(const lv of LANDS){const r=marchPct(team,lv,8);w[lv]=r}
-  const wr={};for(const rd of [3,5]){const tm=mkTeam(names,m.arm,sk,null,rd).team;wr[rd]={};for(const lv of [8,9,10])wr[rd][lv]=marchPct(tm,lv,6)}   // 3 紅／5 紅（只算 Lv8～10，低等級已飽和）
+  const wr={};for(const rd of [3,5]){const tm=mkTeam(names,m.arm,sk,null,rd,true).team;wr[rd]={};for(const lv of [8,9,10])wr[rd][lv]=marchPct(tm,lv,6)}   // 3 紅／5 紅（只算 Lv8～10，低等級已飽和）
   const src=[],gen=0,ks=0;   // 不再計抽數
   const f=kit.fieldScore(names);
   teams.push({q:m.pl.q.score,n:names,a:m.arm,s:sk,c:m.x.c,w3:wr[3],w5:wr[5],r:[gen,ks,src],w,f:[+f.score.toFixed(3),f.n,f.each,f.pairs,f.trio],why:m.pl.why});
@@ -87,7 +93,7 @@ const names=new Set(teams.flatMap(t=>[...t.n,...t.r[2]]));
 const info=n=>({r:L.rarityOf(n),c:cost(n),f:D.stats[n].f,season:D.stats[n].season,inn:L.innateOf(D,n),tags:TAGS[n]||[],pulls:Math.round(pulls(n)),st:Object.fromEntries(['武勇','智略','統率','速度'].map(k=>[k,Math.round(statsAt(D,n,LV,L.rarityOf(n))[k])]))});
 const gens=Object.fromEntries([...names].map(n=>[n,info(n)]));
 const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,reds:[0,3,5],troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
-  note:'武將 Lv50、0 紅、戰法滿級、協力 Lv5／兵種營 Lv5、每人 10000 兵；勝率 = 對該級每一支守軍隊各打 8 次的平均（一隊打一支守軍，平局算沒贏；整級連打不補兵的成功率另存、僅供參考）；兵學、裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
+  note:'武將 Lv50、戰法滿級、兵學全開（每位依定位選方向與節點）、協力 Lv5／兵種營 Lv5、每人 10000 兵；勝率 = 對該級每一支守軍隊各打 8 次的平均（一隊打一支守軍，平局算沒贏；整級連打不補兵的成功率另存、僅供參考）；裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
 // ---- 升級路線：Cost 提高後用繼承券換將 ----
 // 最少更換＝只換一位（繼承券 1 張，其餘兩人沿用）；全面換血＝不顧資源，直接換成該 Cost 內最強的另一組。
 const sc=t=>(t.w[9][0]+t.w[10][0])/2;
