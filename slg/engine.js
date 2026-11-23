@@ -262,7 +262,12 @@ export function battle(A,B,R=Math.random){
     if(g.gc.修羅!==undefined)g.lfv=(g.lfv||0)+1+4*g.gc.修羅;   // 修羅：離反 1~5%
     if(g.gc.鬼謀!==undefined)g.lj=(g.lj||0)+1+4*g.gc.鬼謀;   // 鬼謀：攻心 1~5%
   }
-  const ev=(e)=>log.push(e);
+  // 戰報用：行動者當下速度，與有狀態變化的目標當下四維（顯示「統率降低了…(變化)(結果)」用）
+  const ev=(e)=>{
+    const a=e.side!=null&&T[e.side]?.gens[e.i];
+    if(a?.b)e.spd=Math.round(a.b.速度*100)/100;
+    for(const t of e.tg||[])if(t.status){const m=T[t.side]?.gens[t.i];if(m?.b)t.b={武勇:m.b.武勇,智略:m.b.智略,統率:m.b.統率,速度:m.b.速度}}
+    log.push(e)};
   const BG='兵學';
   // 軍學修習（設施，Lv5 全滿；玩家一律滿級）：依隊伍兵種給屬性與傷害／受傷％；t.study 才生效（守軍沒有）
   for(const t of T)if(t.study){const S=STUDY[t.arm];if(S)for(const g of t.gens){

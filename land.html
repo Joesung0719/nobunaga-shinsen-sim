@@ -58,6 +58,17 @@ nav.site a[aria-current]{color:var(--ink);background:var(--gold);border-color:va
 .form label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted);margin-top:10px}
 input[type=number],select{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:inherit;font-size:.9rem;width:100%}
 .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-width:150px}
+.rep details{border:1px solid var(--line,#3a3328);border-radius:8px;margin:8px 0;background:rgba(255,255,255,.02)}
+.rep summary{cursor:pointer;padding:8px 12px;font-weight:700}
+.rep .rl{max-height:520px;overflow:auto;padding:4px 12px 10px;font-size:.8rem;line-height:1.65;font-variant-numeric:tabular-nums}
+.rep .rh{margin:10px 0 2px;padding:2px 8px;background:rgba(227,183,90,.12);color:var(--gold,#e3b75a);font-weight:700;border-radius:4px}
+.rep .rs{color:var(--muted);font-size:.74rem;margin:0 0 4px 8px}
+.rep .ln{padding-left:8px;border-left:3px solid transparent}
+.rep .cb{color:#7db6ee}.rep .cr{color:#e8806f}.rep .sk{margin:4px 0 1px;font-weight:700}.rep .sk i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;margin-right:6px;padding:0 5px;border-radius:9px;background:#8a6d2a;color:#fff;font-size:.72rem}.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}
+.rep .ln.me{border-color:#5aa0e3}.rep .ln.en{border-color:#d4574a}
+.rep .ln small{color:var(--muted)}.rep .ln .dm{color:#e6806f}.rep .ln .hl{color:#7fcf8f}.rep .ln .st{color:#cfa85a}
+.rep .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:760px){.rep .cmp{grid-template-columns:1fr}}
+.rep table{font-size:.76rem}
 .verdict{font-family:var(--display);font-weight:900;font-size:2.2rem;letter-spacing:.2em;min-height:1.3em;text-align:center}
 .verdict.W{color:var(--gold);text-shadow:0 0 18px rgba(227,183,90,.55)}
 .verdict.D{color:var(--steel)}
@@ -376,7 +387,7 @@ input[type=range]{accent-color:var(--gold)}
         <li>兵種等級 = 兵種營 Lv + 隊中已解鎖的兵種特性（例如馬術III 騎兵 +3、鐵炮大將 鐵炮 +3），每級全屬性 +2%。等級上限 10，隊中每有一位該兵種的「兵種大將」上限再 +1。</li>
         <li>協力：三人同勢力時，依協力設施 Lv1–10 加 0.5%～7%。家門：三人同家門時每級加 1%，最高 3%。家門資料尚未收集，請自行勾選。所有加成相加後乘上屬性。</li>
         <li>戰法依類型上色：指揮、主動、突擊、被動、兵種＆陣型。內政戰法不會出現在打地的選單。固有戰法不能傳承。</li>
-        <li>隊伍 Cost 上限 20。<b>戰鬥結果目前仍用實戰戰報抽樣</b>，組隊內容只決定出征兵力；數值到齊後會改成逐回合計算，組好的隊伍會保留。</li>
+        <li>隊伍 Cost 上限 20。⑤ 出征預設改用引擎逐回合計算（可展開逐回合戰報、與實際戰報對照）；也可切回舊的實戰戰報抽樣。</li>
       </ul>
     </details>
   </section>
@@ -391,7 +402,8 @@ input[type=range]{accent-color:var(--gold)}
   </section>
 
   <section class="panel" id="board">
-    <h2>⑤ 戰報估算：依實戰戰報抽樣出征（連戰・兵力延續）</h2>
+    <h2>⑤ 戰報估算：出征（連戰・兵力延續）</h2>
+    <div class="fl" id="modeBar" style="margin-bottom:10px"><span class="lbl">出征方式</span></div>
     <div class="board">
       <div class="side">
         <h3>我方部隊 <span>連戰兵力延續</span></h3>
@@ -426,6 +438,7 @@ input[type=range]{accent-color:var(--gold)}
         <div class="gens" id="gens"></div>
       </div>
     </div>
+    <div id="rep" style="margin-top:14px"></div>
   </section>
 
   <section class="panel">
@@ -438,7 +451,7 @@ input[type=range]{accent-color:var(--gold)}
     <ul class="note">
       <li>守軍資料來自先鋒服兩個賽季（PK1、PK2）的 95 張戰報截圖，整理出 <b id="nTeams">0</b> 組守軍、<b id="nReps">0</b> 筆戰報。同一組守軍在不同等級、不同賽季會重複出現，兵種在同一賽季固定。</li>
       <li>守將兵力取自 PK2 戰報上方的「兵 x/總數」，同等級的資源地與銀礦相同。Lv3 與 Lv10 沒有 PK2 戰報，兵力是<em>未知</em>或<em>推估</em>。</li>
-      <li>「出征」不是逐回合戰鬥：它從同等級的實戰戰報中抽一筆（同一組守軍的戰報優先），沿用那場的勝負與守軍剩兵；戰損比例只取 PK2 戰報（有的話），再加上 ±25% 的浮動。兵力低於那場戰報時，戰損會放大，也可能降為平局或敗北。</li>
+      <li>「出征」可選兩種方式。<b>引擎逐回合</b>：用組隊頁這一隊（屬性、戰法等級、兵學、裝備）依序打完守軍，兵力連戰延續，並保留逐回合戰報。<b>抽樣實戰戰報</b>（舊）：它不是逐回合戰鬥，它從同等級的實戰戰報中抽一筆（同一組守軍的戰報優先），沿用那場的勝負與守軍剩兵；戰損比例只取 PK2 戰報（有的話），再加上 ±25% 的浮動。兵力低於那場戰報時，戰損會放大，也可能降為平局或敗北。</li>
       <li>只有 PK1 戰報的等級（Lv3、Lv10），我方戰損用「每人 9500 滿兵」反推，比較粗略。</li>
       <li>真正逐回合的戰鬥模擬需要武將屬性、戰法效果數值與戰報詳情，這些目前還沒有。</li>
     </ul>
@@ -617,6 +630,189 @@ function fight(lv,k,dl0){   // one battle against garrison team k; dl0 = troops 
   S.cur-=loss;S.wounded+=wounded;S.dead+=dead;
   return{k,r,res,dead,wounded,dl};
 }
+// ---- 引擎逐回合出征（2026-11-23）：用組隊頁這隊跑 battle()，並保留逐回合戰報 ----
+let REP=null;   // 最近一次出征的逐回合戰報（不存檔）
+const ENG=()=>S.eng!==false;
+function renderMode(){
+  const box=$('modeBar');box.replaceChildren(el('span',{class:'lbl'},'出征方式'));
+  for(const[v,t]of[[true,'引擎逐回合（用組隊頁這一隊，可看戰報）'],[false,'抽樣實戰戰報（舊）']]){
+    const b=el('button',{class:'chip',type:'button','aria-pressed':String(ENG()===v)},t);b.onclick=()=>{S.eng=v;save();renderMode();renderRep()};box.append(b)}
+  box.append(el('span',{class:'note'},ENG()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）；守軍戰法滿級。`:'不跑戰鬥，從同等級的實戰戰報抽一筆。'));
+}
+function mySplit(){   // 三名武將各自的兵力：上次連戰剩下的，否則依 S.cur／S.max 比例
+  const nm=S.my.gens.map(m=>m.n).join('|');
+  if(S.gt&&S.gt.k===nm&&S.gt.cur===S.cur&&S.gt.t.length===3)return S.gt.t.slice();
+  return S.my.gens.map(m=>Math.round(m.t*Math.min(1,S.cur/S.max)));
+}
+function marchEngine(lv,ks,start,P){
+  const my=S.my,me=buildMine(my),tr0=mySplit();
+  me.gens.forEach((g,i)=>g.troops=Math.min(g.max,tr0[i]));
+  const sc=S.max/my.gens.reduce((a,m)=>a+m.t,0),out=[];
+  for(let i=start;i<ks.length;i++){
+    const G=garrison(ks[i],lv);
+    if(i===start&&P)G.gens.forEach((x,j)=>x.troops=Math.min(x.max,P.dl[[2,0,1][j]]));   // 守軍順序：大將、副將、副將 ↔ D.teams 的 [2],[0],[1]
+    const m0=me.gens.map(g=>g.troops),e0=G.gens.map(g=>g.troops),a0=sumT(me);
+    const r=battle(me,G);
+    const loss=Math.round((a0-sumT(me))*sc),ds=deathShare(lv),dead=Math.round(loss*ds);
+    const dl=[G.gens[1].troops,G.gens[2].troops,G.gens[0].troops];
+    out.push({k:ks[i],res:r.res,dead,wounded:loss-dead,dl,r:null,
+      rep:{wave:i+1,k:ks[i],res:r.res,rounds:r.rounds,log:r.log,names:[me.gens.map(g=>g.n),G.gens.map(g=>g.n)],
+        t0:[m0,e0],t1:[me.gens.map(g=>g.troops),G.gens.map(g=>g.troops)],spd:[me.gens.map(g=>g.st.速度),G.gens.map(g=>g.st.速度)],stats:[me.gens.map(g=>({...g.st})),G.gens.map(g=>({...g.st}))],arms:[my.arm,G.arm],cont:i===start&&!!P}});
+    if(r.res!=='W'||sumT(me)<=0)break;
+  }
+  S.cur=Math.max(0,Math.round(sumT(me)*sc));S.gt={k:my.gens.map(m=>m.n).join('|'),cur:S.cur,t:me.gens.map(g=>g.troops)};
+  S.dead+=out.reduce((a,f)=>a+f.dead,0);S.wounded+=out.reduce((a,f)=>a+f.wounded,0);
+  return out;
+}
+// ---- 戰報顯示：格式貼近遊戲戰報詳情（每回合：誰發動、普攻／戰法、損傷／回復、剩餘兵力）----
+const fm=n=>Math.round(n).toLocaleString('en-US');
+const CTRL=new Set(['麻痺','混亂','威壓','無策','封擊','挑釁','牽制']);
+function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊戲戰報：「X由於Y【技能】的傷害，損失了兵力N（剩M）」「效果已施加」「統率降低了8.00%(變化)(結果)」
+  const tr=[w.t0[0].slice(),w.t0[1].slice()],rounds=[];let cur=null,last=null;
+  const bc=w.stats.map(a=>a.map(x=>({...x})));const kills=[w.names[0].map(()=>0),w.names[1].map(()=>0)],resc=[w.names[0].map(()=>0),w.names[1].map(()=>0)];
+  const nm=(s,i)=>`<span class="${s===0?'cb':'cr'}">[${w.names[s][i]}]</span>`;
+  const close=()=>{if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
+  const stv=(s,i,k)=>w.stats?.[s]?.[i]?.[k];
+  const push=h=>cur.lines.push(h);
+  const head=(side,i,spd)=>{if(!last||last.side!==side||last.i!==i){last={side,i};
+    push(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 ${fm(kills[side][i])}　救援 ${fm(resc[side][i])}　速度 ${(spd??(w.spd?w.spd[side][i]:null))?.toFixed(2)??'?'}</span></div>`)}};
+  const sk=(e,name,kind)=>push(`<div class="sk ${e.side===0?'me':'en'}"><i>${kind==='普攻'?'普':(kind||'').slice(0,1)}</i>${name}</div>`);
+  const eff=(t,e,name)=>{
+    const by=nm(e.side,e.i),who=nm(t.side,t.i);
+    if(t.heal!=null){tr[t.side][t.i]=t.left;if(t.i!==e.i||t.side!==e.side)resc[e.side][e.i]+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
+    if(t.v!=null){tr[t.side][t.i]=t.left;
+      if(t.shield)return`${who}由於【鐵壁】，免受${by}【${name}】的傷害`;
+      if(t.evade)return`${who}迴避了${by}【${name}】的攻擊`;
+      if(t.side!==e.side)kills[e.side][e.i]+=t.v;
+      return`${who}由於${by}【${name}】的傷害，損失了兵力 <span class="dm">${fm(t.v)}</span><small>（${fm(t.left)}）</small>${t.crit?`<span class="st">　${t.dtype==='謀略'?'奇謀':'會心'}</span>`:''}<small>・${t.dtype||''}</small>${t.rout?' <b>潰敗</b>':''}`}
+    if(t.status){const parts=t.status.split('、'),out=[],cur0=bc[t.side][t.i];let snapDone=false;
+      if(t.b){for(const k of['武勇','智略','統率','速度']){const d=t.b[k]-cur0[k];
+        if(Math.abs(d)>0.005){snapDone=true;out.push(`${who}${k}${d<0?'降低':'提高'}了${Math.abs(d/cur0[k]*100).toFixed(2)}%(${Math.abs(d).toFixed(2)})(${t.b[k].toFixed(2)})`);cur0[k]=t.b[k]}}}
+      for(const m of parts){
+        if(CTRL.has(m)){out.push(`${who}「<span class="st">${m}</span>」效果已施加`);continue}
+        const two=m.match(/^統率智略\s*([+-])\s*(\d+(?:\.\d+)?)%/),one=m.match(/^(武勇|智略|統率|速度)\s*([+-])\s*(\d+(?:\.\d+)?)(%?)/);
+        const calc=(k,sg,v,pc)=>{const b=cur0[k],d=pc?b*v/100:v;return`${who}${k}${sg==='-'?'降低':'提高'}了${pc?v.toFixed(2)+'%':Math.round(v)}(${d.toFixed(2)})(${(sg==='-'?b-d:b+d).toFixed(2)})`};
+        if(two){out.push(['統率','智略'].map(k=>calc(k,two[1],+two[2],true)).join('<br>'));continue}
+        if(one){if(!snapDone)out.push(calc(one[1],one[2],+one[3],!!one[4]));continue}
+        if(snapDone&&/武勇|智略|統率|速度/.test(m)&&/[+-]/.test(m))continue;
+        out.push(`${who}<span class="st">${m}</span>`)}
+      return out.join('<br>')}
+    return''};
+  for(const e of log){
+    if(e.type==='round'){close();cur={round:e.round,lines:[]};last=null;continue}
+    if(!cur)continue;
+    if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
+    else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
+    else if(e.type==='atk'||e.type==='skill'){
+      if(!(e.type==='skill'&&e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
+      sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
+      const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
+      for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
+      if(!ls.length)push(`<div class="ln ${e.side===0?'me':'en'}"><small>${nm(e.side,e.i)}發動【${name}】（無可見效果）</small></div>`)}
+  }
+  close();return rounds;
+}
+function repStats(w){
+  const n=[0,1].map(s=>w.names[s].map(()=>({atk:0,sk:{},dmg:0,taken:0,heal:0})));
+  for(const e of w.log){
+    if(e.type==='atk'){n[e.side][e.i].atk++;for(const t of e.tg||[])if(t.v!=null){n[e.side][e.i].dmg+=t.v;n[t.side][t.i].taken+=t.v}}
+    else if(e.type==='skill'){const x=n[e.side][e.i],k=`${e.skill}`;x.sk[k]=(x.sk[k]||0)+1;
+      for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side){x.dmg+=t.v;n[t.side][t.i].taken+=t.v}if(t.v!=null&&t.side===e.side)n[t.side][t.i].taken+=t.v;if(t.heal!=null)n[t.side][t.i].heal+=t.heal}}
+  }
+  return n;
+}
+function repCsv(w){   // 欄位同 events.csv，方便跟實際戰報對表
+  const rows=[['battle','round','kind','skill','attacker','target','loss','remain']],id='sim'+w.wave;let rd=0;
+  const nm=(s,i)=>w.names[s][i];
+  for(const e of w.log){
+    if(e.type==='round'){rd=e.round;continue}
+    if(e.type!=='atk'&&e.type!=='skill')continue;
+    const sk=e.type==='atk'?'普通攻擊':e.skill;
+    if(e.type==='atk')for(const t of e.tg||[])rows.push([id,rd,'普攻',sk,nm(e.side,e.i),nm(t.side,t.i),'','']);
+    for(const t of e.tg||[]){
+      if(t.heal!=null)rows.push([id,rd,'回復','',nm(e.side,e.i),nm(t.side,t.i),-t.heal,t.left]);
+      else if(t.v!=null)rows.push([id,rd,'損傷',sk,nm(e.side,e.i),nm(t.side,t.i),t.v,t.left]);
+    }
+  }
+  return rows.map(r=>r.join(',')).join('\n');
+}
+const RCOL={W:'勝利',D:'平局',L:'敗北'};
+function waveNode(w,open){
+  const d=el('details',{});d.open=open;
+  const a=w.t0[0].reduce((x,y)=>x+y,0),b=w.t1[0].reduce((x,y)=>x+y,0),c=w.t0[1].reduce((x,y)=>x+y,0),f=w.t1[1].reduce((x,y)=>x+y,0);
+  d.append(el('summary',{html:`第 ${w.wave} 隊 ${D.teams[w.k][2].n}隊：<span class="r${w.res}">${RCOL[w.res]}</span>　${w.rounds} 回合　我方 ${fm(a)} → ${fm(b)}　守軍 ${fm(c)} → ${fm(f)}${w.cont?'（接續）':''}`}));
+  const body=el('div',{class:'rl'});
+  const nm=s=>w.names[s].map((x,i)=>`${i===0?'★':''}${x} ${fm(w.t0[s][i])}→${fm(w.t1[s][i])}`).join('　');
+  body.append(el('div',{class:'rs',html:`<span style="color:#5aa0e3">我方（${w.arms[0]}）</span> ${nm(0)}`}),el('div',{class:'rs',html:`<span style="color:#d4574a">守軍（${w.arms[1]}）</span> ${nm(1)}`}));
+  const st=repStats(w);
+  const rows=[0,1].flatMap(s=>w.names[s].map((x,i)=>{const q=st[s][i];return`<tr><td>${s?'守':'我'}</td><td>${x}</td><td>${q.atk}</td><td>${Object.entries(q.sk).map(([k,v])=>`${k}×${v}`).join('、')||'—'}</td><td>${fm(q.dmg)}</td><td>${fm(q.taken)}</td><td>${fm(q.heal)}</td></tr>`}));
+  body.append(el('div',{class:'scrollx',html:`<table><tr><th></th><th>武將</th><th>普攻</th><th>戰法發動次數</th><th>造成傷害</th><th>承受傷害</th><th>回復</th></tr>${rows.join('')}</table>`}));
+  for(const r of repLines(w,w.log)){
+    body.append(el('div',{class:'rh'},`第 ${r.round} 回合`),el('div',{html:r.lines.join('')||'<div class="rs">（無行動）</div>'}),
+      el('div',{class:'rs',html:`回合末兵力　我方 ${r.sum[0]}　守軍 ${r.sum[1]}`}));
+  }
+  const dl=el('button',{class:'chip',type:'button',style:'margin:8px 0'},'下載這場戰報 CSV（欄位同 events.csv）');
+  dl.onclick=()=>{const u=URL.createObjectURL(new Blob(['﻿'+repCsv(w)],{type:'text/csv'})),a=el('a',{href:u,download:`sim-wave${w.wave}.csv`});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)};
+  body.append(dl);d.append(body);return d;
+}
+// 實際戰報（events.csv，使用者自己選檔，不上傳）：同格式逐回合列出，並與模擬的每回合傷害總量對照
+let ACT=null;
+function parseCsv(t){const rows=[];let r=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+  else if(c==='"')q=true;else if(c===','){r.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);f='';if(r.length>1||r[0])rows.push(r);r=[]}else f+=c}
+  if(f||r.length){r.push(f);rows.push(r)}
+  const h=rows.shift().map(x=>x.replace(/^﻿/,''));return rows.map(x=>Object.fromEntries(h.map((k,i)=>[k,x[i]??''])))}
+function actNode(rows){
+  const box=el('div',{class:'rl'});let rd=null;
+  for(const x of rows){
+    if(x.round!==rd){rd=x.round;box.append(el('div',{class:'rh'},`第 ${rd} 回合`))}
+    if(x.kind==='普攻')continue;
+    const loss=+x.loss,sk=x.skill&&x.skill!=='?'?`【${x.skill}】`:'';
+    const txt=x.kind==='回復'?`<b>${x.attacker}</b> → <b>${x.target}</b> <span class="hl">回復 ${fm(-loss)}</span><small>（剩 ${x.remain}）</small>`
+      :`<b>${x.attacker}</b> ${sk} → <b>${x.target}</b> <span class="dm">損傷 ${fm(loss)}</span><small>（剩 ${x.remain||'?'}）${x.mods?'・'+x.mods.split(' | ')[0]:''}</small>`;
+    box.append(el('div',{class:'ln',html:txt}));
+  }
+  return box;
+}
+function cmpTable(w,rows){
+  const sim={},act={},sk={s:{},a:{}};
+  for(const e of w.log){if(e.type==='round'){var rd=e.round;continue}
+    for(const t of e.tg||[])if(t.v!=null)sim[rd]=(sim[rd]||0)+t.v;
+    if(e.type==='skill'&&e.kind!=='兵學')sk.s[rd]=(sk.s[rd]||0)+1}
+  for(const x of rows){if((x.kind==='損傷'||x.kind==='損傷?')&&(+x.loss||0)<=20000){act[x.round]=(act[x.round]||0)+(+x.loss||0);if(x.skill&&x.skill!=='普通攻擊'&&x.skill!=='?')sk.a[x.round]=(sk.a[x.round]||0)+1}}
+  const R=Math.max(w.rounds,...Object.keys(act).map(Number),0),tr=[];
+  for(let r=1;r<=R;r++)tr.push(`<tr><td>${r}</td><td>${fm(sim[r]||0)}</td><td>${fm(act[r]||0)}</td><td>${sk.s[r]||0}</td><td>${sk.a[r]||0}</td></tr>`);
+  return el('div',{class:'scrollx',html:`<table><tr><th>回合</th><th>模擬 傷害合計</th><th>實際 傷害合計</th><th>模擬 戰法行數</th><th>實際 戰法傷害行數</th></tr>${tr.join('')}</table><p class="note">實際戰報是 OCR 收來的，單列傷害超過 20,000 的視為讀錯不計；僅供數量級對照；兩邊都是「雙方」傷害加總。</p>`});
+}
+function renderCompare(){
+  const box=el('details',{});box.append(el('summary',{},'與實際戰報對照'));
+  const inner=el('div',{class:'rl'});box.append(inner);
+  const file=el('input',{type:'file',accept:'.csv,text/csv'}),sel=el('select',{}),selw=el('select',{});
+  REP.forEach(w=>selw.append(el('option',{value:w.wave},`模擬：第 ${w.wave} 隊 ${D.teams[w.k][2].n}隊`)));
+  const draw=()=>{
+    inner.querySelectorAll('.cmpOut').forEach(x=>x.remove());
+    if(!ACT)return;
+    const rows=ACT.get(sel.value)||[],w=REP.find(x=>x.wave==selw.value);
+    const out=el('div',{class:'cmpOut'},cmpTable(w,rows),el('div',{class:'cmp'},el('div',{},el('h4',{},'模擬'),(()=>{const b=el('div',{class:'rl'});for(const r of repLines(w,w.log)){b.append(el('div',{class:'rh'},`第 ${r.round} 回合`),el('div',{html:r.lines.join('')}))}return b})()),el('div',{},el('h4',{},'實際'),actNode(rows))));
+    inner.append(out)};
+  file.onchange=async()=>{const f=file.files[0];if(!f)return;
+    const rows=parseCsv(await f.text());ACT=new Map();for(const r of rows){if(!ACT.has(r.battle))ACT.set(r.battle,[]);ACT.get(r.battle).push(r)}
+    sel.replaceChildren(...[...ACT].map(([id,rs])=>el('option',{value:id},`${id}　${Math.max(...rs.map(x=>+x.round||0))} 回合・${rs.length} 列・${[...new Set(rs.map(x=>x.attacker).filter(x=>x&&x!=='?'))].slice(0,3).join('、')}`)));draw()};
+  sel.onchange=draw;selw.onchange=draw;
+  inner.append(el('p',{class:'note'},'選你收集的 events.csv（只在你的瀏覽器讀取，不會上傳），挑一場實際戰報，就能跟上面模擬的同格式逐回合對照。想比較同一組對手，請先在上面選同一組守軍。'),
+    el('div',{class:'fl'},file,sel,selw));
+  if(ACT){sel.replaceChildren(...[...ACT].map(([id,rs])=>el('option',{value:id},`${id}　${Math.max(...rs.map(x=>+x.round||0))} 回合・${rs.length} 列`)));draw()}
+  return box;
+}
+function renderRep(){
+  const box=$('rep');box.className='rep';box.replaceChildren();
+  if(!REP||!ENG())return;
+  box.append(el('h3',{style:'margin:0 0 4px'},'查看戰報（引擎逐回合）'),
+    el('p',{class:'note'},'格式仿遊戲戰報詳情：每回合依行動順序列出誰發動什麼、傷害與剩餘兵力；左邊色條藍＝我方、紅＝守軍。回合末兵力由事件推算（離反吸血等未入事件的回復不含）。'));
+  REP.forEach((w,i)=>box.append(waveNode(w,i===REP.length-1)));
+  box.append(renderCompare());
+}
+
 // one march: fight the land's garrison teams in order until one isn't beaten
 function attack(){
   const lv=S.lv,n=wavesOf(lv),pool=teamsAt(lv);
@@ -627,21 +823,27 @@ function attack(){
     if(i===0&&S.team){ks.push(S.team);continue}
     const left=pool.filter(k=>!ks.includes(k));ks.push(pick(left.length?left:pool));
   }
-  const out=[];
-  for(let i=start;i<n;i++){const f=fight(lv,ks[i],i===start&&P?P.dl:null);out.push(f);if(f.res!=='W'||S.cur<=0)break}
+  let out=[];
+  if(ENG()){
+    if(!ready(S.my)){$('loss').textContent='我方要選滿 3 位不同、有屬性資料的武將（組隊頁）。';return}
+    out=marchEngine(lv,ks,start,P);REP=out.map(f=>f.rep);
+  }else{
+    REP=null;
+    for(let i=start;i<n;i++){const f=fight(lv,ks[i],i===start&&P?P.dl:null);out.push(f);if(f.res!=='W'||S.cur<=0)break}
+  }
   const last=out[out.length-1],done=start+out.length;
   const res=done===n&&last.res==='W'?'W':last.res;
   S.pend=res==='D'?{lv,ks,i:done-1,dl:last.dl,until:Date.now()+PEND_MS}:null;
   if(res==='W')S.wins++;
   const dead=out.reduce((a,f)=>a+f.dead,0),wounded=out.reduce((a,f)=>a+f.wounded,0);
   shown={t:last.k,ty:typeOf(last.k,lv),dl:last.dl,res:last.res};
-  S.log.unshift({lv,t:last.k,res,dead,wounded,left:S.cur,src:last.r.srv,my:S.my.gens[0].n,arm:S.my.arm,w:done,n,cont:!!P});S.log=S.log.slice(0,200);
+  S.log.unshift({lv,t:last.k,res,dead,wounded,left:S.cur,src:last.r?last.r.srv:'引擎',my:S.my.gens[0].n,arm:S.my.arm,w:done,n,cont:!!P});S.log=S.log.slice(0,200);
   save();
   const v=$('verdict');v.className='verdict '+res;v.textContent=n>1&&res!=='W'?`${RES[res]}（第 ${done}/${n} 隊）`:RES[res];
   const per=perTroops(lv),dTot=per?per*3:null,dLeft=last.dl.reduce((a,b)=>a+b,0);
   const waves=n>1?out.map((f,i)=>`第 ${start+i+1} 隊 ${D.teams[f.k][2].n}隊：${RES[f.res]}，死 ${fmt(f.dead)} 傷 ${fmt(f.wounded)}`).join('<br>')+'<br>':'';
-  $('loss').innerHTML=`${waves}我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>守軍 剩 <b>${fmt(dLeft)}</b>${dTot?` / ${fmt(dTot)}`:''}<br><span style="font-size:.72rem">抽樣自 PK${last.r.srv}：${last.r.a}隊 vs ${D.teams[last.r.t][2].n}隊</span>`;
-  renderArmy();renderDefender();renderTab();renderPend();
+  $('loss').innerHTML=`${waves}我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>守軍 剩 <b>${fmt(dLeft)}</b>${dTot?` / ${fmt(dTot)}`:''}<br><span style="font-size:.72rem">${last.r?`抽樣自 PK${last.r.srv}：${last.r.a}隊 vs ${D.teams[last.r.t][2].n}隊`:`引擎逐回合模擬（組隊頁第 ${S.ti+1} 隊）`}</span>`;
+  renderArmy();renderDefender();renderTab();renderPend();renderRep();
 }
 $('go').onclick=attack;
 // 平局: the garrison keeps its losses for 5 minutes, then resets to full
@@ -705,7 +907,7 @@ function renderTab(){
     body.replaceChildren(table(['賽季','類型','我方','守軍大將','兵種','結果','我方死','我方傷','我方剩兵','守軍剩兵（副/副/大）'],rows,[6,7]),
       el('p',{class:'note',style:'margin-top:10px'},'PK1 截圖沒有上方的兵力總表，「我方剩兵」列的是三名武將各自剩下的兵。'));
   }else{
-    const rows=S.log.map(x=>[`Lv${x.lv}`,x.my?`${x.my}隊（${x.arm}）`:'—',gName(D.teams[x.t][2]),resSpan(x.res)+(x.n>1?` ${x.w}/${x.n}隊`:'')+(x.cont?'（接續）':''),fmt(x.dead),fmt(x.wounded),fmt(x.left),`PK${x.src}`]);
+    const rows=S.log.map(x=>[`Lv${x.lv}`,x.my?`${x.my}隊（${x.arm}）`:'—',gName(D.teams[x.t][2]),resSpan(x.res)+(x.n>1?` ${x.w}/${x.n}隊`:'')+(x.cont?'（接續）':''),fmt(x.dead),fmt(x.wounded),fmt(x.left),typeof x.src==='number'?`PK${x.src}`:x.src]);
     const clr=el('button',{class:'chip',type:'button',style:'margin-top:10px'},'清除紀錄');
     clr.onclick=()=>{S.log=[];S.pend=null;S.wins=0;S.dead=0;S.wounded=0;S.cur=S.max;shown=null;save();renderAll()};
     body.replaceChildren(table(['土地','我方','守軍大將','結果','陣亡','傷兵','剩餘兵力','抽樣'],rows,[4,5,6]),clr);
@@ -1418,7 +1620,7 @@ $('nteam').onchange=e=>{S.nteam=+e.target.value;save()};
 $('cmin').onchange=e=>{S.cmin=+e.target.value;if(S.cmax<S.cmin)S.cmax=S.cmin;save();renderRec()};
 $('cmax').onchange=e=>{S.cmax=+e.target.value;if(S.cmin>S.cmax)S.cmin=S.cmax;save();renderRec()};
 
-function renderAll(){renderLevels();renderRec();renderBuilder();renderPredict();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
+function renderAll(){renderMode();renderLevels();renderRec();renderBuilder();renderPredict();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
 $('nTeams').textContent=Object.keys(D.teams).length;$('nReps').textContent=D.reports.length;
 trimStock();renderAll();
 {const h=location.hash.slice(1);if(['land','rec','team','predict','board'].includes(h))setTimeout(()=>document.getElementById(h)?.scrollIntoView(),150)}
