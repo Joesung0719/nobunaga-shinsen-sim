@@ -328,7 +328,7 @@ export function battle(A,B,R=Math.random){
     f*=Math.max(.1,1+up/100)*Math.max(.1,1-dn/100);
     if(d.go&&R()<d.go.p)f*=1-d.go.v/100;   // 御旗盾無：受傷時機率減傷
     let crit=false;
-    if(dtype==='兵刃'&&R()*100<M(g,'crit')){f*=K.crit;crit=true;g.cr=round}
+    if(dtype==='兵刃'&&R()*100<M(g,'crit')){f*=K.crit+M(g,'critDmg')/100;crit=true;g.cr=round}
     if(dtype==='謀略'&&R()*100<M(g,'critS')){f*=K.crit+M(g,'critSDmg')/100;crit=true}
     let v=Math.sqrt(g.troops)*K.base*rate*f*(0.94+R()*0.12);
     v=Math.max(1,Math.min(d.troops,Math.round(v)));
@@ -673,7 +673,8 @@ function traitParse(txt){
   let m=txt.match(/^(我軍全體)?(造成兵刃傷害|造成謀略傷害|造成傷害|受到兵刃傷害|受到謀略傷害|受到傷害)(?:增加|減少)([\d.]+)%$/);
   if(m)return{team:!!m[1],tr:{[TR_KEYS[m[2]]]:+m[3]}};
   m=txt.match(/^增加([\d.]+)%奇謀傷害率$/);if(m)return{tr:{critSDmg:+m[1]}};
-  m=txt.match(/^增加([\d.]+)%會心傷害率和奇謀傷害率$/);if(m)return{tr:{critSDmg:+m[1]}};
+  m=txt.match(/^增加([\d.]+)%會心傷害率和奇謀傷害率$/);if(m)return{tr:{critSDmg:+m[1],critDmg:+m[1]}};
+  m=txt.match(/^增加([\d.]+)%會心傷害率$/);if(m)return{tr:{critDmg:+m[1]}};
   m=txt.match(/^獲得([\d.]+)%會心狀態和奇謀狀態$/);if(m)return{tr:{crit:+m[1],critS:+m[1]}};
   m=txt.match(/^獲得([\d.]+)%會心狀態$/);if(m)return{tr:{crit:+m[1]}};
   m=txt.match(/^獲得([\d.]+)%奇謀狀態$/);if(m)return{tr:{critS:+m[1]}};
