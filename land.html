@@ -1377,7 +1377,13 @@ function buildAuto(spec,side,troops,arm0){
   const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,50,red,S.my.fac)}));
   const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm}),tb=traitBattle(D,names,red);
   return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
-    skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,S.skLv)),bg:null}))};
+    skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,S.skLv)),
+    bg:side===1&&S.tgt==='opp'&&S.opp.bg?oppBg(g,i,stt,names,pl):null,gear:side===1&&S.tgt==='opp'&&S.opp.gear?gearBonus(rollGear()):null}))};
+}
+function oppBg(g,i,stt,names,pl){   // 對手兵學：依建議配滿（建議器依武將、戰法、屬性推導）
+  try{const r=ROSTER.get(g.n)?.r,sk=[innateOf(g.n),...pl.sel[i]].filter(Boolean);
+    const b=adviseBingaku(KIT,D,g.n,r,sk,stt[i].st,{names,skillsOf:Object.fromEntries(names.map((n,j)=>[n,[innateOf(n),...pl.sel[j]].filter(Boolean)]))});
+    return b?bgCompile(b.sel,r,g.red||0,g.n):null}catch{return null}
 }
 const armOfG=k=>D.reports.find(r=>r.t===k&&r.ty)?.ty||'騎';
 function garrison(k,lv){const L=D.levels[lv],t=D.teams[k];   // 守軍戰法等級沒有資料，用滿級
@@ -1420,9 +1426,13 @@ function renderPredict(){
     const sn=el('select',{'aria-label':'對手武將'},el('option',{value:''},'（空）'),...ALLN.map(n=>el('option',{value:n},`${n}　C${costOf(n)}`)));sn.value=g.n;
     const sr=el('select',{'aria-label':'對手紅度'},...[0,1,2,3,4,5].map(v=>el('option',{value:String(v)},`${v} 紅`)));sr.value=String(g.red||0);
     sn.onchange=()=>{g.n=sn.value;g.s=[];S.opp.preset='';save();renderPredict()};sr.onchange=()=>{g.red=+sr.value;S.opp.preset='';save()};
-    grid.append(el('div',{class:'rslot'},el('label',{},el('span',{},i?'副將':'大將'),sn),el('label',{},el('span',{},'紅度'),sr)));
+    const sks=[0,1].map(j=>{const x=el('select',{'aria-label':`對手戰法${j+1}`},el('option',{value:''},'（依推薦補滿）'),...SKILL_POOL.filter(([n])=>n!==innateOf(g.n)).map(([n])=>el('option',{value:n},n)));
+      x.value=g.s?.[j]||'';x.onchange=()=>{g.s=g.s||[];g.s[j]=x.value;S.opp.preset='';save()};return el('label',{},el('span',{},`戰法${j+1}`),x)});
+    grid.append(el('div',{class:'rslot'},el('label',{},el('span',{},i?'副將':'大將'),sn),el('label',{},el('span',{},'紅度'),sr),...sks,el('div',{class:'note',style:'font-size:.72rem'},g.n?`固有：${innateOf(g.n)||'—'}`:'')));
   });
-  box.append(el('div',{class:'fl'},sel,el('span',{class:'note'},'對手戰法依推薦補滿（預設等級），兵種取隊伍特性最佳，Lv50、每人兵力同我方平均。')),grid);
+  const opt=(k,t)=>{const c=el('input',{type:'checkbox'});c.checked=!!S.opp[k];c.onchange=()=>{S.opp[k]=c.checked;save()};return el('label',{class:'note'},c,' '+t)};
+  box.append(el('div',{class:'fl',style:'margin-top:8px'},opt('bg','對手兵學：依建議配滿'),opt('gear','對手裝備：隨機珍品（每場重擲）'),el('span',{class:'note'},'戰法可逐一指定，留空就依推薦補滿；戰法等級用上方預設。')));
+  box.append(el('div',{class:'fl'},sel,el('span',{class:'note'},'對手戰法預設依推薦補滿（可逐一指定），兵種取隊伍特性最佳，Lv50、每人兵力同我方平均；兵學與裝備可勾選。')),grid);
 }
 const trAvg=()=>Math.round(S.my.gens.reduce((a,m)=>a+m.t,0)/3);
 const ready=my=>my.gens.every(m=>m.n&&D.stats?.[m.n])&&new Set(my.gens.map(m=>m.n)).size===3;
