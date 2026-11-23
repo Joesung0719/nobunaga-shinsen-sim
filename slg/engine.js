@@ -255,6 +255,9 @@ export function battle(A,B,R=Math.random){
     g.wen=g.skills.find(s=>s.fx?.open?.t==='bunbu')?.fx.open||null;g.wc=[0,0];g.go=g.skills.find(s=>s.fx?.open?.t==='gokihata')?.fx.open||null;
     for(const s of g.skills)if(s.self&&s.modeled==='text')for(const k of s.self.ks)g.b[k]+=s.self.v;
     if(g.bx.spd)g.b.速度+=g.bx.spd;
+    if(g.gear){for(const k in g.gear.st)g.b[k]+=g.gear.st[k];   // 隨機珍品裝備（slg/equipment.js）：屬性、騎兵限定屬性、全程 % 加成
+      if(t.arm==='騎')for(const k in g.gear.cav)g.b[k]+=g.gear.cav[k];
+      for(const x of g.gear.tm)g.tm.push({...x})}
   }
   const ev=(e)=>log.push(e);
   const BG='兵學';
