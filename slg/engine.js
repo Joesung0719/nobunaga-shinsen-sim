@@ -114,7 +114,34 @@ const SKFX={
   出奇制勝:()=>({open:{t:'shutsu',dmg:hi(14,28)}}),   // 自帶主動傷害 +14→28%（攻心效果沒模擬）
   文武雙全:()=>({open:{t:'bunbu',v:hi(15,30),max:5}}),   // 造成謀略傷害 +武勇、兵刃傷害 +智略，各最多疊 5 次
   御旗盾無:()=>({open:{t:'gokihata',p:hi(20,40)/100,v:hi(20,40),p2:hi(20,40)/100,a:hi(47,94)/100}}),   // 受傷時機率減傷；受普攻時機率讓友軍單體反擊
-  融通無礙:()=>({cast:{t:'rateup',v:hi(6,12),dur:2,max:2}}),   // 友軍單體主動發動率 +6→12%，持續 2 回合，可疊 2 次
+  融通無礙:()=>({cast:{t:'rateup',v:hi(6,12),dur:2,max:2}}),
+  // 2026-11-23 補建模的固有戰法（Joe 要求）：照說明文字，「受XX影響」的縮放不模擬，取顯示的滿級／Lv 內插值；機率類每回合判定。
+  風林火山:()=>({open:{t:'fuurin',wind:hi(11,22),lin:hi(46,92)/100,fire:hi(78,156)/100,mount:hi(11,22)}}),
+  伊達風采:()=>({open:{t:'date',r:hi(46,92)/100,st:hi(2.5,5)}}),
+  松柏之操:()=>({open:{t:'matsu',v:hi(7.5,15)}}),   // 只模擬大將非自帶主動發動率；副將減傷沒模擬
+  武田之赤備:()=>({open:{t:'akabe',crit:hi(10,20),p:hi(12.5,25)/100,rate:hi(69,138)/100,dec:hi(7.5,15)}}),
+  軍神:()=>({open:{t:'kenshin',p:hi(33,66)/100,v:hi(5,10),full:hi(80,160)}}),
+  百萬一心:()=>({open:{t:'mouri',pAll:hi(7.5,15)/100,p:hi(15,30)/100}}),
+  鬼若子:()=>({open:{t:'kijiko',p:hi(25,50)/100,st:hi(9,18)}}),
+  歸蝶之舞:()=>({open:{t:'kikyo',p:hi(20,40)/100,v:hi(11,22)}}),
+  古今獨步:()=>({open:{t:'kokin',p:hi(24,48)/100,a:hi(35,70)/100,lf:hi(2,4),max:8}}),
+  上州黃斑:()=>({open:{t:'kozan',p1:hi(37.5,75)/100,p2:hi(15,30)/100,dot:hi(23,46)/100,fat:hi(18,36)}}),
+  一切皆空:()=>({open:{t:'ichiki',v:hi(36,72)/100}}),
+  槍之又左:()=>({open:{t:'maeda',p:hi(45,90)/100}}),
+  東國戰華:()=>({open:{t:'nari',st:hi(3,30)}}),
+  竭力而戰:()=>({open:{t:'saito',p:hi(35,70)/100}}),
+  鬼美濃:()=>({open:{t:'baba',p:hi(17.5,35)/100,rate:hi(56,112)/100}}),
+  豐後戰神:()=>({open:{t:'bungo',dmg:hi(6,12),rate:hi(4,8)}}),
+  尼御台:()=>({open:{t:'jushu',v:hi(9,18),lf:hi(12,24)}}),
+  風流武者:()=>({open:{t:'miyoshi',p:hi(40,80)/100,heal:hi(66,132)/100,v:hi(15,30)}}),
+  夜叉美濃:()=>({open:{t:'yasha',v:hi(17.5,35),v2:hi(25,50)}}),
+  諸行無常:()=>({open:{t:'zuikei',v:hi(12,24),w:hi(28,56)}}),
+  末世道者:()=>({open:{t:'ouchi',v:hi(7,14)}}),
+  耐苦成剛:()=>({open:{t:'chisaka',v:hi(7,14),fin:hi(80,160)/100}}),
+  風姿綽約:()=>({open:{t:'ae',v:hi(2.3,5.5),p:hi(25,50)/100}}),
+  霸王右筆:()=>({open:{t:'ota',p:hi(20,40)/100,rate:1.26}}),
+  三河魂:()=>({open:{t:'mikawa',v:hi(1.25,2.5)}}),
+  腹中鱗甲:()=>({open:{t:'counter',a:hi(26,52)/100,b:hi(31,62)/100}}),   // 大將 26→52%，非大將 31→62%   // 友軍單體主動發動率 +6→12%，持續 2 回合，可疊 2 次
 };
 // one skill → what the engine can run
 export function parseSkill(name,D,lv=null){
@@ -175,9 +202,13 @@ function parseSkill0(name,D){
     if(pm&&dm){rate=hi(pm[1],pm[2])/100;sk.each=true}
     else if(!sm&&!sk.buf&&!sk.regen){return sk}
   }
+  {let m=x.match(/使(我軍單體|敵軍單體)(?:本回合)?(武勇|智略|統率|速度)(增加|減少)([\d.]+)(?:→([\d.]+))?點，持續(\d)回合/);   // 初級鼓舞／擾亂／壓制…：單體屬性增減
+    if(m)sk.sm={ally:m[1]==='我軍單體',k:m[2],v:(m[3]==='減少'?-1:1)*hi(m[4],m[5]),dur:+m[6]};
+    m=x.match(/使敵軍(單體|群體（(\d)人）)造成傷害降低([\d.]+)%(?:→([\d.]+)%)?，持續(\d)回合/);   // 威壓（口羽通良）：敵軍造成傷害降低
+    if(m)sk.wk={n:m[2]?+m[2]:1,v:hi(m[3],m[4]),dur:+m[5]}}
   sk.rate=rate;
-  if(sk.dmg||sk.heal||sk.status||sk.self||sk.buf||sk.regen)sk.modeled='text';
-  if(sk.modeled==='text'&&!(sk.dmg||sk.heal||sk.status||sk.self))sk.buffOnly=true;   // 只有增益：劇本隨機抽戰法不用，免得改動既有劇本的武將配招（hash 分配）
+  if(sk.dmg||sk.heal||sk.status||sk.self||sk.buf||sk.regen||sk.dot||sk.sm||sk.wk)sk.modeled='text';
+  if(sk.modeled==='text'&&!(sk.dmg||sk.heal||sk.status||sk.self))sk.buffOnly=true;   // （持續傷害／屬性增減／降傷也算「非純增益」但先維持 buffOnly，避免改動劇本隨機抽戰法）   // 只有增益：劇本隨機抽戰法不用，免得改動既有劇本的武將配招（hash 分配）
   return sk;
 }
 
@@ -219,12 +250,27 @@ export function battle(A,B,R=Math.random){
       t.gens[0].tm.push({k:bk==='主動'?'rateAct':'rushRate',v:sk.alliance.boss,until:99});
       for(const m of t.gens.slice(1)){m.tm.push({k:'dmg',v:sk.alliance.sub,until:99});m.tm.push({k:'taken',v:sk.alliance.sub,until:99})}
     }}});
+  // 固有戰法補建模（2026-11-23）：開場設定。狀態放 g.ix（戰鬥結束時清掉）。
+  const ixs=g=>g.ix||(g.ix={});
+  const IO={
+    kijiko:({t,g,o})=>{for(const m of t.gens){m.b.統率+=o.st;m.sb.push({k:'統率',v:o.st,until:4})}},
+    nari:({g,o})=>{g.b.武勇+=o.st},
+    akabe:({g,o})=>{g.tm.push({k:'crit',v:o.crit,until:99,src:g})},
+    bungo:({g,o})=>{const b=g.b,m=Math.max(b.武勇,b.智略,b.統率);if(b.武勇===m)g.tm.push({k:'dmgBlade',v:o.dmg,until:99,src:g});else if(b.智略===m)g.tm.push({k:'dmgStrat',v:o.dmg,until:99,src:g});else g.tm.push({k:'rateAct',v:o.rate,until:99,src:g})},
+    yasha:({e,g,o})=>{g.tm.push({k:'taken',v:(e.arm==='騎'||e.arm==='鐵炮')?o.v2:o.v,until:99,src:g})},
+    zuikei:({t,g,o})=>{for(const m of t.gens)m.tm.push({k:'dmg',v:o.v,until:3,src:g})},
+    ouchi:({t,g,o})=>{const al=t.gens,s=[...al].sort((a,b)=>b.b.智略-a.b.智略)[0],w=[...al].sort((a,b)=>b.b.武勇-a.b.武勇)[0];s.tm.push({k:'dmgStrat',v:o.v,until:99,src:g});w.b.武勇*=.9},
+    matsu:({t,g,o})=>{t.gens[0].tm.push({k:'rateActNI',v:o.v,until:99,src:g})},
+    baba:({g,o})=>{g.baba={p:o.p,rate:o.rate}},
+    mouri:({e,g,o})=>{ixs(g).set=R()<o.pAll?aliveIdx(e):pickN(aliveIdx(e),2,R)},
+  };
   // 手工建模戰法（SKFX）：開場生效的增益／減益
   T.forEach((t,ti)=>{const e=T[1-ti];t.gens.forEach(g=>{for(const sk of g.skills){const o=sk.fx?.open;if(!o)continue;
     if(o.t==='weak')for(const d of pickN(e.gens,o.n,R))d.tm.push({k:'weak',v:o.v,until:o.rounds});
     else if(o.t==='taken')for(const m of t.gens)m.tm.push({k:'taken',v:o.v,until:o.rounds});
     else if(o.t==='taunt')g.tm.push({k:'takenAtkRush',v:o.self,until:o.rounds});
     else if(o.t==='qimou'){g.tm.push({k:'critS',v:o.p,until:99});g.tm.push({k:'critSDmg',v:o.dmg,until:99})}
+    else if(IO[o.t])IO[o.t]({t,ti,e,g,o});
   }})});
   // 協同：隨機友軍單體造成的傷害提高
   for(const t of T)t.gens.forEach((g,i)=>{if(g.bx.ally){const j=Math.floor(R()*t.gens.length);t.gens[j].tm.push({k:'dmg',v:g.bx.ally,until:99})}});
@@ -253,7 +299,7 @@ export function battle(A,B,R=Math.random){
     f*=Math.max(.1,1+up/100)*Math.max(.1,1-dn/100);
     if(d.go&&R()<d.go.p)f*=1-d.go.v/100;   // 御旗盾無：受傷時機率減傷
     let crit=false;
-    if(dtype==='兵刃'&&R()*100<M(g,'crit')){f*=K.crit;crit=true}
+    if(dtype==='兵刃'&&R()*100<M(g,'crit')){f*=K.crit;crit=true;g.cr=round}
     if(dtype==='謀略'&&R()*100<M(g,'critS')){f*=K.crit+M(g,'critSDmg')/100;crit=true}
     let v=Math.sqrt(g.troops)*K.base*rate*f*(0.94+R()*0.12);
     v=Math.max(1,Math.min(d.troops,Math.round(v)));
@@ -261,6 +307,8 @@ export function battle(A,B,R=Math.random){
     if(g.wen){const k=dtype==='謀略'?0:1;if(g.wc[k]<g.wen.max){g.wc[k]++;g.b[k?'智略':'武勇']+=g.wen.v}}   // 文武雙全
     // 離間之計：離反／攻心，依造成的傷害恢復自身兵力
     if(g.lj&&g.troops>0){const h=Math.min(g.max-g.troops,Math.round(v*g.lj*1.25/100));if(h>0)g.troops+=h}
+    if(g.lfv&&g.troops>0){const h=Math.min(g.max-g.troops,Math.round(v*g.lfv/100));if(h>0)g.troops+=h}   // 離反：依造成的傷害恢復自身兵力
+    if(d.baba&&d.troops>0&&R()<d.baba.p){const hv=Math.round(Math.min(d.max-d.troops,healAmt(d,d.baba.rate)));if(hv>0)d.troops+=hv}   // 鬼美濃：受傷時機率恢復自身兵力
     return{side:dst.side,i:dt,v,left:d.troops,dtype,rout:d.troops<=0,crit};
   }
   const healAmt=(g,rate)=>Math.sqrt(g.troops)*K.base*rate*(1+(g.b.智略-80)/220);
@@ -318,11 +366,66 @@ export function battle(A,B,R=Math.random){
       else if(c.t==='taunt2'){for(const j of aliveIdx(e))e.gens[j].tn={until:round+1,to:i};
         const dv=g.b.統率*c.pct/100;g.b.統率+=dv;g.sb.push({k:'統率',v:dv,until:round+1});tg.push({side:t.side,i,status:'挑釁敵軍全體'})}
     }
+    if(sk.sm){const side=sk.sm.ally?t:e,jj=pickN(aliveIdx(side),1,R)[0];if(jj!=null){const m=side.gens[jj];m.b[sk.sm.k]+=sk.sm.v;m.sb.push({k:sk.sm.k,v:sk.sm.v,until:round+sk.sm.dur-1});tg.push({side:side.side,i:jj,status:`${sk.sm.k} ${sk.sm.v>0?'+':''}${Math.round(sk.sm.v)}`})}}
+    if(sk.wk)for(const j of pickN(aliveIdx(e),sk.wk.n,R)){timed(e.gens[j],'weak',sk.wk.v,sk.wk.dur);tg.push({side:e.side,i:j,status:`造成傷害 -${Math.round(sk.wk.v)}%`})}
+    if(sk.kind==='主動')for(const s2 of g.skills){const o2=s2.fx?.open;if(!o2)continue;const ix=ixs(g);
+      if(o2.t==='maeda'){if(R()<o2.p){g.sh++;tg.push({side:t.side,i,status:'鐵壁'})}ix.att=(ix.att||0)+1;if(ix.att%2===0)ix.enh=true}   // 槍之又左：每次主動發動，機率獲得鐵壁；每 2 次強化下次普攻（+50%、擴散全體）
+      else if(o2.t==='miyoshi'){ix.n=(ix.n||0)+1;
+        if(ix.n===1&&R()<o2.p){for(const j of aliveIdx(t).sort((a,b)=>t.gens[a].troops/t.gens[a].max-t.gens[b].troops/t.gens[b].max).slice(0,2)){const h=healTo(t,j,g,o2.heal);if(h)tg.push(h)}}
+        else if(ix.n===2&&R()<o2.p){for(const j of pickN(aliveIdx(t),2,R)){t.gens[j].tm.push({k:'dmgStrat',v:o2.v,until:round+2,src:g});tg.push({side:t.side,i:j,status:`謀略傷害 +${Math.round(o2.v)}%`})}}}}
     if(tmpDmg)g.tm.splice(g.tm.indexOf(tmpDmg),1);
     ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,guess:sk.modeled==='guess',tg,...o});
     for(const j of ctl)onControl(t,ti,i,e,j);
     if(sk.kind==='主動'&&g.q==='離間之計'&&g.lj<4)g.lj++;
   }
+  const addDot=(t,ti,i,d,name,v,dtype,dur)=>{const old=d.dots.find(x=>x.name===name&&x.ti===ti&&x.i===i);if(old)old.until=round+dur;else d.dots.push({name,t,ti,i,v,dtype,until:round+dur,from:round})};
+  const evS=(t,i,name,kind,tg)=>ev({type:'skill',side:t.side,i,skill:name,kind,tg:tg.filter(Boolean)});
+  // 每回合開始（行動順序決定前）：風林火山旗、歸蝶之舞、鬼若子連擊、上州黃斑、尼御台、諸行無常後半、風姿綽約…
+  const IR={
+    fuurin:({t,ti,e,g,i,o})=>{if(round%2!==1)return;const ix=ixs(g);
+      if(ix.f==null){const b=g.b,m=Math.max(b.速度,b.智略,b.武勇,b.統率);ix.f=b.速度===m?0:b.智略===m?1:b.武勇===m?2:3}   // 首回合旗幟由自身最高屬性決定：速度＝風、智略＝林、武勇＝火、統率＝山
+      const f=ix.f++%4,al=aliveIdx(t),ea=aliveIdx(e),tg=[];
+      if(f===0){for(const j of al){t.gens[j].tm.push({k:'dmgBlade',v:o.wind,until:round+1,src:g});tg.push({side:t.side,i:j,status:`兵刃傷害 +${Math.round(o.wind)}%`})}}
+      else if(f===1){for(const j of pickN(ea,2+Math.floor(R()*2),R))tg.push(hit(t,ti,i,e,j,o.lin,'謀略','指揮'))}
+      else if(f===2){for(const j of pickN(ea,1+Math.floor(R()*2),R))tg.push(hit(t,ti,i,e,j,o.fire,'兵刃','指揮'))}
+      else{for(const j of al){t.gens[j].tm.push({k:'takenBlade',v:o.mount,until:round+1,src:g});tg.push({side:t.side,i:j,status:`受兵刃傷害 -${Math.round(o.mount)}%`})}}
+      evS(t,i,'風林火山','指揮',tg)},
+    kikyo:({t,ti,e,g,i,o})=>{if(R()>=o.p)return;const tg=[];
+      if(round%2===1){for(const j of pickN(aliveIdx(e),2,R)){timed(e.gens[j],'statDown',o.v,1);tg.push({side:e.side,i:j,status:`統率智略 -${Math.round(o.v)}%`})}}
+      else{for(const j of pickN(aliveIdx(e),2,R)){e.gens[j].fx.混亂=Math.max(e.gens[j].fx.混亂||0,1);tg.push({side:e.side,i:j,status:'混亂'})}}
+      evS(t,i,'歸蝶之舞','被動',tg)},
+    kijiko:({t,g,o})=>{if(round>4)return;for(const m of t.gens)if(m.troops>0&&R()<o.p)m.cb=round},
+    nari:({g})=>{g.cb=round},
+    saito:({g,o})=>{if(round>=5&&R()<o.p)g.cb=round},
+    jushu:({t,g,o})=>{const b=t.gens[0];if(round===1)b.tm.push({k:'taken',v:o.v,until:2,src:g});if(round===3)b.lfv=o.lf;if(round===7)b.lfv=0},
+    zuikei:({t,e,g,o})=>{if(round!==4)return;timed(g,'weak',o.w,3);const j=pickN(aliveIdx(e),1,R)[0];if(j!=null)timed(e.gens[j],'weak',o.w,3)},
+    kozan:({t,ti,e,g,i,o})=>{const hb=g.hitBy&&g.hitBy.round===round-1&&e.gens[g.hitBy.i]?.troops>0?g.hitBy.i:null,tg=[];
+      const put=j=>{const d=e.gens[j];if(d.troops<=0)return;if(d.dots.some(x=>x.name==='消沉')){timed(d,'weak',o.fat,1);tg.push({side:e.side,i:j,status:'疲弊'})}else{addDot(t,ti,i,d,'消沉',o.dot,'謀略',3);tg.push({side:e.side,i:j,status:'消沉'})}};
+      if(hb!=null){if(R()<o.p1)put(hb)}else if(R()<o.p2){for(const j of pickN(aliveIdx(e),2,R))put(j)}
+      if(tg.length)evS(t,i,'上州黃斑','指揮',tg)},
+    ae:({t,e,g,i,o})=>{const ix=ixs(g);if((ix.n||0)<3){ix.n=(ix.n||0)+1;for(const m of t.gens)m.b.武勇+=m.st.武勇*o.v/100}
+      if(R()<o.p){const j=pickN(aliveIdx(e),1,R)[0];if(j!=null){const d=e.gens[j],k=['混亂','封擊','無策','疲弊'][Math.floor(R()*4)];
+        if(k==='封擊')d.sealR=round;else if(k==='疲弊')timed(d,'weak',100,1);else d.fx[k]=Math.max(d.fx[k]||0,1);evS(t,i,'風姿綽約','指揮',[{side:e.side,i:j,status:k}])}}},
+  };
+  // 行動前觸發（指揮／被動不受控制影響，所以放在控制判定之前）：伊達風采、一切皆空
+  const IA={
+    date:({t,ti,e,g,i,o})=>{const ix=ixs(g);if(ix.f==null){ix.f=5;ix.nb=0;ix.ns=0;ix.st=0}if(ix.f<=0)return;ix.f--;const tg=[];
+      let al=aliveIdx(e);if(!al.length)return;let h=hit(t,ti,i,e,al[Math.floor(R()*al.length)],o.r,'兵刃','指揮');if(h){tg.push(h);ix.nb++}
+      al=aliveIdx(e);if(al.length){h=hit(t,ti,i,e,al[Math.floor(R()*al.length)],o.r,'謀略','指揮');if(h){tg.push(h);ix.ns++}}
+      while(ix.nb>=2&&ix.ns>=2){ix.nb-=2;ix.ns-=2;if(ix.st<4){ix.st++;g.b.武勇+=g.st.武勇*o.st/100;g.b.智略+=g.st.智略*o.st/100}else ix.f++}
+      evS(t,i,'伊達風采','指揮',tg)},
+    ichiki:({t,ti,e,g,i,o})=>{const ix=ixs(g);
+      if(!ix.on){if(round<2)return;ix.p=ix.p==null?.3:ix.p+.4;if(R()<ix.p)ix.on=true;else return}
+      if(R()<.85){const tg=[];g.tm.push({k:'pierce',v:100,until:round});const mt=g.tm[g.tm.length-1];
+        for(const j of pickN(aliveIdx(e),2+Math.floor(R()*2),R))tg.push(hit(t,ti,i,e,j,o.v,'auto','被動'));
+        g.tm.splice(g.tm.indexOf(mt),1);evS(t,i,'一切皆空','被動',tg)}},
+  };
+  // 敵方主動戰法發動前：百萬一心有機率阻止並反傷
+  const mblock=(t,ti,i)=>{const e=T[1-ti];
+    for(let k=0;k<e.gens.length;k++){const m=e.gens[k];if(m.troops<=0)continue;
+      for(const s of m.skills){const o=s.fx?.open;if(o?.t==='mouri'&&ixs(m).set?.includes(i)&&R()<o.p){
+        const h=hit(e,1-ti,k,t,i,1,'謀略','指揮');evS(e,k,'百萬一心','指揮',[h]);return true}}}
+    return false};
   outer:for(round=1;round<=K.rounds;round++){
     ev({type:'round',round});
     // 持續性狀態每回合結算（施加後的下一回合起；按施加者當下屬性算，官方是施加時快照，這裡為近似）
@@ -357,6 +460,7 @@ export function battle(A,B,R=Math.random){
         else if(o.t==='keifu'&&round%2===0&&R()<o.p){const hs=aliveIdx(t).sort((a,b)=>t.gens[a].troops/t.gens[a].max-t.gens[b].troops/t.gens[b].max).slice(0,2).map(j=>healTo(t,j,g,o.heal)).filter(Boolean);if(hs.length)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:hs})}
         else if(o.t==='ryoku'&&R()<o.p){const al=aliveIdx(t),lo=lowest(t),ids=lo===i?[i,...pickN(al.filter(x=>x!==i),1,R)]:al;const hs=ids.map(j=>healTo(t,j,g,o.heal)).filter(Boolean);if(hs.length)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:hs})}
         else if(o.t==='zan'&&round%2===0&&!g.fx.威壓){g.tm.push({k:'crit',v:o.crit,until:round});g.b.武勇+=o.st;g.sb.push({k:'武勇',v:o.st,until:round})}
+        else if(IR[o.t])IR[o.t]({t,ti,e,g,i,o,sk})
       }})});
     const order=[];
     T.forEach((t,ti)=>t.gens.forEach((g,i)=>{if(g.troops>0)order.push([ti,i,g.b.速度+(round===1?M(g,'spd1'):0)+(g.first===round?1000:0)+R()*4])}));
@@ -368,6 +472,7 @@ export function battle(A,B,R=Math.random){
       const fx=g.fx;
       const tick=()=>{for(const k in fx)if(--fx[k]<=0)delete fx[k]};
       if(g.bx.shield)timed(g,'guard',g.bx.shield,1);   // 神祕
+      for(const sk of g.skills){const o=sk.fx?.open;if(o&&IA[o.t]){IA[o.t]({t,ti,e,g,i,o});if(routed(e)){res=ti===0?'W':'L';break outer}if(routed(t)){res=ti===0?'L':'W';break outer}}}
       if(g.q==='生生不息'&&R()<.4){const h=healTo(t,i,g,.5);if(h)ev({type:'skill',side:t.side,i,skill:'生生不息',kind:BG,tg:[h]})}
       if(fx.威壓||(fx.麻痺&&R()<.3)||(fx.混亂&&R()<.5)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':fx.麻痺?'麻痺':'混亂'});
         if(g.prep&&R()<.5){g.prep=null;g.pl=0;ev({type:'skill',side:t.side,i,skill:'準備被打斷',kind:'控制',tg:[]})}   // 官方：準備期間受到控制可能被打斷（機率未知，先設 50%，Joe 2026-11-23）
@@ -385,7 +490,8 @@ export function battle(A,B,R=Math.random){
         const act=sk.kind==='主動'||sk.each;
         if(!act||(sk.kind==='主動'&&fx.無策))continue;
         const gk=sk===g.skills[0]&&sk.prep?g.skills.find(x=>x.fx?.open?.t==='giki')?.fx.open:null;   // 疑心暗鬼：自帶準備主動發動率增加
-        if(R()<sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)+(gk?gk.rate/100:0)){
+        if(R()<sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)+(sk.kind==='主動'&&sk!==g.skills[0]?M(g,'rateActNI')/100:0)+(gk?gk.rate/100:0)){
+          if(sk.kind==='主動'&&mblock(t,ti,i)){if(routed(t)){res=ti===0?'L':'W';break outer}continue}
           const un=sk===g.skills[0]&&sk.prep?g.skills.find(x=>x.fx?.open?.t==='unsho')?.fx.open:null;   // 運勝之鼻：自帶準備主動有機率跳過準備
           if(sk.prep&&un&&R()<un.skip&&sk.prepN<=1)useSkill(t,ti,i,sk);
           else if(sk.prep){g.prep=sk;g.pl=sk.prepN-1-(un&&R()<un.skip?1:0);ev({type:'prep',side:t.side,i,skill:sk.name});
@@ -403,15 +509,25 @@ export function battle(A,B,R=Math.random){
       // 虛實自在：10% 連擊（多普通攻擊一次）
       const swings=!sealed?(g.cb===round||(g.q==='虛實自在'&&R()<.1)?2:1):0;
       let gr=g.grR===round?.25:.5;
+      const kn=g.skills.find(s=>s.fx?.open?.t==='kenshin')?.fx.open,mae=g.skills.some(s=>s.fx?.open?.t==='maeda')&&g.ix?.enh;
+      let tmpA=null;{const c=g.ix?.c||0,extra=(kn&&c>0?c*kn.v+(c>=12?kn.full:0):0)+(mae?50:0);if(extra&&swings>0){tmpA={k:'dmgAtk',v:extra,until:99};g.tm.push(tmpA)}}
       for(let sw=0;sw<swings;sw++){
         const al=aliveIdx(e);if(!al.length)break;
         const tn=g.tn&&g.tn.until>=round&&e.gens[g.tn.to]?.troops>0?g.tn.to:-1;   // 挑釁：強迫對挑釁者普通攻擊
         const j=tn>=0?tn:al[Math.floor(R()*al.length)],h=hit(t,ti,i,e,j,1,'兵刃','atk');
-        ev({type:'atk',side:t.side,i,tg:h?[h]:[],combo:sw>0});
+        const tgs=h?[h]:[];if(mae&&sw===0&&h)for(const k of aliveIdx(e))if(k!==j){const h2=hit(t,ti,i,e,k,1,'兵刃','atk');if(h2)tgs.push(h2)}   // 槍之又左：強化普攻擴散至敵軍全體
+        ev({type:'atk',side:t.side,i,tg:tgs,combo:sw>0});
+        if(h)e.gens[j].hitBy={round,i};
+        if(h&&e.gens[j].troops>0)for(const m of t.gens){if(m.troops<=0)continue;for(const s of m.skills){const o=s.fx?.open;   // 霸王右筆：友軍普攻之後，機率追加兵刃傷害
+          if(o?.t==='ota'&&R()<o.p){const h3=hit(t,ti,t.gens.indexOf(m),e,j,o.rate,'兵刃','指揮');if(h3)ev({type:'skill',side:t.side,i:t.gens.indexOf(m),skill:s.name,kind:s.kind,tg:[h3]})}}}
         if(h&&!h.shield&&e.gens[j].troops>0)for(const sk of e.gens[j].skills){const o=sk.fx?.open;   // 沉魚落雁：受到普通攻擊時反制
           if(o?.t==='react'&&R()<o.p){const k=['混亂','無策','疲弊'][Math.floor(R()*3)];if(k==='疲弊')timed(g,'weak',100,2);else g.fx[k]=Math.max(g.fx[k]||0,2)}
           if(o?.t==='gokihata'&&R()<o.p2&&g.troops>0){const al=aliveIdx(e).filter(x=>x!==j);if(al.length){const hh=hit(e,1-ti,al[Math.floor(R()*al.length)],t,i,o.a,'兵刃','被動');if(hh)ev({type:'skill',side:e.side,i:j,skill:sk.name,kind:sk.kind,tg:[hh]})}}   // 御旗盾無：友軍單體反擊
+          if(o?.t==='kokin'&&g.troops>0&&R()<o.p){const hh=hit(e,1-ti,j,t,i,o.a,'兵刃','被動');if(hh)ev({type:'skill',side:e.side,i:j,skill:sk.name,kind:sk.kind,tg:[hh]});const dg=e.gens[j];dg.lfv=Math.min(o.lf*o.max,(dg.lfv||0)+o.lf)}   // 古今獨步：反擊並累積離反（吸血）
+          if(o?.t==='chisaka'){const ix=ixs(e.gens[j]);if((ix.n||0)<5){ix.n=(ix.n||0)+1;e.gens[j].b.武勇+=o.v;e.gens[j].b.統率+=o.v;
+            if(ix.n===5){const tg=[];for(const k of aliveIdx(t))tg.push(hit(e,1-ti,j,t,k,o.fin,'兵刃','指揮'));evS(e,j,sk.name,sk.kind,tg)}}}   // 耐苦成剛：被普攻累積，滿 5 次後對敵全體兵刃傷害
           if(o?.t==='counter'&&g.troops>0){const hh=hit(e,1-ti,j,t,i,j===0?o.a:o.b,'兵刃','atk');if(hh)ev({type:'skill',side:e.side,i:j,skill:sk.name,kind:sk.kind,tg:[hh]})}}   // 堅忍不拔：反擊
+        if(h&&!h.shield)for(const m of e.gens){if(m.troops<=0)continue;for(const s of m.skills){const o=s.fx?.open;if(o?.t==='mikawa'&&(g.k3||0)<8){g.k3=(g.k3||0)+1;for(const k of ST4)g.b[k]-=g.st[k]*o.v/100}}}   // 三河魂：被普攻時攻擊者全屬性降低（最多 8 次）
         if(g.q==='剛柔相濟'&&R()<gr){g.grR=round;gr=.25;const hh=healTo(t,i,g,.6);if(hh)ev({type:'skill',side:t.side,i,skill:'剛柔相濟',kind:BG,tg:[hh]})}
         if(h&&e.gens[j].troops>0)for(const sk of g.skills)if(sk.kind==='突擊'&&sk.modeled!=='none'&&R()<sk.rate+M(g,'rushRate')/100){
           // 突擊 hits the same target as the normal attack
@@ -424,16 +540,20 @@ export function battle(A,B,R=Math.random){
         }
         if(routed(e))break;
       }
+      if(tmpA){g.tm.splice(g.tm.indexOf(tmpA),1);if(g.ix){if(kn)g.ix.c=0;if(mae)g.ix.enh=false}}
+      for(const sk of g.skills){const o=sk.fx?.open;if(o?.t==='akabe'&&g.troops>0&&R()<o.p+(g.cr===round?o.p:0)){   // 武田之赤備：行動後機率赤備突擊（本回合會心過則機率加倍）
+        const j=pickN(aliveIdx(e),1,R)[0];if(j!=null){const hh=hit(t,ti,i,e,j,o.rate,'兵刃','被動');if(hh&&e.gens[j].troops>0)timed(e.gens[j],'statDown',o.dec,2);evS(t,i,sk.name,sk.kind,[hh])}}}
       for(const sk of g.skills){const o=sk.fx?.open;if(o?.t==='bisha'&&g.troops>0&&R()<o.p){   // 毘沙門天：行動後機率治療我軍、削弱敵軍傷害
         const hs=pickN(aliveIdx(t),2+Math.floor(R()*2),R).map(j=>healTo(t,j,g,o.heal)).filter(Boolean);
         for(const d of pickN(aliveIdx(e),2+Math.floor(R()*2),R))timed(e.gens[d],'weak',o.weak,2);
         if(hs.length)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:hs})}}
       tick();
+      for(const m of t.gens)if(m.troops>0)for(const s of m.skills){const o=s.fx?.open;if(o?.t==='kenshin'&&R()<o.p*2/3){const ix=ixs(m);ix.c=Math.min(12,(ix.c||0)+1)}}   // 軍神：友軍行動時機率蓄力（友軍群體 2 人，約 2/3 的行動算數）
       if(routed(e)){res=ti===0?'W':'L';break outer}
     }
   }
   if(round>K.rounds)round=K.rounds;
-  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','dots','stBuffs','purged','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl'])delete g[k]}
+  for(const t of T)for(const g of t.gens){for(const k of['b','fx','prep','bx','q','tm','dots','stBuffs','purged','cnt','lj','first','calmR','grR','sealR','tn','sb','sh','cb','imm','wen','wc','go','pl','ix','lfv','hitBy','cr','k3','baba'])delete g[k]}
   ev({type:'end',res});
   return{res,log,rounds:round};
 }
