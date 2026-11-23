@@ -42,7 +42,7 @@ export function teamStats(names,arm,lv,red,fac){
 export const armsWithSynergy=names=>{const o=new Set();for(const n of names)for(const t of D.stats[n]?.traits||[]){const a=traitFx(n,t).arm;for(const k in a||{})o.add(k)}return o};
 const PSL=new Map();export const psAt=(n,lv)=>{if(lv==null)return ps(n);const k=n+'@'+lv;if(!PSL.has(k))PSL.set(k,parseSkill(n,D,lv));return PSL.get(k)};
 export const myTeam=(names,arm,st,skills,troops,slv=null,red=0)=>{const tb=traitBattle(D,names,red);return{name:names[0]+'隊',side:0,arm,study:true,terrain:'平',
-  gens:names.map((n,i)=>({n,f:D.stats[n]?.f||'',st:{...st[i]},troops,max:troops,tr:tb[i].tr,trTm:tb[i].tm,skills:[innateOf(D,n),...skills[i]].filter(Boolean).map(x=>psAt(x,slv)),bg:null}))}};
+  gens:names.map((n,i)=>({n,f:D.stats[n]?.f||'',st:{...st[i]},troops,max:troops,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,skills:[innateOf(D,n),...skills[i]].filter(Boolean).map(x=>psAt(x,slv)),bg:null}))}};
 const armOfGarrison=k=>D.reports.find(r=>r.t===k&&r.ty)?.ty||'騎';
 export function garrison(k,lv){
   const L=D.levels[lv],t=D.teams[k];
