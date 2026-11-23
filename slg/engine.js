@@ -772,6 +772,14 @@ const TC={威勢II:{wei:2.8},威勢III:{wei:3.5},奮戰II:{fen:2.5},奮戰III:{f
   剛猛I:{tw:1.25},剛猛II:{tw:1.5},剛猛III:{tw:2},隱忍I:{tw:.8},隱忍II:{tw:.65},隱忍III:{tw:.5},   // 受到普通攻擊的機率權重（假設）
   死守:{shishu2:.3},不死身:{fushi:5},無傷雄師:{fushi:5},雷電化身:{raiden:.1},   // 死守＝首次低於 50% 恢復 30% 最大兵力；不死身／無傷雄師＝受到傷害 −5%；雷電化身＝受普攻 10% 使攻擊者麻痺（皆為假設）
   絕世雄略:{zessei:1},波風:{namikaze:1},心腹之智:{shinfuku:1},越後之龍:{echigo:1},虛實:{kyojitsu:1}};
+// 特性在戰鬥裡有沒有計入：'yes' 已計入（屬性%／兵種等級／戰鬥效果）、'na' 與戰鬥無關、'no' 還沒實作（頁面用來提示）
+const TR_NA=new Set(['甲斐之虎','守財術','築城名手','祿壽應穩','求道','公家嗜好','老狐狸']);
+export function traitModeled(D,n,t){
+  const txt=D.traitText?.[n]?.[t]||'';
+  if(TR_NA.has(t))return'na';
+  const x=traitFx(D,n,t);
+  if(x.arm||x.stat||x.team||/自由屬性點/.test(txt)||traitParse(txt)||TC[t])return'yes';
+  return'no'}
 export function traitBattle(D,names,red=5){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const eff=names.map(n=>traitsAtRed(D,n,rd(n)).map(t=>traitParse(D.traitText?.[n]?.[t]||'')).filter(Boolean));
