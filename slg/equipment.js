@@ -20,19 +20,19 @@ const TRAITS={
     {n:'森羅',fx:'tm',k:'critS',r:[1,6]},
     {n:'萬象',fx:'tm',k:'critSDmg',r:[3,15]},
     {n:'進擊',fx:'tm',k:'dmgRush',r:[0.5,1.4]},
-    {n:'專心'},{n:'妖氣'},{n:'果決'},{n:'摧堅'},{n:'折銳'},{n:'壓迫'},{n:'激昂'},{n:'逆轉'},{n:'無言'}],
+    {n:'專心',fx:'tm',k:'critDmg',r:[3,15]},{n:'妖氣',fx:'gc',key:'妖氣',r:[0,1]},{n:'果決',fx:'gc',key:'果決',r:[0,1]},{n:'摧堅',fx:'gc',key:'摧堅',r:[0,1]},{n:'折銳',fx:'gc',key:'折銳',r:[0,1]},{n:'壓迫'},{n:'激昂'},{n:'逆轉'},{n:'無言'}],
   防具:[
     {n:'方圓',fx:'fangyuan'},
-    {n:'脫兔'},{n:'反影'},{n:'殘心'},{n:'默殺'},{n:'光耀'},{n:'戒心'},{n:'怒濤'},{n:'氣骨'},{n:'強固'},{n:'奪旗'},{n:'勇猛'},{n:'耀武'},{n:'復甦'},{n:'絕境'},{n:'堅韌'},{n:'籠絡'}],
+    {n:'脫兔',fx:'tm',k:'evade',r:[1,3]},{n:'反影',fx:'gc',key:'反影',r:[0,1]},{n:'殘心',fx:'gc',key:'殘心',r:[0,1]},{n:'默殺',fx:'tm',k:'takenAtkRush',r:[3,15]},{n:'光耀'},{n:'戒心',fx:'gc',key:'戒心',r:[0,1]},{n:'怒濤',fx:'gc',key:'怒濤',r:[0,1]},{n:'氣骨',fx:'tm',k:'takenPas',r:[2,8]},{n:'強固',fx:'tm',k:'takenCom',r:[2,8]},{n:'奪旗',fx:'gc',key:'奪旗',r:[0,1]},{n:'勇猛'},{n:'耀武',fx:'gc',key:'耀武',r:[0,1]},{n:'復甦',fx:'gc',key:'復甦',r:[0,1]},{n:'絕境'},{n:'堅韌'},{n:'籠絡'}],
   坐騎:[...STAT4,
     {n:'急進',fx:'cav',to:'速度',r:[5,15]},
-    {n:'背水'},{n:'刹那'},{n:'險相'},{n:'紫電'},{n:'止水'},{n:'惡毒'},{n:'斷謀'},{n:'凌厲'},{n:'石鐵'},{n:'鐵甲'},{n:'庇佑'}],
+    {n:'背水',fx:'gc',key:'背水',r:[0,1]},{n:'刹那',fx:'gc',key:'刹那',r:[0,1]},{n:'險相',fx:'gc',key:'險相',r:[0,1]},{n:'紫電',fx:'gc',key:'紫電',r:[0,1]},{n:'止水',fx:'gc',key:'止水',r:[0,1]},{n:'惡毒'},{n:'斷謀',fx:'gc',key:'斷謀',r:[0,1]},{n:'凌厲',fx:'gc',key:'凌厲',r:[0,1]},{n:'石鐵',fx:'gc',key:'石鐵',r:[0,1]},{n:'鐵甲',fx:'gc',key:'鐵甲',r:[0,1]},{n:'庇佑'}],
   家寶:[
     {n:'散華',fx:'tm',k:'dmg',r:[1,3]},
     {n:'相堅',fx:'tm',k:'taken',r:[1,3]},
     {n:'急襲',fx:'st2',to:['武勇','統率'],r:[2,6]},
     {n:'磨練',fx:'st2',to:['智略','速度'],r:[2,6]},
-    {n:'德望'},{n:'華麗'},{n:'修羅'},{n:'鬼謀'},{n:'架勢'},{n:'詭計'},{n:'練磨'},{n:'集結'},{n:'指南'}],
+    {n:'德望'},{n:'華麗'},{n:'修羅',fx:'gc',key:'修羅',r:[0,1]},{n:'鬼謀',fx:'gc',key:'鬼謀',r:[0,1]},{n:'架勢',fx:'gc',key:'架勢',r:[0,1]},{n:'詭計',fx:'gc',key:'詭計',r:[0,1]},{n:'練磨'},{n:'集結'},{n:'指南'}],
 };
 const r1=x=>Math.round(x*10)/10;
 const between=(R,[lo,hi])=>lo+R()*(hi-lo);
@@ -61,7 +61,7 @@ export function rollGear(R=Math.random,want={}){
 }
 // 把四件裝備合成戰鬥用的加成：st（四項屬性）、cav（騎兵隊才生效的屬性）、tm（戰鬥中全程 % 加成）
 export function gearBonus(items){
-  const st={武勇:0,智略:0,統率:0,速度:0},cav={},tm=[];
+  const st={武勇:0,智略:0,統率:0,速度:0},cav={},tm=[],gc={};
   const add=(o,k,v)=>{o[k]=(o[k]||0)+v};
   for(const it of items||[]){
     for(const k in it.attrs)if(k in st)st[k]+=it.attrs[k];
@@ -71,10 +71,11 @@ export function gearBonus(items){
     else if(t.fx==='st2'){for(const k of t.to)st[k]+=v}
     else if(t.fx==='cav')add(cav,t.to,v);
     else if(t.fx==='tm')tm.push({k:t.k,v,until:99});
+    else if(t.fx==='gc')gc[t.key]=v;   // 條件型特技：擲值 0~1 對應說明的範圍，戰鬥引擎 slg/engine.js 的 GP() 換算
     else if(t.fx==='fangyuan'){st.統率+=v;st.速度-=Math.min(6,Math.max(2,v/3))}   // 方圓：統率 +3~15、速度 −2~6（速度扣多少用統率擲值換算）
   }
   for(const k in st)st[k]=Math.round(st[k]*10)/10;
-  return{st,cav,tm};
+  return{st,cav,tm,gc};
 }
 // 一行文字說明（給介面／除錯）
 export const GEAR_OPTIONS={attrs:SLOT_ATTR,traits:Object.fromEntries(Object.entries(TRAITS).map(([k,v])=>[k,v.map(t=>t.n)]))};

@@ -447,7 +447,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=7';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
@@ -1154,8 +1154,8 @@ const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.redu
 function calcOf(my){const old=S.my;S.my=my;try{const p=teamBonus().pct;return my.gens.map(m=>{const v=statVals(m,p);return v?Object.fromEntries(v.map(x=>[x.k,x.tot])):null})}finally{S.my=old}}
 const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
-  const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]));
-  return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,f:D.stats?.[m.n]?.f,
+  const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0])),tb=traitBattle(D,names,red);
+  return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[m.n]?.f,
     st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear):null,troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
@@ -1163,8 +1163,8 @@ function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特
 function buildAuto(spec,side,troops,arm0){
   const names=spec.map(g=>g.n),arm=arm0||bestArm(D,names)||'槍',red=Object.fromEntries(spec.map(g=>[g.n,g.red||0]));
   const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,50,red,S.my.fac)}));
-  const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm});
-  return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
+  const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm}),tb=traitBattle(D,names,red);
+  return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
     skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,S.skLv)),bg:null}))};
 }
 const armOfG=k=>D.reports.find(r=>r.t===k&&r.ty)?.ty||'騎';
