@@ -251,7 +251,7 @@ export function battle(A,B,R=Math.random){
   // per-battle state: stat buffs, statuses, prepared skills, 兵學 values (fx) and timed 兵學 effects (tm)
   for(const t of T)for(const g of t.gens){
     g.b={...g.st};g.fx={};g.prep=null;g.start=g.troops;
-    g.bx=g.bg?.fx||{};g.q=g.bg?.q||null;g.tm=[];g.dots=[];g.cnt={反討之計:3,明鏡:2};g.lj=0;g.first=0;g.sealR=0;g.tn=null;g.sb=[];g.sh=0;g.cb=0;g.imm=0;
+    g.bx=g.tr?{...(g.bg?.fx||{}),...Object.fromEntries(Object.entries(g.tr).map(([k,v])=>[k,(g.bg?.fx?.[k]||0)+v]))}:(g.bg?.fx||{});g.q=g.bg?.q||null;g.tm=(g.trTm||[]).map(x=>({...x}));g.dots=[];g.cnt={反討之計:3,明鏡:2};g.lj=0;g.first=0;g.sealR=0;g.tn=null;g.sb=[];g.sh=0;g.cb=0;g.imm=0;
     g.wen=g.skills.find(s=>s.fx?.open?.t==='bunbu')?.fx.open||null;g.wc=[0,0];g.go=g.skills.find(s=>s.fx?.open?.t==='gokihata')?.fx.open||null;
     for(const s of g.skills)if(s.self&&s.modeled==='text')for(const k of s.self.ks)g.b[k]+=s.self.v;
     if(g.bx.spd)g.b.速度+=g.bx.spd;
@@ -663,5 +663,26 @@ export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   st[k]+=Math.floor(lv/10)*(10+extra)+10*rd(n);
   let fp=0;if(fac){const f0=D.stats?.[names[0]]?.f;if(fac.co&&FAC6.includes(f0)&&names.every(x=>D.stats?.[x]?.f===f0))fp+=CO_PCT[fac.co];if(fac.same&&fac.ka)fp+=fac.ka}
   return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+fp+(own[x]||0)+(team[x]||0))/100)*10)/10]));
+}
+
+// 武將特性的戰鬥效果：說明文字能換算成既有戰鬥鍵（造成／受到傷害 %、會心、奇謀、發動率）的都接進來。
+// 「我軍全體」的特性加給全隊，其餘只給自己。回傳每位武將 {tr:{鍵:%}, tm:[{k,v,until}]}，tr 併入 g.tr、tm 併入 g.trTm。
+// 條件型特性（威勢／奮戰／猛鬥／攻陣「本回合未受到普通攻擊時」、赤備／側擊／近衛齊射等附帶狀態、方圓之器、才德兼備…）目前沒有實作，名單見 TRAIT_TODO。
+const TR_KEYS={'造成兵刃傷害':'dmgBlade','造成謀略傷害':'dmgStrat','造成傷害':'dmg','受到兵刃傷害':'takenBlade','受到謀略傷害':'takenStrat','受到傷害':'taken'};
+function traitParse(txt){
+  let m=txt.match(/^(我軍全體)?(造成兵刃傷害|造成謀略傷害|造成傷害|受到兵刃傷害|受到謀略傷害|受到傷害)(?:增加|減少)([\d.]+)%$/);
+  if(m)return{team:!!m[1],tr:{[TR_KEYS[m[2]]]:+m[3]}};
+  m=txt.match(/^增加([\d.]+)%奇謀傷害率$/);if(m)return{tr:{critSDmg:+m[1]}};
+  m=txt.match(/^增加([\d.]+)%會心傷害率和奇謀傷害率$/);if(m)return{tr:{critSDmg:+m[1]}};
+  m=txt.match(/^獲得([\d.]+)%會心狀態和奇謀狀態$/);if(m)return{tr:{crit:+m[1],critS:+m[1]}};
+  m=txt.match(/^獲得([\d.]+)%會心狀態$/);if(m)return{tr:{crit:+m[1]}};
+  m=txt.match(/^獲得([\d.]+)%奇謀狀態$/);if(m)return{tr:{critS:+m[1]}};
+  m=txt.match(/^戰鬥中，前(\d)回合主動、突擊戰法發動率提升([\d.]+)%/);if(m)return{tm:[{k:'rateAct',v:+m[2],until:+m[1]},{k:'rushRate',v:+m[2],until:+m[1]}]};
+  return null}
+export const TRAIT_TODO=(D)=>{const o={};for(const n in D.traitText||{})for(const t in D.traitText[n]){if(/^(馬|弓|槍|炮|器)+術|^(武威|智慧|領兵|靈巧)I+$|大將$|等級上升/.test(t)||/^部隊的|^我軍全體(武勇|智略|統率|速度)提高|自由屬性點/.test(D.traitText[n][t]))continue;if(!traitParse(D.traitText[n][t]))o[t]=D.traitText[n][t]}return o};
+export function traitBattle(D,names,red=5){
+  const rd=nm=>typeof red==='object'?(red[nm]??5):red;
+  const eff=names.map(n=>traitsAtRed(D,n,rd(n)).map(t=>traitParse(D.traitText?.[n]?.[t]||'')).filter(Boolean));
+  return names.map((_,i)=>{const tr={},tm=[];eff.forEach((l,j)=>l.forEach(e=>{if(j!==i&&!e.team)return;for(const k in e.tr||{})tr[k]=Math.round(((tr[k]||0)+e.tr[k])*100)/100;if(j===i)for(const x of e.tm||[])tm.push({...x})}));return{tr,tm}});
 }
 export const innateOf=(D,n)=>D.stats?.[n]?.inn||D.innate?.[n]||'';

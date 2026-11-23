@@ -26,7 +26,7 @@ const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
 const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
 // 兵學全開（Joe 2026-11-23：劇本裡能打玩家的都是 45 級以上、兵學一定全開）：每位用 adviseBingaku 選最適合的方向／奇／正節點，再 compile 成戰鬥數值
-const mkTeam=(names,arm,sk,slv=null,red=0,bg=false)=>{const st=L.teamStats(names,arm,LV,red,FAC),team=L.myTeam(names,arm,st,sk,TROOPS,slv);
+const mkTeam=(names,arm,sk,slv=null,red=0,bg=false)=>{const st=L.teamStats(names,arm,LV,red,FAC),team=L.myTeam(names,arm,st,sk,TROOPS,slv,red);
   if(bg){const ctx={names,skillsOf:Object.fromEntries(names.map((n,i)=>[n,sk[i]]))};
     team.gens.forEach((g,i)=>{const n=names[i],adv=adviseBingaku(kit,D,n,L.rarityOf(n),[L.innateOf(D,n),...sk[i]].filter(Boolean),st[i],ctx);g.bg=adv?bgCompile(adv.sel,L.rarityOf(n),red,n):null})}
   return{st,team}};
