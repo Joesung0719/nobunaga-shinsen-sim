@@ -867,7 +867,7 @@ function skillRow(n,disabled,onPick,stock){
 function pickSkill(i,j){
   const m=S.my.gens[i],inn=innateOf(m.n),cur=m.s[j];
   const used=new Set([inn,...m.s.filter((_,k)=>k!==j)]),all=usedAll([S.ti,i,j]);
-  openPicker(`傳承戰法 ${j+1}・${m.n}（全帳號共用庫存）`,({q,filters,body})=>{
+  openPicker(`傳承戰法 ${j+1}・${m.n}（各隊獨立庫存）`,({q,filters,body})=>{
     const r1=el('div',{class:'row'});filters.append(r1);
     const gk=chipGroup(r1,[['','全部'],...KINDS.map(k=>[k,KLABEL[k]||k]),['?','未分類']],UI.kind,draw);
     q.oninput=draw;
@@ -1068,17 +1068,18 @@ $('applyTeam').onclick=()=>{S.max=S.my.gens.reduce((a,m)=>a+m.t,0);S.cur=S.max;S
 const ALLN=Object.keys(D.stats||{}).filter(n=>D.stats[n].c).sort((a,b)=>D.stats[a].c-D.stats[b].c||a.localeCompare(b,'zh-Hant'));
 const costOf=n=>+D.stats?.[n]?.c||0;
 const mkMy=(names,arm,fac)=>({gens:names.map(n=>({n,s:['',''],t:10000,red:0,pts:{},sl:{}})),arm:arm||'騎',fac:{...(fac||S.my.fac)}});
-function usedAll(skip){const u={};S.teams.forEach((t,ti)=>t.gens.forEach((m,gi)=>m.s.forEach((x,j)=>{if(!x||(skip&&skip[0]===ti&&skip[1]===gi&&skip[2]===j))return;u[x]=(u[x]||0)+1})));return u}
-function trimStock(){const u={};for(const t of S.teams)for(const m of t.gens)m.s=m.s.map(x=>{if(!x)return x;if(x===innateOf(m.n)||(u[x]||0)>=KIT.count(x)){delete m.sl[x];return ''}u[x]=(u[x]||0)+1;return x})}
+// 戰法庫存各隊獨立（Joe 2026-11-23：推薦的每隊都要自己配好，不能像單一玩家帳號那樣被別隊用掉）：只算目前這一隊
+function usedAll(skip){const u={};S.teams.forEach((t,ti)=>{if(ti!==S.ti)return;t.gens.forEach((m,gi)=>m.s.forEach((x,j)=>{if(!x||(skip&&skip[0]===ti&&skip[1]===gi&&skip[2]===j))return;u[x]=(u[x]||0)+1}))});return u}
+function trimStock(){for(const t of S.teams){const u={};for(const m of t.gens)m.s=m.s.map(x=>{if(!x)return x;if(x===innateOf(m.n)||(u[x]||0)>=KIT.count(x)){delete m.sl[x];return ''}u[x]=(u[x]||0)+1;return x})}}
 const WHY={};
-// 依推薦補滿空的戰法格（保留自選，庫存跨隊扣）；reset＝全部重推薦
+// 依推薦補滿空的戰法格（保留自選，各隊庫存獨立）；reset＝全部重推薦
 function autofill(ti,reset){
   const t=S.teams[ti];if(!t)return;
   if(reset)t.gens.forEach(m=>{m.s=['',''];m.sl={}});
   const names=t.gens.map(m=>m.n);if(names.some(n=>!D.stats?.[n])||new Set(names).size<3)return;
   const red=Object.fromEntries(t.gens.map(m=>[m.n,m.red||0]));
   let stt;try{stt=t.gens.map(m=>({n:m.n,red:m.red||0,st:fullRedStats(D,m.n,names,t.arm,50,red,t.fac)}))}catch{return}
-  const res={};S.teams.forEach((o,oi)=>{if(oi!==ti)o.gens.forEach(m=>m.s.forEach(x=>{if(x)res[x]=(res[x]||0)+1}))});
+  const res={};   // 各隊戰法獨立，不扣別隊用掉的
   const pl=KIT.pick(stt,t.gens.map(m=>m.s.filter(Boolean)),res,{arm:t.arm});
   t.gens.forEach((m,i)=>{const ns=pl.sel[i];m.s=[ns[0]||'',ns[1]||'']});
   WHY[ti]=pl.why;
@@ -1105,7 +1106,7 @@ function resourceOf(my){let x=0;for(const m of my.gens){x+=pulls(m.n)*(1+(m.red|
 function renderStock(){
   const u=usedAll(),st=Object.keys(u).sort((a,b)=>(KIT.count(a)-u[a])-(KIT.count(b)-u[b])||a.localeCompare(b,'zh-Hant'));
   const tot=S.teams.reduce((a,t)=>a+resourceOf(t),0);
-  const box=$('stock');box.replaceChildren(el('b',{},'戰法庫存（全帳號共用，裝上就扣 1，跨隊也算）：'),
+  const box=$('stock');box.replaceChildren(el('b',{},'戰法庫存（各隊獨立，同一隊內裝上就扣 1）：'),
     ...(st.length?st.map(x=>el('span',{class:'tag'+(KIT.count(x)-u[x]<0?' warn':'')},`${x} 剩 ${KIT.count(x)-u[x]}／${KIT.count(x)}`)):[el('span',{class:'note'},'目前沒有裝任何傳承戰法')]),
     el('span',{class:'note'},'　數量：百煉成鋼、奮鬥 2，B 級 3，其餘 1；固有戰法不受限。'));
   const w=(WHY[S.ti]||[]).flat();
@@ -1285,7 +1286,7 @@ $('ai').onclick=async()=>{
   note.textContent='組隊完成，模擬中…';await pause();
   const tr=A.troops||10000,parts=[],oldTgt=S.tgt;
   for(let ti=0;ti<S.teams.length;ti++){const t=S.teams[ti],r=await simulate(()=>buildMine(t),30,tr);parts.push(`第 ${ti+1} 隊 ${t.gens.map(g=>g.n).join('、')}（Cost ${t.gens.reduce((a,g)=>a+costOf(g.n),0)}）約 ${pc(r.w)}`);await pause()}
-  note.textContent=`已載入 ${S.teams.length} 隊：${parts.join('；')}（對手：${targetLabel()}；戰法依庫存推薦，各隊不重複裝同一份，等級用預設 Lv${S.skLv}）。${fieldLine(KIT.fieldScore(picks[0].n))}`;
+  note.textContent=`已載入 ${S.teams.length} 隊：${parts.join('；')}（對手：${targetLabel()}；戰法依庫存推薦，各隊戰法互相獨立，等級用預設 Lv${S.skLv}）。${fieldLine(KIT.fieldScore(picks[0].n))}`;
 };
 function card(t,i){
   const rl=S.rlv||9,[w,left]=prow(t,rl),res=t.r[0]+t.r[1],pro=S.rtab==='pro',fw=Math.round(t.f[0]*100);
