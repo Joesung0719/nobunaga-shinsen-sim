@@ -460,7 +460,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,traitModeled,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=50';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=7';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
@@ -1119,13 +1119,15 @@ function traitTiles(m){
   trs.forEach((t,j)=>{
     const fx=traitFx(t,m.n),on=(m.red||0)>=RED_AT[j];
     const ic=fx.arm?'兵':fx.stat?fx.stat[0]:t[0];
-    const b=el('button',{class:`tri${on?'':' lock'}${j?'':' k0'}${fx.arm?' arm':fx.stat?' stat':''}`,type:'button','data-red':`${RED_AT[j]}紅`,title:`${t}：${tt[t]||'效果尚未收集'}`},
-      el('span',{class:'ic'},ic),el('span',{class:'tn'},t));
+    const tmod=traitModeled(D,m.n,t),tnote=tmod==='no'?'（戰鬥模擬尚未計入）':tmod==='na'?'（與戰鬥無關）':'';
+    const b=el('button',{class:`tri${on?'':' lock'}${j?'':' k0'}${fx.arm?' arm':fx.stat?' stat':''}`,type:'button','data-red':`${RED_AT[j]}紅`,title:`${t}：${tt[t]||'效果尚未收集'}${tnote}`,...(tmod==='no'?{style:'opacity:.7;border-style:dashed'}:{})},
+      el('span',{class:'ic'},ic),el('span',{class:'tn'},t+(tmod==='no'?'＊':'')));
     b.onclick=()=>{if(open===j){tip.hidden=true;open=-1;return}open=j;tip.hidden=false;
-      tip.replaceChildren(el('span',{class:'kicker'},j?`${RED_AT[j]} 紅解鎖${on?'（已解鎖）':''}`:'固有特性'),el('b',{},t),'：',tt[t]||'效果尚未收集')};
+      tip.replaceChildren(el('span',{class:'kicker'},j?`${RED_AT[j]} 紅解鎖${on?'（已解鎖）':''}`:'固有特性'),el('b',{},t),'：',tt[t]||'效果尚未收集',tnote?el('div',{class:'note warn'},tnote.slice(1,-1)+'，這項特性不會影響勝率預測'):null)};
     box.append(b);
   });
-  return el('div',{},box,tip);
+  const nm=trs.filter((t,j)=>(m.red||0)>=RED_AT[j]&&traitModeled(D,m.n,t)==='no');
+  return el('div',{},box,tip,nm.length?el('small',{class:'note warn'},`＊戰鬥模擬尚未計入：${nm.join('、')}（勝率預測不含這些效果）`):null);
 }
 function statBars(m,pct){
   const v=statVals(m,pct);
