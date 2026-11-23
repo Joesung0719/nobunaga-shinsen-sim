@@ -238,6 +238,9 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         if(to.heal){if(D.skillText?.[s]?.target==='自己')v*=.6;if(/偶數回合/.test(x))v*=.6}
         // 3e. 被打型（龍造寺隆信…）普攻不是主力，突擊戰法效益低
         if(f.tank&&!f.atk&&p.kind==='突擊')v*=.7
+        // 3f. 智略型謀將（武勇遠低於智略）、固有也不靠普攻：連擊／增加普攻傷害／亂舞這類「吃普通攻擊」的戰法，等於幫一個不靠普攻輸出的人強化普攻，沒有用處（Joe：黑田官兵衛武勇145、智略421，不該配縱橫馳突）
+
+        if(role==='mag'&&g.st.武勇<g.st.智略*.6&&!f.atk&&!f.rushFed&&p.kind!=='突擊'&&p.kind!=='兵種'&&feedsAtk(s)&&!to.heal&&!(p.status||['seal','taunt','taunt2'].includes(p.fx?.open?.t||p.fx?.cast?.t))){v*=.2;tips.push(`${g.n}武勇${Math.round(g.st.武勇)}遠低於智略${Math.round(g.st.智略)}，固有也不靠普通攻擊，連擊／強化普攻類戰法幾乎沒有用`)}
         if(f.rushFed){if(p.kind==='突擊'){v*=1.8;tips.push(`${g.n}固有的反擊會觸發突擊，兩招都裝突擊戰法（Joe：本多忠勝）`)}else if(p.kind==='主動'&&!feedsAtk(s))v*=.6}
         // 妻木熙子型固有（敵軍全體都處於持續性狀態才補血）→ 隊內多帶持續傷害戰法（明智光秀的囊沙之計、方今之時）
         if(team.some(tg=>/敵軍全體都處於持續性狀態/.test(innTxt(tg.n)))&&/持續受到傷害|火傷|水攻|中毒|潰走|消沉/.test(x)){v=Math.max(v,.8)*1.6;tips.push('隊內有固有補血要敵軍全體持續性狀態的武將，持續傷害戰法讓它觸發')}
