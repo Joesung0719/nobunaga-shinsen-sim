@@ -1,5 +1,5 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=50';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=51';
 import {chibi,SIDE_COL,setSpec} from './chibi.js?v=44';
 import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=44';
 import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=44';
