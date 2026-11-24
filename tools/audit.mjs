@@ -2,7 +2,8 @@
 //   錯誤（會讓推薦出錯，必須是 0，否則結束碼 1）＋提醒（已知缺口，數量只能變少）。
 //   完整名單寫到 tools/audit-result.json。
 import fs from 'node:fs';
-import {parseSkill,innateOf,TRAIT_TODO} from '../slg/engine.js';
+import {parseSkill,innateOf,TRAIT_TODO,BOSSFX} from '../slg/engine.js';
+import {bossText} from '../slg/rules.js';
 import {EST,hasTree} from '../slg/bingaku.js';
 const J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const D=J('land.json'),CARDS=J('data.json');
@@ -23,6 +24,7 @@ for(const n of names){const s=D.stats[n];
   const b=D.skillText?.[inn]?.boss;
   if(b!=null&&/^\s*（?發動機率[\d.%→]+）?\s*$/.test(b))E('大將技欄只有發動機率（不是大將技）',`${n}「${inn}」`);
   if(rOf(n)===5&&!hasTree(n))W('金將沒有兵學樹',n);
+  if(inn&&bossText(D,inn)&&!BOSSFX[inn])W('大將技引擎沒有模擬',`${n}「${inn}」`);
 }
 for(const n in EST||{})W('兵學方向是推估',`${n}：${EST[n].join('、')}`);
 const INN=new Set(names.map(n=>innateOf(D,n)).filter(Boolean));

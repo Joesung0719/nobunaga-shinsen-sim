@@ -9,7 +9,7 @@
 //  · 兵種只在「特性給的兵種」裡選：大將有「X兵大將」就用那個兵種；否則用全隊特性兵種等級最高的（同分才比模擬）；全隊都沒有兵種特性才四種都試。
 //  · 結果分開列：整體最佳、同勢力最佳、合盟最佳、盲點隊（官方編制與戰報很少出現的武將），兩條路線並排比，不再只給同幾位。
 //  · 戰鬥很耗時，主執行緒把工作切給多個 Worker 平行跑（slg/aiworker.js），每隊固定給同一個 Worker，建好的隊伍可快取。
-import {battle,statsAt,fullRedStats,traitBattle,innateOf,MAX_SKILL_LV} from './engine.js?v=53';
+import {battle,statsAt,fullRedStats,traitBattle,innateOf,MAX_SKILL_LV} from './engine.js?v=54';
 import {adviseBingaku} from './advisor.js?v=4';
 import {compile as bgCompile} from './bingaku.js?v=10';
 
