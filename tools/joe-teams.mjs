@@ -1,4 +1,5 @@
 // Joe 自己的四隊（2026-11-22 截圖）回測：不看官方先驗，用武將檔案規則單隊推導戰法，與 Joe 實際配法比對。用法：node tools/joe-teams.mjs
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
@@ -6,7 +7,7 @@ import {fullRedStats} from '../slg/engine.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const OFF=J('official.json'),POWER=J('skillpower.json'),FIELD=J('field.json');
 export const kit=makeKit(D,{power:POWER,field:FIELD,official:OFF.map(t=>({...t,gens:[]}))});
-const FULL={co:10,arm:5,ka:3,same:true};
+const FULL=FAC_FULL;
 export const JOE=[
  {arm:'鐵炮',gens:[['明智光秀',['囊沙之計','疑兵盜城']],['阿松',['氣炎萬丈','鐵炮僧兵隊']],['堀直政',['南蠻東渡','荷駄崩']]]},
  {arm:'槍',gens:[['立花誾千代',['御旗盾無','威風凜凜']],['立花道雪',['陣型崩毀','所向披靡']],['北條氏康',['一領具足','三河武士']]]},

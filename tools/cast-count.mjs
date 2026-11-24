@@ -1,11 +1,12 @@
 // 戰法發動次數檢查：每場各武將各戰法「真正發動」次數（持續傷害結算、兵學不算），與合理上限比較（Joe 2026-11-23：每次發動算 1 次；準備型 8 回合頂多約 4 次）。用法：node tools/cast-count.mjs
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle} from '../slg/engine.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url),'utf8'));
 const OFF=J('official.json');const kit=makeKit(D,{power:J('skillpower.json'),field:J('field.json'),official:OFF.map(t=>({...t,gens:[]}))});
-const FAC={co:10,arm:5,ka:3,same:true},R=L.rng(7);
+const FAC=FAC_FULL,R=L.rng(7);
 const gens=Object.keys(D.stats).filter(n=>D.stats[n].r===5||D.stats[n].inn),mx={},bad=[];
 for(const g0 of gens){const team=[g0,gens[Math.floor(R()*gens.length)],gens[Math.floor(R()*gens.length)]];if(new Set(team).size<3)continue;
  try{const arm='騎',st=L.teamStats(team,arm,50,5,FAC),pl=kit.pick(team.map((nm,i)=>({n:nm,red:5,st:st[i]})),null,{},{arm}),my=L.myTeam(team,arm,st,pl.sel,10000);

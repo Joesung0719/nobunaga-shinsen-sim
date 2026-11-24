@@ -1,11 +1,12 @@
 // 固有戰法補建模後的煙霧測試：每位金將當大將帶隨機隊友打 Lv9/10 守軍，確認引擎不丟例外（2026-11-23）。用法：node tools/innate-fuzz.mjs
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle,innateOf} from '../slg/engine.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url),'utf8'));
 const OFF=J('official.json');const kit=makeKit(D,{power:J('skillpower.json'),field:J('field.json'),official:OFF.map(t=>({...t,gens:[]}))});
-const FAC={co:10,arm:5,ka:3,same:true},R=L.rng(3);
+const FAC=FAC_FULL,R=L.rng(3);
 const gens=Object.keys(D.stats).filter(n=>D.stats[n].r===5||D.stats[n].inn);
 let n=0,err=0,w=0;const names=gens.slice();
 for(const g0 of names){const team=[g0,names[Math.floor(R()*names.length)],names[Math.floor(R()*names.length)]];if(new Set(team).size<3)continue;

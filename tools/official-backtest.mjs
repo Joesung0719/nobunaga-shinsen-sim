@@ -2,6 +2,7 @@
 // ① 戰法命中率：推薦邏輯對每一隊官方三人組挑戰法，和官方實際帶的比（「規則版」不看官方先驗；「含先驗版」會排除同一組三人，避免作弊）。
 // ② 官方編制通過搭配品質檢查的比例，以及不通過的原因。
 // ③ 戰力：官方編制、同三人用推薦戰法、隨機亂配，對一批隨機對手的模擬勝率（引擎只模擬有建模的戰法，僅供參考）。
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
@@ -11,7 +12,7 @@ const OFF=J('official.json'),POWER=J('skillpower.json'),FIELD=J('field.json');
 const kitRule=makeKit(D,{power:POWER,field:FIELD,official:OFF.map(t=>({...t,gens:[]}))});   // 規則版：不給先驗，但要讓沒有來源的官方戰法進候選池
 const kitFull=makeKit(D,{power:POWER,field:FIELD,official:OFF});
 // 規則版的池要和含先驗版一樣大：把官方戰法名單另外塞進去
-const FULL={co:10,arm:5,ka:3,same:true},LV=50,RED=0;
+const FULL=FAC_FULL,LV=50,RED=0;
 const A={足輕:'槍',弓兵:'弓',騎兵:'騎',鐵炮:'鐵炮'};
 const armOf=(t,names)=>A[t.arm]||t.gens.flatMap(g=>g.s).map(s=>kitFull.ps(s).arm).find(Boolean)||bestArm(D,names)||'槍';
 const T=OFF.filter(t=>t.gens.length===3&&t.gens[0].s[0]);

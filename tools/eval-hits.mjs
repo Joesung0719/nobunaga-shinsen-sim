@@ -1,5 +1,6 @@
 // 快速命中率評估（不做戰力模擬）：官方 123 隊（規則版／含先驗）＋ Joe 四隊。用法：node tools/eval-hits.mjs
 // 供調整 teamlib TU 權重時掃參數用；也可 import {evalAll} 後先改 TU 再跑。
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit,TU} from '../slg/teamlib.js';
@@ -7,7 +8,7 @@ import {bestArm,fullRedStats} from '../slg/engine.js';
 import {JOE} from './joe-teams.mjs';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const OFF=J('official.json'),POWER=J('skillpower.json'),FIELD=J('field.json');
-const FULL={co:10,arm:5,ka:3,same:true},A={足輕:'槍',弓兵:'弓',騎兵:'騎',鐵炮:'鐵炮'};
+const FULL=FAC_FULL,A={足輕:'槍',弓兵:'弓',騎兵:'騎',鐵炮:'鐵炮'};
 const T=OFF.filter(t=>t.gens.length===3&&t.gens[0].s[0]);
 const sig=t=>t.gens.map(g=>g.n).sort().join('|');
 export function evalAll(){
