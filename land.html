@@ -643,12 +643,15 @@ function fight(lv,k,dl0){   // one battle against garrison team k; dl0 = troops 
 }
 // ---- 引擎逐回合出征（2026-11-23）：用組隊頁這隊跑 battle()，並保留逐回合戰報 ----
 let REP=null;   // 最近一次出征的逐回合戰報（不存檔）
-const ENG=()=>S.lv===BANDIT||S.eng!==false;
+const OPPM=()=>S.mtgt==='opp';   // ⑤ 的出征對象：對戰隊伍（④設定的對手隊）
+const ENG=()=>OPPM()||S.lv===BANDIT||S.eng!==false;
 function renderMode(){
   const box=$('modeBar');box.replaceChildren(el('span',{class:'lbl'},'出征方式'));
   for(const[v,t]of[[true,'引擎逐回合（用組隊頁這一隊，可看戰報）'],[false,'抽樣實戰戰報（舊）']]){
     const b=el('button',{class:'chip',type:'button','aria-pressed':String(ENG()===v)},t);b.onclick=()=>{S.eng=v;save();renderMode();renderRep()};box.append(b)}
-  box.append(el('span',{class:'note'},ENG()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）；守軍戰法滿級。`:'不跑戰鬥，從同等級的實戰戰報抽一筆。'));
+  const tb=el('span',{class:'lbl',style:'margin-left:12px'},'對象');box.append(tb);
+  for(const[v,t]of[['land','土地守軍（①目標）'],['opp','對戰隊伍（④設定的對手）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String((S.mtgt||'land')===v)},t);b.onclick=()=>{S.mtgt=v;save();renderMode();renderRep()};box.append(b)}
+  box.append(el('span',{class:'note'},OPPM()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）對 ④ 的對手隊 ${oppSpec().map(g=>g.n).join('、')||'（未選）'}；對手的紅度、等級、戰法、兵學、兵種照④設定，每人兵力同④（我方平均）。`:ENG()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）；守軍戰法滿級。`:'不跑戰鬥，從同等級的實戰戰報抽一筆。'));
 }
 function mySplit(){   // 三名武將各自的兵力：上次連戰剩下的，否則依 S.cur／S.max 比例
   const nm=S.my.gens.map(m=>m.n).join('|');
@@ -756,7 +759,7 @@ const RCOL={W:'勝利',D:'平局',L:'敗北'};
 function waveNode(w,open){
   const d=el('details',{});d.open=open;
   const a=w.t0[0].reduce((x,y)=>x+y,0),b=w.t1[0].reduce((x,y)=>x+y,0),c=w.t0[1].reduce((x,y)=>x+y,0),f=w.t1[1].reduce((x,y)=>x+y,0);
-  d.append(el('summary',{html:`第 ${w.wave} 隊 ${D.teams[w.k][2].n}隊：<span class="r${w.res}">${RCOL[w.res]}</span>　${w.rounds} 回合　我方 ${fm(a)} → ${fm(b)}　守軍 ${fm(c)} → ${fm(f)}${w.cont?'（接續）':''}`}));
+  d.append(el('summary',{html:`第 ${w.wave} 隊 ${w.label||D.teams[w.k][2].n+'隊'}：<span class="r${w.res}">${RCOL[w.res]}</span>　${w.rounds} 回合　我方 ${fm(a)} → ${fm(b)}　守軍 ${fm(c)} → ${fm(f)}${w.cont?'（接續）':''}`}));
   const body=el('div',{class:'rl'});
   const nm=s=>w.names[s].map((x,i)=>`${i===0?'★':''}${x} ${fm(w.t0[s][i])}→${fm(w.t1[s][i])}`).join('　');
   body.append(el('div',{class:'rs',html:`<span style="color:#5aa0e3">我方（${w.arms[0]}）</span> ${nm(0)}`}),el('div',{class:'rs',html:`<span style="color:#d4574a">守軍（${w.arms[1]}）</span> ${nm(1)}`}));
@@ -804,7 +807,7 @@ function renderCompare(){
   const box=el('details',{});box.append(el('summary',{},'與實際戰報對照'));
   const inner=el('div',{class:'rl'});box.append(inner);
   const file=el('input',{type:'file',accept:'.csv,text/csv'}),sel=el('select',{}),selw=el('select',{});
-  REP.forEach(w=>selw.append(el('option',{value:w.wave},`模擬：第 ${w.wave} 隊 ${D.teams[w.k][2].n}隊`)));
+  REP.forEach(w=>selw.append(el('option',{value:w.wave},`模擬：第 ${w.wave} 隊 ${w.label||D.teams[w.k][2].n+'隊'}`)));
   const draw=()=>{
     inner.querySelectorAll('.cmpOut').forEach(x=>x.remove());
     if(!ACT)return;
@@ -830,7 +833,24 @@ function renderRep(){
 }
 
 // one march: fight the land's garrison teams in order until one isn't beaten
+function attackOpp(){   // ⑤ 對戰隊伍：我方這隊打④設定的對手隊（一場，不連戰）
+  if(!ready(S.my)){$('loss').textContent='我方要選滿 3 位不同、有屬性資料的武將（組隊頁）。';return}
+  if(!oppReady()){$('loss').textContent='對手要在④選滿 3 位不同武將。';return}
+  const my=S.my,me=buildMine(my),tr0=mySplit();
+  me.gens.forEach((g,i)=>g.troops=Math.min(g.max,tr0[i]));
+  const sc=S.max/my.gens.reduce((a,m)=>a+m.t,0),G=buildAuto(oppSpec(),1,trAvg(),S.opp.arm||null);
+  const m0=me.gens.map(g=>g.troops),e0=G.gens.map(g=>g.troops),a0=sumT(me),r=battle(me,G);
+  const loss=Math.round((a0-sumT(me))*sc),dead=Math.round(loss*.5),wounded=loss-dead,label=`${G.gens[0].n}隊`;
+  REP=[{wave:1,k:null,label,res:r.res,rounds:r.rounds,log:r.log,names:[me.gens.map(g=>g.n),G.gens.map(g=>g.n)],
+    t0:[m0,e0],t1:[me.gens.map(g=>g.troops),G.gens.map(g=>g.troops)],spd:[me.gens.map(g=>g.st.速度),G.gens.map(g=>g.st.速度)],stats:[me.gens.map(g=>({...g.st})),G.gens.map(g=>({...g.st}))],arms:[my.arm,G.arm],cont:false}];
+  S.cur=Math.max(0,Math.round(sumT(me)*sc));S.gt={k:my.gens.map(m=>m.n).join('|'),cur:S.cur,t:me.gens.map(g=>g.troops)};
+  S.dead+=dead;S.wounded+=wounded;S.pend=null;shown=null;save();
+  const v=$('verdict');v.className='verdict '+r.res;v.textContent=RES[r.res];
+  $('loss').innerHTML=`我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>對手 剩 <b>${fmt(sumT(G))}</b> / ${fmt(e0.reduce((a,b)=>a+b,0))}<br><span style="font-size:.72rem">引擎逐回合模擬：第 ${S.ti+1} 隊 vs ${label}（④設定的對手）</span>`;
+  renderArmy();renderDefender();renderTab();renderPend();renderRep();
+}
 function attack(){
+  if(OPPM())return attackOpp();
   const lv=S.lv,n=wavesOf(lv),pool=teamsAt(lv);
   const P=pendLive();   // a draw less than 5 minutes ago: continue from that team with its remaining troops
   let ks=[],start=0;
@@ -1383,7 +1403,7 @@ function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特
 }
 // 只給武將名／紅度的隊伍（對手、搭配建議候選）：Lv50、戰法依推薦補滿、戰法預設等級
 function buildAuto(spec,side,troops,arm0,o={}){   // o.bg：兵學依建議配滿（我方 AI 配隊用）；o.sk：戰法等級（預設 S.skLv）
-  const opp=side===1&&S.tgt==='opp';
+  const opp=side===1;
   const names=spec.map(g=>g.n),arm=arm0||bestArm(D,names)||'槍',red=Object.fromEntries(spec.map(g=>[g.n,g.red||0]));
   const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,g.lv||50,red,S.my.fac)}));
   const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm}),tb=traitBattle(D,names,red);
@@ -1610,7 +1630,7 @@ async function aiRun(){
     const rate=f.w/f.n,cost=f.names.reduce((a,n)=>a+costOf(n),0);
     const det=el('details',{class:'bg',open:i===0?'':null});if(i===0)det.open=true;
     det.append(el('summary',{},`${i?'備選 '+i:'最佳'}：${f.names.join('、')}（${f.arm}兵，Cost ${cost}）　勝 ${pc(rate)}／平 ${pc(f.d/f.n)}／敗 ${pc(1-rate-f.d/f.n)}`),adviceCard(f.names,AI.red,f.arm,locked));
-    const apply=go=>{loadInto(S.ti,f.names,f.arm);S.my.gens.forEach(m=>{m.red=AI.red});autofill(S.ti,true);S.my.gens.forEach(m=>{for(const n of[innateOf(m.n),...m.s].filter(Boolean))m.sl[n]=MAX_SKILL_LV});trimStock();save();renderAll();$(go?'board':'team').scrollIntoView({behavior:'smooth'})};
+    const apply=go=>{if(go&&S.tgt==='opp')S.mtgt='opp';loadInto(S.ti,f.names,f.arm);S.my.gens.forEach(m=>{m.red=AI.red});autofill(S.ti,true);S.my.gens.forEach(m=>{for(const n of[innateOf(m.n),...m.s].filter(Boolean))m.sl[n]=MAX_SKILL_LV});trimStock();S.cur=S.max;S.wounded=0;S.gt=null;save();renderAll();if(go)attack();$(go?'board':'team').scrollIntoView({behavior:'smooth'})};
     const ap=el('button',{class:'pbtn ghost',type:'button'},`套用到我方第 ${S.ti+1} 隊`),ap2=el('button',{class:'pbtn',type:'button'},'套用並到⑤看戰報估算');
     ap.onclick=()=>apply(false);ap2.onclick=()=>apply(true);
     det.append(el('div',{class:'row',style:'margin-top:8px;gap:8px'},ap2,ap));out.append(det);
