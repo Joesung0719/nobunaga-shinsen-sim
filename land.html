@@ -398,6 +398,8 @@ input[type=range]{accent-color:var(--gold)}
     <div class="tgtbar" id="tgtbar"></div>
     <div id="oppBox" style="margin-top:10px"></div>
     <div class="fl" style="margin-top:12px"><button class="pbtn big" id="run" type="button">開始模擬</button><button class="pbtn ghost" id="sug" type="button">搭配建議（換掉一人）</button><label class="note"><input type="checkbox" id="lim"> 候選含限定／PK 武將</label><span class="note" id="prog"></span></div>
+    <div class="fl" id="aibar" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"></div>
+    <div id="aiOut" style="margin-top:12px"></div>
     <div id="out" style="margin-top:12px"></div>
   </section>
 
@@ -1385,7 +1387,7 @@ function buildAuto(spec,side,troops,arm0,o={}){   // o.bg：兵學依建議配�
   const names=spec.map(g=>g.n),arm=arm0||bestArm(D,names)||'槍',red=Object.fromEntries(spec.map(g=>[g.n,g.red||0]));
   const stt=spec.map(g=>({n:g.n,red:g.red||0,st:fullRedStats(D,g.n,names,arm,g.lv||50,red,S.my.fac)}));
   const pl=KIT.pick(stt,spec.map(g=>(g.s||[]).filter(Boolean)),{},{arm}),tb=traitBattle(D,names,red);
-  return{name:names[0],side,arm,terrain:'平',gens:spec.map((g,i)=>({n:g.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
+  return{name:names[0],side,arm,terrain:'平',q:o.q?KIT.quality(stt,pl.sel,arm):null,gens:spec.map((g,i)=>({n:g.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[g.n]?.f,st:stt[i].st,troops,max:troops,
     skills:[innateOf(g.n),...pl.sel[i]].filter(Boolean).map(x=>KIT.ps(x,g.sl?.[x]??o.sk??S.skLv)),
     bg:o.bg||(opp&&(g.bgMode||'auto')==='auto')?oppBg(g,i,stt,names,pl):opp&&g.bgMode==='manual'?bgCompile(g.bg,ROSTER.get(g.n)?.r,g.red||0,g.n):null}))};
 }
@@ -1402,13 +1404,14 @@ const pause=()=>new Promise(r=>setTimeout(r));
 // 對手：打土地守軍（依序打完該級所有守軍隊，兵力不補、平局算失敗），或對戰隊伍
 function oppSpec(){return(S.opp.gens||[]).filter(g=>g.n)}
 const oppReady=()=>{const g=oppSpec();return g.length===3&&new Set(g.map(x=>x.n)).size===3};
+let OPPC=null;   // AI 配隊搜尋時快取對手隊（不用每場重建）
 function oneTry(me,tr){   // me：已 clone 的我方隊伍；回 {r:'W'|'D'|'L', left}
   if(S.tgt==='land'){
     const lv=S.lv,ks=keysAt(lv),w=D.levels[lv].waves||1;
     for(const k of [...ks].sort(()=>Math.random()-.5).slice(0,w)){const r=battle(me,garrison(k,lv));if(r.res!=='W')return{r:r.res,left:sumT(me)/sumM(me)}}
     return{r:'W',left:sumT(me)/sumM(me)};
   }
-  const r=battle(me,buildAuto(oppSpec(),1,tr,S.opp.arm||null));return{r:r.res,left:sumT(me)/sumM(me)};
+  const r=battle(me,OPPC?clone(OPPC):buildAuto(oppSpec(),1,tr,S.opp.arm||null));return{r:r.res,left:sumT(me)/sumM(me)};
 }
 async function simulate(mkMe,N,tr,yieldEvery=0){
   let W=0,Dr=0,L=0,lf=0;
@@ -1500,6 +1503,119 @@ $('sug').onclick=async()=>{
   out.innerHTML=html+'<p class="note">每個候選只模擬少數場，差距在 ±15% 內視為相近。</p>';$('prog').textContent='';
   out.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{const m=my.gens[+b.dataset.i];m.n=b.dataset.n;m.bg=null;m.sl={};m.s=['',''];m.pts={};trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})});
 };
+
+// ================= ④-b AI 配隊 =================
+// 兩種用法共用同一個搜尋：①「AI 配出打贏的隊伍」不指定武將；②指定 1～2 位武將，AI 補齊其餘。目標＝上方選的對手（土地守軍或對戰隊伍）。
+// 規則沿用推薦邏輯：只推金將（5★）、總 Cost ≤ 上方 Cost 上限、戰法依組隊建議補滿且須通過搭配品質檢查、戰法 Lv10、兵學依建議配滿、設施全滿、每人 1 萬兵。
+const AI={lock:['',''],red:5};
+const rOf=n=>ROSTER.get(n)?.r??(D.stats[n]?.r||5);
+function renderAiBar(){
+  const bar=$('aibar');bar.replaceChildren(el('b',{style:'color:var(--gold,#e3b75a)'},'AI 配隊'));
+  const mk=(i)=>{const x=el('select',{'aria-label':`指定武將${i+1}`},el('option',{value:''},`（不指定 ${i+1}）`),...ALLN.filter(n=>rOf(n)===5).map(n=>el('option',{value:n},`${n}　C${costOf(n)}`)));x.value=AI.lock[i];x.onchange=()=>{AI.lock[i]=x.value};return x};
+  const rs=el('select',{'aria-label':'我方紅度'},...[[5,'5 紅'],[3,'3 紅'],[0,'0 紅']].map(([v,t])=>el('option',{value:String(v)},`我方${t}`)));rs.value=String(AI.red);rs.onchange=()=>{AI.red=+rs.value};
+  const b1=el('button',{class:'pbtn',type:'button'},'AI 配出能打贏的隊伍'),b2=el('button',{class:'pbtn ghost',type:'button'},'AI 幫我補齊（指定 1～2 位）');
+  b1.onclick=()=>aiRun(false);b2.onclick=()=>aiRun(true);
+  bar.append(rs,b1,mk(0),mk(1),b2,el('span',{class:'note',style:'flex-basis:100%'},'目標是上方選的對手（土地守軍或對戰隊伍）。我方由系統搜尋：只用金將、總 Cost ≤ 上方上限、戰法 Lv10、兵學依建議配滿、每人 1 萬兵；「補齊」會鎖定你指定的武將，其餘由 AI 挑並說明理由。對戰隊伍的兵力也用 1 萬。'));
+}
+const AI_ARMS=['騎','槍','弓','鐵炮'];
+async function aiSearch(locked,redv,say){
+  const tr=10000,cap=S.cmax,lim=$('lim').checked;
+  const pool=ALLN.filter(n=>rOf(n)===5&&innateOf(n)&&(lim||!['限定','PK'].includes(D.stats[n].season)));
+  for(const n of locked)if(!pool.includes(n))pool.push(n);
+  const free=pool.filter(n=>!locked.includes(n));if(free.length<3-locked.length)return{res:[],tried:0,battles:0,poolN:pool.length};
+  OPPC=S.tgt==='opp'?buildAuto(oppSpec(),1,tr,S.opp.arm||null):null;
+  try{
+    const cache=new Map(),ents=new Map();let battles=0;
+    const mk=(names,arm)=>{const k=names.join('|')+'|'+arm;let t=cache.get(k);if(t===undefined){try{t=buildAuto(names.map(n=>({n,red:redv,lv:50})),0,tr,arm,{bg:true,sk:MAX_SKILL_LV,q:true})}catch{t=null}cache.set(k,t)}return t};
+    const costOk=ns=>ns.reduce((a,n)=>a+costOf(n),0)<=cap&&new Set(ns).size===3;
+    const lead=ns=>KIT.leaderFirst(ns);
+    const entry=(ns,arm,keep)=>{if(!keep)ns=lead(ns);arm=arm||bestArm(D,ns)||'槍';const k=ns.join('|')+'|'+arm;let e=ents.get(k);if(!e){const t=mk(ns,arm);e={names:ns,arm,w:0,d:0,n:0,ok:!!t&&(!t.q||t.q.ok)};ents.set(k,e)}return e};
+    async function run(e,k){if(!e.ok)return;const t=mk(e.names,e.arm);for(let i=0;i<k;i++){const r=oneTry(clone(t),tr).r;if(r==='W')e.w++;else if(r==='D')e.d++;e.n++;if(++battles%60===0)await pause()}}
+    const sc=e=>e.n?(e.w+e.d/2)/e.n:-1;
+    const best=(arr,k)=>[...arr].filter(e=>e.ok).sort((a,b)=>sc(b)-sc(a)||b.n-a.n).slice(0,k);
+    const rnd=a=>a[Math.floor(Math.random()*a.length)];
+    // 階段 1：產生候選
+    say('搜尋候選隊伍…');
+    const seeds=[];
+    if(locked.length===2){for(const x of free)seeds.push([...locked,x])}
+    else{
+      const nFree=3-locked.length;let tries=0,want=locked.length?700:1100;
+      while(seeds.length<want&&tries++<want*20){const ns=[...locked];while(ns.length<3){const x=rnd(free);if(!ns.includes(x))ns.push(x)}seeds.push(ns)}
+      if(!locked.length){for(const k of['0','5'])for(const t of(RANK?.[k]||[]).slice(0,15))seeds.push(t.team);for(const t of(OFFICIAL||[]))if(t.gens?.length===3)seeds.push(t.gens.map(g=>g.n))}
+    }
+    const cand=[];for(const ns of seeds){if(!ns.every(n=>D.stats?.[n]&&innateOf(n)))continue;if(!costOk(ns))continue;cand.push(entry(ns))}
+    const uniq=[...new Set(cand)];
+    let c=0;for(const e of uniq){await run(e,3);if(++c%40===0)say(`粗篩 ${c}/${uniq.length} 隊…`)}
+    // 階段 2：前 40 加場、鄰近搜尋（換掉一位沒鎖定的武將）
+    let top=best(uniq,40);for(const e of top)await run(e,9);
+    say('鄰近搜尋…');
+    const nb=[];
+    for(const e of best(top,5))for(let i=0;i<3;i++){if(locked.includes(e.names[i]))continue;
+      for(const x of free){if(e.names.includes(x))continue;const ns=e.names.map((n,j)=>j===i?x:n);if(!costOk(ns))continue;nb.push(entry(ns,e.arm))}}
+    let j=0;for(const e of nb){if(e.n===0)await run(e,3);if(++j%60===0)say(`鄰近搜尋 ${j}/${nb.length}…`)}
+    const all=[...ents.values()];
+    top=best(all,12);for(const e of top)await run(e,20);
+    // 階段 3：兵種與大將順序變體
+    say('試兵種與大將順序…');
+    for(const e of best(top,6)){
+      const vs=[];for(const a of AI_ARMS)if(a!==e.arm)vs.push(entry(e.names,a));
+      for(let r=1;r<3;r++){const ns=[...e.names.slice(r),...e.names.slice(0,r)];vs.push(entry(ns,e.arm,true))}
+      for(const v of vs)if(v.n===0)await run(v,12)
+    }
+    // 階段 4：入圍者重新打 150 場（不沿用前面的結果，避免挑選偏差）
+    const fin=best([...ents.values()].filter(e=>e.n>=12),4).map(e=>{const f={names:e.names,arm:e.arm,w:0,d:0,n:0,ok:true};ents.set('F'+e.names.join('|')+e.arm,f);return f});
+    for(const f of fin){say(`最後驗證 ${fin.indexOf(f)+1}/${fin.length}…`);await run(f,150)}
+    fin.sort((a,b)=>sc(b)-sc(a));
+    // 同一組武將只留最好的一個變體
+    const seenK=new Set(),out=[];for(const f of fin){const k=[...f.names].sort().join('|');if(seenK.has(k))continue;seenK.add(k);out.push(f)}
+    return{res:out.slice(0,3),tried:[...ents.values()].filter(e=>e.n>0).length,battles,poolN:pool.length};
+  }finally{OPPC=null}
+}
+function adviceCard(names,redv,arm,locked){   // 推薦理由：為什麼是這些武將、戰法、兵學、兵種
+  const fac=S.my.fac,red=Object.fromEntries(names.map(n=>[n,redv]));
+  const stt=names.map(n=>({n,red:redv,st:fullRedStats(D,n,names,arm,50,red,fac)}));
+  const pl=KIT.pick(stt,names.map(()=>[]),{},{arm}),ctx={names,skillsOf:Object.fromEntries(names.map((n,i)=>[n,[innateOf(n),...pl.sel[i]].filter(Boolean)]))};
+  const checks=KIT.check(stt,pl.sel,arm),facs=KIT.facsOf(names.map(n=>({n}))),ft=KIT.facType(names.map(n=>({n}))),ar=armReason(D,arm,names);
+  const ftTxt=ft==='same'?`三位同勢力（${facs[0]}）：吃協力 Lv10（全能力約 +7%）`:ft==='alliance'?`三個不同勢力（${facs.join('、')}）：可啟動「合盟之陣」`:`勢力混搭（${facs.join('、')}）：沒有協力加成`;
+  const cards=names.map((n,i)=>{
+    const r=rOf(n),sk=[innateOf(n),...pl.sel[i]].filter(Boolean),b=adviseBingaku(KIT,D,n,r,sk,stt[i].st,ctx),it=D.skillText?.[innateOf(n)];
+    const stt1=stt[i].st,main=stt1.武勇>=stt1.智略?'武勇':'智略';
+    const why=[`${locked.includes(n)?'【你指定】':''}${D.stats[n].f}・Cost ${costOf(n)}・${main}型（${main} ${Math.round(stt1[main])}、統率 ${Math.round(stt1.統率)}、速度 ${Math.round(stt1.速度)}）`,
+      `固有「${innateOf(n)}」（${KIT.kindOf(innateOf(n))||'?'}）${it?.text?'：'+it.text.slice(0,70):''}`,
+      traitsOf(n).slice(0,4).length?`特性：${traitsOf(n).join('、')}${D.stats[n].traits?.some(t=>traitFx(t,n).arm)?`（含兵種等級加成，對應${arm}兵）`:''}`:null].filter(Boolean);
+    return el('div',{class:'ac'},el('b',{class:'nm'},`${i===0?'★ ':''}${n}`),el('span',{class:'note'},`　${r}★`),
+      el('dl',{},el('dt',{},'為什麼選他'),el('dd',{},...why.map(w=>el('small',{style:'display:block'},w))),
+        el('dt',{},'戰法 Lv10'),el('dd',{},sk.map((s,j)=>`${j?'':'固有：'}${s}（${KIT.kindOf(s)}）`).join('　'),...(pl.why[i]||[]).filter(w=>pl.sel[i].includes(w.split('（')[0])).map(w=>el('small',{style:'display:block'},w))),
+        el('dt',{},'兵學（全開）'),el('dd',{},b?bgSummary(b.sel,r,n):'這位武將的兵學樹還沒收錄',...(b?b.why.map(w=>el('small',{style:'display:block'},w)):[]))));
+  });
+  return el('div',{},el('div',{class:'ac'},el('b',{class:'nm'},`隊伍整體：${arm}兵`),el('div',{},ftTxt),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
+    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null),...cards);
+}
+async function aiRun(lockMode){
+  const out=$('aiOut'),locked=lockMode?AI.lock.filter(Boolean):[];
+  if(lockMode&&!locked.length){out.innerHTML='<p class="note">請先在旁邊的下拉選單指定 1～2 位武將。</p>';return}
+  if(new Set(locked).size!==locked.length){out.innerHTML='<p class="note">指定的武將不能重複。</p>';return}
+  if(S.tgt==='opp'&&!oppReady()){out.innerHTML='<p class="note">對手要選滿 3 位不同武將。</p>';return}
+  if(locked.reduce((a,n)=>a+costOf(n),0)>S.cmax){out.innerHTML=`<p class="note">指定武將的 Cost 已超過上限 ${S.cmax}。</p>`;return}
+  const say=t=>{$('prog').textContent=t};
+  out.innerHTML='<p class="note">AI 搜尋中，約需十幾秒…</p>';await pause();
+  const t0=performance.now();let r;
+  try{r=await aiSearch(locked,AI.red,say)}catch(e){out.innerHTML=`<p class="note warn">搜尋失敗：${e.message}</p>`;say('');return}
+  say('');out.replaceChildren();
+  const secs=((performance.now()-t0)/1000).toFixed(1),top=r.res[0];
+  if(!top){out.innerHTML=`<p class="note warn">在 Cost ≤ ${S.cmax} 的條件下找不到符合搭配規則的隊伍（可放寬 Cost 上限、取消指定、或勾選「候選含限定／PK」）。</p>`;return}
+  const p=f=>(f.w+f.d/2)/f.n,pw=top.w/top.n;
+  const verdict=pw>=.7?'有穩定的贏面':pw>=.5?'贏面有限（略高於一半）':'找不到能穩贏的配置，這已是搜尋到最好的';
+  out.append(el('p',{class:'note'},`目標：${targetLabel()}；${lockMode?`鎖定 ${locked.join('、')}，`:''}我方 ${AI.red} 紅、戰法 Lv${MAX_SKILL_LV}、兵學依建議配滿、每人 1 萬兵。共試了 ${r.tried} 隊（候選池 ${r.poolN} 位金將、${r.battles} 場模擬，${secs} 秒），最佳隊伍：${verdict}。勝率是最後獨立重打 ${top.n} 場的結果，仍屬模擬估計，不等於實戰。`));
+  r.res.forEach((f,i)=>{
+    const rate=f.w/f.n,cost=f.names.reduce((a,n)=>a+costOf(n),0);
+    const det=el('details',{class:'bg',open:i===0?'':null});if(i===0)det.open=true;
+    det.append(el('summary',{},`${i?'備選 '+i:'最佳'}：${f.names.join('、')}（${f.arm}兵，Cost ${cost}）　勝 ${pc(rate)}／平 ${pc(f.d/f.n)}／敗 ${pc(1-rate-f.d/f.n)}`),adviceCard(f.names,AI.red,f.arm,locked));
+    const ap=el('button',{class:'pbtn ghost',type:'button'},`套用到我方第 ${S.ti+1} 隊`);
+    ap.onclick=()=>{loadInto(S.ti,f.names,f.arm);S.my.gens.forEach(m=>{m.red=AI.red});autofill(S.ti,true);S.my.gens.forEach(m=>{for(const n of[innateOf(m.n),...m.s].filter(Boolean))m.sl[n]=MAX_SKILL_LV});trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
+    det.append(el('div',{class:'row',style:'margin-top:8px'},ap));out.append(det);
+  });
+}
 // ================= ② 一鍵推薦 =================
 const A=R?.assumptions||{lands:[4,5,6,7,8,9,10],cost:[15,20],troops:10000};
 const ARMN={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮'};
@@ -1660,7 +1776,7 @@ $('nteam').onchange=e=>{S.nteam=+e.target.value;save()};
 $('cmin').onchange=e=>{S.cmin=+e.target.value;if(S.cmax<S.cmin)S.cmax=S.cmin;save();renderRec()};
 $('cmax').onchange=e=>{S.cmax=+e.target.value;if(S.cmin>S.cmax)S.cmin=S.cmax;save();renderRec()};
 
-function renderAll(){renderMode();renderLevels();renderRec();renderBuilder();renderPredict();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
+function renderAll(){renderAiBar();renderMode();renderLevels();renderRec();renderBuilder();renderPredict();renderTeamSel();renderDefender();renderArmy();renderTabs();renderTab();renderPend()}
 $('nTeams').textContent=Object.keys(D.teams).length;$('nReps').textContent=D.reports.length;
 trimStock();renderAll();
 {const h=location.hash.slice(1);if(['land','rec','team','predict','board'].includes(h))setTimeout(()=>document.getElementById(h)?.scrollIntoView(),150)}
