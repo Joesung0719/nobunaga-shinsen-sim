@@ -1,7 +1,7 @@
 // 玩家建議：每位武將的兵學方向／節點、自由配點、兵種，並附理由。瀏覽器與 node 都能用。
 // 全部是推估：沒有官方公式，權重來自戰報歸納（突擊傷害占贏方輸出 18%／輸方 10%、普攻約 21～25%、主動 17～25%）與引擎的傷害公式。
 import {TREES,DIRS,RULE,capOf,dirOf,hasTree,cleanSel} from './bingaku.js';
-import {innateOf} from './engine.js?v=52';
+import {innateOf} from './engine.js?v=54';
 import {planBingaku,planPoints} from './playbook.js';
 
 // 兵學節點效果鍵 → 權重（1 = 造成傷害 +1%）。依這位武將的戰法組成調整。
@@ -71,15 +71,5 @@ export function adviseArm(kit,D,arm,names,armWhy){
   return{arm,why:`${arm}兵：${armWhy||'隊伍特性提供的兵種等級最高'}${skills.length?`；可搭兵種技：${skills.join('、')}（開場直接生效）`:''}`,skills};
 }
 
-const ARMW={騎:'騎兵',弓:'弓兵',槍:'足輕',鐵炮:'鐵炮',器械:'器械'};
-// 哪些武將的特性提供這個兵種的等級（滿紅）；回傳一句說明
-export function armReason(D,arm,names){
-  const parts=[];
-  for(const n of names)for(const t of D.stats?.[n]?.traits||[]){
-    const x=D.traitText?.[n]?.[t]||'',m=x.match(/^部隊的(.+?)等級上升(\d)級/);
-    if(m){if(m[1].split('、').includes(ARMW[arm]))parts.push(`${n}「${t}」+${m[2]}`);continue}   // 有說明文字就只算這一次（2026-11-24：阿市「炮術II」原本被說明文字和名稱各算一次）
-    const m2=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
-    if(m2&&[...m2[1]].some(c=>({馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'})[c]===arm))parts.push(`${n}「${t}」+${m2[2].length}`);
-  }
-  return parts.length?`兵種等級加成：${parts.join('、')}`:'';
-}
+// 兵種等級加成說明：和引擎同一份計算（slg/rules.js）
+export {armReason} from './rules.js?v=1';

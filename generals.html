@@ -146,6 +146,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 
 <script type="module">
 import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
+import{armTraits,bossText}from'./slg/rules.js?v=1';
 const [D,CARDS,EXTRA,PROF]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json()),fetch('generals_extra.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),fetch('profiles.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>null)]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
@@ -162,19 +163,9 @@ const G=new Map();
 for(const c of CARDS)G.set(c.n,{n:c.n,r:c.r,c:c.c,f:c.f,img:c.id});
 for(const[n,x]of Object.entries(D.stats)){const g=G.get(n)||{n,r:x.r??5,img:D.art?.[n]??null};Object.assign(g,{c:x.c,f:x.f,x});G.set(n,g)}
 const innOf=n=>D.stats[n]?.inn||D.innate?.[n]||null;
-// 兵種：由武將特性推出（「X術」「某兵大將」＝部隊的X兵等級上升 N 級）。同 slg/engine.js 的 traitFx。
-const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'};
+// 兵種：由武將特性推出，規則在 slg/rules.js（引擎、組隊頁同一份）
 const ARMS=['騎','槍','弓','鐵炮','器械'];
-function armsOf(n){
-  const o={};
-  for(const t of D.stats[n]?.traits||[]){
-    const txt=D.traitText?.[n]?.[t];let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
-    if(m){for(const w of m[1].split('、'))if(ARM_WORD[w])o[ARM_WORD[w]]=(o[ARM_WORD[w]]||0)+ +m[2];continue}
-    m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
-    if(m)for(const c of m[1])o[ARM_CH[c]]=(o[ARM_CH[c]]||0)+m[2].length;
-  }
-  return o;
-}
+const armsOf=n=>armTraits(D,n).o;
 const armStr=n=>{const o=armsOf(n);return ARMS.filter(a=>o[a]).map(a=>a+o[a]).join(' ')};
 const tagsOf=n=>(EXTRA[n]?.tags||[]).filter(t=>!t.startsWith('?'));
 const TAGS=[...new Set(Object.keys(EXTRA).flatMap(tagsOf))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
@@ -243,7 +234,7 @@ function skillCard(s,{withHolders=true}={}){
   return el('div',{class:'sk',id:`s-${s}`},kindBadge(s),el('div',{},
     el('h3',{},el('span',{class:`g g${gr}`},gr),s),el('div',{class:'meta'},meta),
     t?el('p',{},t.text):el('p',{class:'unk'},'效果說明尚未收集'),
-    t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
+    bossText(D,s)?el('div',{class:'boss'},`大將技：${bossText(D,s)}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
 }
 function renderSkills(){
   $('f3').replaceChildren();$('f4').replaceChildren();

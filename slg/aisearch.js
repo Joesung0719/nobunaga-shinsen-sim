@@ -9,38 +9,17 @@
 //  · 兵種只在「特性給的兵種」裡選：大將有「X兵大將」就用那個兵種；否則用全隊特性兵種等級最高的（同分才比模擬）；全隊都沒有兵種特性才四種都試。
 //  · 結果分開列：整體最佳、同勢力最佳、合盟最佳、盲點隊（官方編制與戰報很少出現的武將），兩條路線並排比，不再只給同幾位。
 //  · 戰鬥很耗時，主執行緒把工作切給多個 Worker 平行跑（slg/aiworker.js），每隊固定給同一個 Worker，建好的隊伍可快取。
-import {battle,statsAt,fullRedStats,traitBattle,innateOf,MAX_SKILL_LV} from './engine.js?v=52';
-import {adviseBingaku} from './advisor.js?v=3';
+import {battle,statsAt,fullRedStats,traitBattle,innateOf,MAX_SKILL_LV} from './engine.js?v=54';
+import {adviseBingaku} from './advisor.js?v=4';
 import {compile as bgCompile} from './bingaku.js?v=10';
 
-export const AI_ARMS=['騎','槍','弓','鐵炮'];
-const ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'},ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
+import {ARMS,armTraits,chooseArm,FAC_FULL} from './rules.js?v=1';
+export const AI_ARMS=ARMS;
 const clone=o=>typeof structuredClone==='function'?structuredClone(o):JSON.parse(JSON.stringify(o));
-
-// 這位武將（滿紅 4 個特性）給哪些兵種幾級；big＝「X兵大將」（等級上限 +1 的那種）。說明文字優先，沒有才讀特性名稱（同一個特性只算一次）。
-export function armTraits(D,n){
-  const o={},big=[];
-  for(const t of D.stats?.[n]?.traits||[]){
-    const x=D.traitText?.[n]?.[t]||'';let m=x.match(/^部隊的(.+?)等級上升(\d)級/);
-    if(m){for(const w of m[1].split('、'))if(ARM_WORD[w]){o[ARM_WORD[w]]=(o[ARM_WORD[w]]||0)+ +m[2];if(/等級上限增加/.test(x)||/大將$/.test(t))big.push(ARM_WORD[w])}continue}
-    m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);if(m)for(const c of m[1])o[ARM_CH[c]]=(o[ARM_CH[c]]||0)+m[2].length;
-  }
-  return{o,big};
-}
-// 這一隊可以用的兵種（已依大將順序排好 names[0]＝大將）。回傳 {arms, why}
-export function allowedArms(D,names){
-  const tot={},lead=armTraits(D,names[0]);
-  for(const n of names){const a=armTraits(D,n).o;for(const k in a)if(AI_ARMS.includes(k))tot[k]=(tot[k]||0)+a[k]}
-  const bigL=lead.big.filter(a=>AI_ARMS.includes(a));
-  if(bigL.length){const a=bigL.sort((x,y)=>(tot[y]||0)-(tot[x]||0))[0];return{arms:[a],why:`大將 ${names[0]} 有「${a==='槍'?'足輕':a==='騎'?'騎兵':a==='弓'?'弓兵':'鐵炮'}大將」特性，兵種固定用${a}兵`}}
-  const ks=Object.keys(tot);
-  if(!ks.length)return{arms:[...AI_ARMS],why:'隊中沒有兵種特性，四種兵種都試'};
-  const mx=Math.max(...ks.map(k=>tot[k])),top=ks.filter(k=>tot[k]===mx);
-  return{arms:top,why:top.length>1?`特性兵種等級同分（${top.map(a=>a+'+'+mx).join('、')}），比模擬結果`:`全隊特性兵種等級最高：${top[0]}兵 +${mx}`};
-}
-
-const SOFT_FAIL=/220|的兵種特性（|勢力混搭|個主動戰法，比官方/;
-export function makeAI(D,KIT,{rOf=n=>D.stats?.[n]?.r||5,fac={co:10,arm:5,ka:3,same:true},banditSk={}}={}){
+export {armTraits};
+// 這一隊可以用的兵種（names[0]＝大將）：規則在 slg/rules.js chooseArm（和一鍵推薦、對手、劇本同一套）
+export const allowedArms=chooseArm;
+export function makeAI(D,KIT,{rOf=n=>D.stats?.[n]?.r||5,fac=FAC_FULL,banditSk={}}={}){
   const cache=new Map();
   // 我方 AI 隊：Lv50、紅度 red、戰法依組隊建議補滿（須通過搭配品質檢查）、戰法 Lv10、兵學依建議配滿、每人 1 萬兵
   function buildMe(names,arm,red,tr=10000){
@@ -50,9 +29,8 @@ export function makeAI(D,KIT,{rOf=n=>D.stats?.[n]?.r||5,fac={co:10,arm:5,ka:3,sa
       const rd=Object.fromEntries(names.map(n=>[n,red]));
       const stt=names.map(n=>({n,red,st:fullRedStats(D,n,names,arm,50,rd,fac)}));
       const pl=KIT.pick(stt,names.map(()=>[]),{},{arm}),q=KIT.quality(stt,pl.sel,arm);
-      // 硬性門檻只留「戰法根本不會生效」的錯誤；220、成員兵種特性對不上、勢力混搭、主動戰法偏多這幾項只是經驗提醒，交給模擬勝率判斷（不然七成三人組在搜尋前就被刷掉，結果永遠是同幾位）
-      const hard=q.fails.filter(f=>!SOFT_FAIL.test(f));
-      if(!hard.length){
+      // 品質檢查只擋「戰法根本不會生效」的硬傷；220、成員兵種特性對不上、勢力混搭、主動偏多是經驗提醒（teamlib check 的 note），交給模擬勝率判斷
+      if(q.ok){
         const tb=traitBattle(D,names,rd),so=Object.fromEntries(names.map((n,j)=>[n,[innateOf(D,n),...pl.sel[j]].filter(Boolean)]));
         t={name:names[0],side:0,arm,terrain:'平',gens:names.map((n,i)=>{const sk=so[n];let bg=null;
           try{const b=adviseBingaku(KIT,D,n,rOf(n),sk,stt[i].st,{names,skillsOf:so});bg=b?bgCompile(b.sel,rOf(n),red,n):null}catch{}

@@ -15,7 +15,8 @@
 //            已含發動機率、傷害率、目標數、控制、增益）；
 //   再依這一隊調整：干擾（控制狀態隊內補位、同種重複打折、快手優先）、受哪項屬性影響（本隊該屬性最高者加成）、
 //   勢力／一門（來源武將同勢力、同標籤略加分）、等級紅度（紅度低偏好發動率高、不用準備；紅度高才吃準備型）。
-import {parseSkill,innateOf} from './engine.js?v=52';
+import {parseSkill,innateOf} from './engine.js?v=54';
+import {facsOf as facsOfR,facTypeOf,armTraits,bossText,FEMALE as FEMALE_R,ARM_NAME} from './rules.js?v=1';
 
 // 權重（2026-11-21）：基礎分是模擬強度，其餘是官方大名錄編制校正的倍率。校正方式：用官方 123 隊的偶數號隊伍座標下降調整、奇數號隊伍檢驗（留出測試），
 // 命中率 規則版 7.9%→17.8%、含官方先驗 28%→36%（留出測試半邊平均 19.7%→23.5%，訓練半邊 30.5%，有過擬合，數字只當參考）。
@@ -53,7 +54,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   const facOf=n=>D.stats[n]?.f;
   const tagsOf=n=>tags[n]||[];
   // 女性武將（資料庫沒有性別欄，依官方設定列出；謀將與女性通常帶補血、輔助戰法）
-  const FEMALE=new Set(['阿市','寧寧','阿初','阿江','阿松','歸蝶','成田甲斐','立花誾千代','吉岡妙林','大祝鶴','妻木熙子','壽桂尼','仙桃院','瑞溪院','諏訪姬','池田千']);
+  const FEMALE=FEMALE_R;   // 名單在 slg/rules.js
   // 輔助戰法的四級（Joe）：發動率 > 減傷 > 增傷 > 增加能力；補血另計。依模擬資料與說明文字判斷。
   const TIER_M={rate:1.45,cut:1.35,up:1.2,stat:1.1},TIER_N={rate:'提高戰法發動率',cut:'減傷',up:'增傷',stat:'增加能力'};
   const TC=new Map();
@@ -96,8 +97,8 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   const FEAT={};const F=n=>FEAT[n]??=feat(n);
   // 大將位偏好（Joe 2026-11-21：大將通常只給有大將技的武將，但遊戲讓玩家自己配、模擬器不設限制，只當加分；大將技寫在武將自身（固有）戰法的說明裡，即 skillText[固有戰法].boss）。
   // 例外：官方編制裡實際擔任過大將的武將一律算（目前只有阿市的夢幻泡影沒收到大將技說明，疑似資料缺口）。
-  const BOSS=new Set(Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss));   // 固有戰法真的有大將技說明的武將（Joe 2026-11-24：有大將技的人要優先當大將，不浪費大將技）
-  const LEAD=new Set([...BOSS,...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);   // 有資格當大將：大將技持有者＋官方編制擔任過大將者（阿市無大將技說明，只靠官方紀錄）
+  const BOSS=new Set(Object.keys(D.stats).filter(n=>bossText(D,innateOf(D,n))));   // 固有戰法真的有大將技說明的武將（Joe 2026-11-24：有大將技的人要優先當大將，不浪費大將技）
+  const LEAD=new Set([...BOSS,...official.map(t=>t.gens[0]?.n).filter(Boolean)]);   // 有資格當大將：大將技持有者＋官方編制擔任過大將者（阿市無大將技說明，只靠官方紀錄）
   // 大將位排序（Joe 2026-11-22：有大將技的武將都有資格當大將，Cost 7 不該自動壓過 Cost 6，只是不要把強力大將排成副將）。
   // 排序＝ 有大將技 > 「官方大將率」（貝氏收縮：官方當大將次數＋先驗 .3，權重 2 場；Cost 完全不參與）> 固有戰法指揮型 > 政務高。
   // 官方常當大將的人（前田利家、伊達晴宗、福島正則…不論 Cost）排前面；沒有官方紀錄的人先驗都一樣，再看固有戰法型態與政務。
@@ -114,12 +115,8 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   const ofGS=(n,sk,loo)=>(OF_GS[n+'|'+sk]||0)-(loo?.gens.some(g=>g.n===n&&g.s.includes(sk))?1:0);
   // 勢力型態：同勢力（吃協力）／三勢力皆不同（可配合盟之陣）／其他
   // 老獪（真田昌幸：勢力與大將一致）、老狐狸（德川家康：另外兩人同勢力時變成其勢力）→ 這兩位是「勢力可變」的補位
-  const facsOf=team=>{const f=team.map(g=>facOf(g.n));
-    team.forEach((g,i)=>{const tr=D.traitText?.[g.n]||{};
-      if(Object.values(tr).some(x=>/勢力將與大將保持一致/.test(x))&&i>0&&f[0])f[i]=f[0];
-      if(Object.values(tr).some(x=>/轉變為其勢力|會轉變為其勢力/.test(x))){const o=f.filter((_,j)=>j!==i);if(o[0]&&o[0]===o[1])f[i]=o[0]}});
-    return f};
-  const facType=team=>{const fs=facsOf(team);return fs.every(Boolean)&&new Set(fs).size===1?'same':fs.every(Boolean)&&new Set(fs).size===team.length?'alliance':'mixed'};
+  const facsOf=team=>facsOfR(D,team.map(g=>g.n));   // 實際勢力（含老獪／老狐狸），規則在 slg/rules.js
+  const facType=team=>facTypeOf(facsOf(team));
 
   // 輔助型：女性，或固有戰法不是傷害型（治療／增益／控制）。固有就是傷害戰法的智將（毛利元就、明智光秀…）是輸出，帶主動攻擊戰法，不自動套補血（Joe 2026-11-23：毛利智略成長最高，要帶主動攻擊戰法）。
   const isSup=(n,st)=>{if(FEMALE.has(n))return true;const t=D.skillText?.[innateOf(D,n)]?.tags||'';if(/兵刃|謀略|兵謀/.test(t))return false;return roleOf(st)==='mag'};
@@ -166,8 +163,8 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       const teamKinds=sel.flatMap((l,j)=>[kindOf(innateOf(D,team[j].n)),...l.map(kindOf)]);
       const nRush=teamKinds.filter(k=>k==='突擊').length,nAct=teamKinds.filter(k=>k==='主動').length;
       if(p.alliance){
-        const fs=team.map(x=>facOf(x.n)),bossK=kindOf(innateOf(D,team[0].n));
-        if(!(fs.every(Boolean)&&new Set(fs).size===team.length&&(bossK==='主動'||bossK==='突擊')))return{v:0,tips:[]};
+        const fs=facsOf(team),bossK=kindOf(innateOf(D,team[0].n));
+        if(!(facTypeOf(fs)==='alliance'&&(bossK==='主動'||bossK==='突擊')))return{v:0,tips:[]};
         v=Math.max(v,1);tips.push(`合盟之陣：三人勢力都不同（${fs.join('、')}），大將自帶${bossK}，提高大將自帶戰法的發動機率、副將傷害與減傷（但會失去同勢力協力加成）`);
       }else if(p.kind==='兵種'){
         if(!arm||(p.arm&&p.arm!==arm))return{v:0,tips:[]};
@@ -331,7 +328,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       if(mine.length<2)fails.push(`${g.n}的戰法沒有配滿`);
       const hi_=Math.max(g.st.武勇,g.st.智略),lo_=Math.min(g.st.武勇,g.st.智略),clear=(hi_-lo_)/hi_>.2;
       for(const s of mine){const p=ps(s);
-        if(p.alliance){const fs=team.map(x=>facOf(x.n));if(!(new Set(fs).size===team.length&&['主動','突擊'].includes(K(innateOf(D,team[0].n)))))fails.push(`「${s}」需要三人勢力都不同且大將自帶主動或突擊`)}
+        if(p.alliance){if(!(facType(team)==='alliance'&&['主動','突擊'].includes(K(innateOf(D,team[0].n)))))fails.push(`「${s}」需要三人勢力都不同且大將自帶主動或突擊`)}
         if(clear&&p.dmg&&(p.dtype==='兵刃'||p.dtype==='謀略')&&!p.status&&((p.dtype==='兵刃')!==(role==='phys')))soft.push(`${g.n}的「${s}」是${p.dtype}傷害，與${g.n}的${role==='phys'?'武勇':'智略'}型不合（官方編制也有這種搭法，只提醒）`);
         for(const b of p.buf||[]){
           if(b.k==='rateAct'&&!nAct)fails.push(`「${s}」提高主動發動率，但隊內沒有主動戰法`);
@@ -345,7 +342,7 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
     if(ft!=='mixed')score++;   // 同勢力吃協力，或三勢力皆不同配合盟之陣（官方編制 80% 以上屬於這兩種）
     return{ok:!fails.length,fails,soft,score};
   }
-  // 組好之後的檢查：回傳 [{lv:'warn'|'ok', t}]，給畫面顯示「這組搭配有沒有問題」
+  // 組好之後的檢查：回傳 [{lv:'warn'|'note'|'ok', t}]；warn＝戰法不會生效等硬傷（品質檢查不合格），note＝經驗提醒（220、勢力混搭、兵種特性用不到、主動偏多），由模擬勝率決定，不擋（2026-11-24 統一，一鍵推薦與 AI 配隊同一標準），給畫面顯示「這組搭配有沒有問題」
   function check(team,sel,arm){
     const out=[],K=n=>kindOf(n),inn=team.map(g=>K(innateOf(D,g.n)));
     if(BOSS.has(team[0].n))out.push({lv:'ok',t:`大將${team[0].n}有大將技（玩家通常讓有大將技的武將當大將；只是慣例，不是限制）`});
@@ -362,15 +359,14 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
       for(const x of mine){const p=ps(x);if(p.kind==='兵種'&&!p.alliance&&p.arm&&p.arm!==arm)out.push({lv:'warn',t:`${g.n}的「${x}」需要${p.arm}兵，隊伍是${arm}兵，這招不會生效`})}
     });
     const nAct=[...inn,...sel.flat().filter(Boolean).map(K)].filter(k=>k==='主動').length;
-    if(nAct>=7)out.push({lv:'warn',t:`整隊有 ${nAct} 個主動戰法，比官方編制常見的 3～6 個還多`});
+    if(nAct>=7)out.push({lv:'note',t:`整隊有 ${nAct} 個主動戰法，比官方編制常見的 3～6 個還多`});
     {const hi=team.filter(t=>Math.max(t.st.統率||0,t.st.速度||0)>=220).map(t=>t.n);
-      if(!hi.length)out.push({lv:'warn',t:'隊內沒有統率或速度達 220 的武將：Joe 的經驗是單一武將統率或速度 220 以上，對上滿紅對手比較不吃虧、強度較高；可靠裝備、加成、兵種累加（引擎數值含設施加成，僅供參考）'});
+      if(!hi.length)out.push({lv:'note',t:'隊內沒有統率或速度達 220 的武將：Joe 的經驗是單一武將統率或速度 220 以上，對上滿紅對手比較不吃虧、強度較高；可靠裝備、加成、兵種累加（引擎數值含設施加成，僅供參考）'});
       else out.push({lv:'ok',t:`統率／速度 220 以上：${hi.join('、')}`})}
-    const ft=facType(team);if(ft==='mixed')out.push({lv:'warn',t:`勢力混搭（${facsOf(team).join('、')}）：沒有同勢力協力（約 +7% 全能力），也不是三勢力皆不同的合盟之陣。群雄同在一隊也算同勢力有加成，除非要搭合盟之陣，盡量同勢力`});
+    const ft=facType(team);if(ft==='mixed')out.push({lv:'note',t:`勢力混搭（${facsOf(team).join('、')}）：沒有同勢力協力（約 +7% 全能力），也不是三勢力皆不同的合盟之陣。群雄同在一隊也算同勢力有加成，除非要搭合盟之陣，盡量同勢力`});
     // 兵種特性對不上隊伍兵種（石川數正馬弓術放在足輕隊用不到）
-    {const AM={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
-      for(const g of team){const ts=(D.stats[g.n]?.traits||[]).map(t=>t.match(/^([馬弓槍炮器]+)術(I{1,3})$/)).filter(Boolean);
-        if(ts.length&&!ts.some(m=>[...m[1]].some(c=>AM[c]===arm)))out.push({lv:'warn',t:`${g.n}的兵種特性（${ts.map(m=>m[0]).join('、')}）對${arm}兵隊沒有加成`})}}
+    for(const g of team){const a=armTraits(D,g.n);const ks=Object.keys(a.o);   // 每個特性只算一次（rules.js），含「X兵大將」
+      if(ks.length&&!a.o[arm])out.push({lv:'note',t:`${g.n}的兵種特性（${a.src.join('、')}）對${ARM_NAME[arm]||arm}隊沒有加成`})}
     // 固有有條件：大將要同時打兵刃與謀略（壽桂尼尼御台）／敵全體要有持續性狀態（妻木熙子內賢之助）
     {const b=F(team[0].n);
       for(const g of team){const x=innTxt(g.n);

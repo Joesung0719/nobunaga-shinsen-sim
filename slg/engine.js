@@ -2,6 +2,8 @@
 // 官方公式沒有公開，這裡的傷害公式、相剋倍率、地形加成都是推估值（集中在 K 裡，方便之後用戰報對照調整）。
 // 戰法效果從 land.json 的 skillText 說明文字讀出（發動率、傷害率、目標數、治療率、控制狀態、自身屬性加點），
 // 沒有說明文字的戰法依類型與等級給通用值，並標成「推估」。
+import {traitFx,traitsAtRed,armLevel,bestArm,coopPct,CO_PCT,FAC6,facRule,effFacs} from './rules.js?v=1';
+export {traitsAtRed,bestArm,CO_PCT};
 
 export const K={
   rounds:8,
@@ -27,7 +29,7 @@ const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 
 
 const num=s=>s==null?null:+s;
 // 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～10 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
-export const MAX_SKILL_LV=10,DEFAULT_SKILL_LV=8;   // 戰法等級 Lv1～Lv10（Joe 2026-11-20 更正，原先誤設 1～5）；預設 Lv8 是推估的一般玩家練度
+export const MAX_SKILL_LV=10,DEFAULT_SKILL_LV=10;   // 戰法等級 Lv1～Lv10（Joe 2026-11-20）；預設滿級：上戰場戰法一定滿級，等級下拉只給測試用（Joe 2026-11-22，2026-11-24 由 Lv8 改正）
 let curLv=null;
 const hi=(a,b)=>{const x=num(a),y=num(b);if(y==null||curLv==null)return y??x;return x+(y-x)*(Math.max(1,Math.min(MAX_SKILL_LV,curLv))-1)/(MAX_SKILL_LV-1)};
 function targetCount(s){
@@ -169,9 +171,76 @@ const SKFX={
   腹中鱗甲:()=>({open:{t:'counter',a:hi(26,52)/100,b:hi(31,62)/100}}),   // 大將 26→52%，非大將 31→62%
 };
 // one skill → what the engine can run
+// 大將技（2026-11-24 起）：固有戰法的「大將技」只在這位武將當大將（gens[0]）時生效。數值照卡面大將技欄（滿級）。
+// 能換算成既有參數的直接改參數；需要新機制的另外寫在戰鬥流程裡（見 bossOn）。沒列在這裡的大將技 → BOSS_TODO（全庫檢查會列出）。
+const cp=sk=>({...sk,fx:sk.fx?JSON.parse(JSON.stringify(sk.fx)):sk.fx,regen:sk.regen?{...sk.regen}:sk.regen,status:sk.status?{...sk.status}:sk.status,dot:sk.dot?{...sk.dot}:sk.dot,buf:sk.buf?.map(b=>({...b}))});
+export const BOSSFX={
+  千成瓢簞:s=>{if(s.regen)s.regen.pAll=.70},                       // 治療我軍全體的機率 35%→70%
+  如水:s=>{s.rate=Math.min(1,s.rate+.15)},                          // 造成傷害的機率 +15%
+  武田之赤備:s=>{s.fx.open.p+=.10},                                 // 赤備突擊機率 +10%
+  越後二天:s=>{s.dmg*=1+.2/1.5},                                    // 額外一擊 50%→70%（期望傷害換算）
+  百萬一心:s=>{s.fx.open.pAll=.35},                                 // 選敵軍全體 15%→35%
+  古今獨步:s=>{s.fx.open.max=10},                                   // 離反疊加 8→10 次
+  海道第一:s=>{s.bossTm=[{k:'crit',v:12,from:5,p:.7},{k:'critS',v:12,from:5,p:.7},{k:'critDmg',v:50,from:5,p:.7},{k:'critSDmg',v:50,from:5,p:.7}]},   // 第 5 回合起 70% 機率獲得會心＋奇謀（+50% 傷害）
+  地黃八幡:s=>{if(s.status)s.status.p=.44},                         // 控制基礎機率 36%→44%
+  啄木鳥:s=>{s.dmg*=1.1;if(s.status)s.status.p=Math.min(1,s.status.p*1.1)},   // 10% 再發動一次（期望值）
+  豐後戰神:s=>{s.fx.open.boss=20},                                  // 主屬性 +20
+  怪力無雙:s=>{s.n=[3,3]},                                          // 目標必定 3 人
+  旋乾轉坤:s=>{s.dmg=1.46},                                         // 立即傷害率 126%→146%
+  月盈中天:s=>{if(s.dot)s.dot.dur=8},                               // 潰走持續到戰鬥結束
+  落花啼鳥:s=>{s.fx.cast.v=85},                                     // 主動傷害提升 75%→85%
+  電光雷轟:s=>{s.dmg=.60},                                          // 雷鳴傷害 52%→60%
+  轉:s=>{s.fx.open.rate+=.15},                                      // 傷害率 +15%
+  破陣亂舞:s=>{s.dmg*=1.35},                                        // 強化普攻 35% 額外打一名敵軍（期望值）
+  疾風迅雷:s=>{s.dmg*=1.08},                                        // 目標麻痺時 16% 再發動（期望值，約一半時間目標已麻痺）
+  天神山殘照:s=>{for(const b of s.buf||[])if(b.r===4)b.r=5},        // 加屬性持續回合 4→5
+  槍之又左:s=>{s.fx.open.enh=70},                                   // 強化普攻 +50%→+70%
+  軍神:s=>{s.fx.open.boss=1},                                       // 每回合行動前額外蓄力 1 次
+  // 以下需要新機制的，先換算成期望值（2026-11-24，之後有戰報再校正）
+  方今之時:s=>{if(s.dot)s.dot.v*=1.1},                              // 持續狀態無法移除（期望值：持續傷害 +10%）
+  新生:s=>{s.regen={self:true,n:1,rate:.65*.4}},                    // 敵軍兵力 <70% 後每回合治療 65%（約 4 成回合生效）
+  三河魂:s=>{s.bossTm=[{k:'takenAtkRush',v:20,p:1}]},               // 被普攻時 80% 由武勇最高友軍援護（換算：自身受普攻傷害 -20%）
+  風林火山:s=>{const o=s.fx.open;o.wind*=1.1;o.mount*=1.1;o.lin*=1.1;o.fire*=1.1},   // 選中更多目標 +25%（期望值 +10%）
+  表裡比興:s=>{s.dmg*=1.03},                                        // 混亂目標分擔 3% 傷害
+  伊達風采:s=>{s.fx.open.r*=1.15},                                  // 疊滿後額外兩擊 134%（期望值 +15%）
+  鬼若子:s=>{s.fx.open.st*=1.25},                                   // 選中更多目標 +25%
+  相模之獅:s=>{s.heal=(s.heal||0)+.40*.3},                          // 鐵壁沒生效時治療 40%（約 3 成）
+  三州總大將:s=>{if(s.heal)s.heal*=1.25},                           // 額外恢復 1 人的機率受智略影響（50%→約 75%）
+  上州黃斑:s=>{s.fx.open.fat+=2.5},                                 // 疲弊基礎機率 +2.5%
+  一切皆空:s=>{s.fx.open.v*=1.12},                                  // 每名雜賀本願寺友軍一揆傷害 +12%（約 1 人）
+  肥前之熊:s=>{for(const b of s.buf||[])if(b.k==='taken')b.v+=14},   // 傷害率 +14%（換算到減傷）
+  梟雄之計:s=>{s.dmg*=1.05},                                        // 第 5 回合起施放後不再混亂自己
+  鬼義重:s=>{s.dmg*=1.05},                                          // 累計選中 2 次 15% 威壓（期望值）
+  猛攻柴田:s=>{s.dmg*=1.03},                                        // 第 5 回合起多替一名友軍淨化
+  七本槍筆頭:s=>{s.fx.open.p=Math.min(1,s.fx.open.p*1.1)},          // 鎖定機率最多 +5 次（期望值）
+  破竹之勢:s=>{for(const b of s.buf||[])if(b.k==='crit')b.v*=1.15}, // 疊加 10→15 次（期望值 +15%）
+  十面埋伏:s=>{s.dmg*=1.08},                                        // 第 5 回合起受傷提高無法移除
+  無想掃討:s=>{s.dmg*=1.1},                                         // 兵刃傷害提高最多只減 2 次
+  越後流軍學:s=>{s.fx.open.v*=1.2},                                 // 持續回合增至 3
+  彈嵐雨霰:s=>{s.dmg*=1.1},                                         // 3 次傷害機率 50%→75%（2.5→2.75 次）
+  冷徹無情:s=>{s.dmg*=1.05},                                        // 發動率加成持續增至 4 回合
+  末世道者:s=>{s.fx.open.v*=1.1},                                   // 武勇降低縮短為 4 回合
+  信義貫徹:s=>{s.dmg*=1.05},                                        // 額外一名友軍獲得離反
+  掃疑平亂:s=>{s.fx.cast.p=Math.min(1,s.fx.cast.p*1.1)},            // 優先選武勇較高的友軍
+  一心一德:s=>{if(s.heal)s.heal*=1.1},                              // 治療時目標武勇智略 +6
+  綱紀肅清:s=>{s.dmg*=1.1},                                         // 已威壓 50% 再疲弊
+  樽俎折衝:s=>{s.fx.open.p=Math.min(1,s.fx.open.p*1.1)},            // 分擔比例 7%
+  傲岸不遜:s=>{s.dmg*=1.05},                                        // 另降普攻傷害 30%
+  義無反顧:s=>{s.dmg*=1.12},                                        // 24% 機率改為敵軍全體
+  先陣鼓舞:s=>{s.rate=Math.min(1,s.rate+.04)},                      // 發動機率 +4%
+  仁者懷勇:s=>{s.dmg*=1.1},                                         // 友軍造成傷害的機率 +20%
+  無刀取:s=>{s.dmg*=1.07;if(s.heal)s.heal*=1.07},                   // 15% 同時觸發兩種效果
+};
+const BOSSC=new WeakMap();
+export const bossSkill=sk=>{if(!sk||!BOSSFX[sk.name]||sk.bossOn)return sk;let c=BOSSC.get(sk);if(!c){c=cp(sk);BOSSFX[sk.name](c);c.bossOn=true;BOSSC.set(sk,c)}return c};
+// 說明文字解析不到、但數值寫得很清楚的固有戰法補丁（大將與非大將都適用）
+const INNFIX={
+  千成瓢簞:s=>{if(s.regen)s.regen.pAll=hi(17.5,35)/100},             // 有 17.5→35% 機率治療我軍全體
+  地黃八幡:s=>{s.status={p:hi(18,36)/100,k:['封擊','無策'],dur:1}},  // 封擊、無策 18→36%
+};
 export function parseSkill(name,D,lv=null){
   curLv=lv;
-  try{return parseSkill0(name,D)}finally{curLv=null}
+  try{const sk=parseSkill0(name,D);if(INNFIX[name])INNFIX[name](sk);return sk}finally{curLv=null}
 }
 function parseSkill0(name,D){
   const t=D.skillText?.[name],kind=t?.kind||D.kind?.[name]||(t?'?':'主動'),g=t?.g||D.skills?.[name]||'B';
@@ -249,6 +318,7 @@ export function battle(A,B,R=Math.random){
   const T=[A,B],log=[];
   let round=0,res='D';
   // per-battle state: stat buffs, statuses, prepared skills, 兵學 values (fx) and timed 兵學 effects (tm)
+  for(const t of T){for(const g of t.gens)if(g.sk0){g.skills=g.sk0;delete g.sk0}const g0=t.gens[0];if(g0?.skills?.[0]&&BOSSFX[g0.skills[0].name]&&!g0.noBoss){g0.sk0=g0.skills;g0.skills=[bossSkill(g0.skills[0]),...g0.skills.slice(1)]}}   // 大將技：只有大將的固有戰法（skills[0]）生效
   for(const t of T)for(const g of t.gens){
     g.b={...g.st};g.fx={};g.prep=null;g.start=g.troops;
     g.bx=g.tr?{...(g.bg?.fx||{}),...Object.fromEntries(Object.entries(g.tr).map(([k,v])=>[k,(g.bg?.fx?.[k]||0)+v]))}:(g.bg?.fx||{});g.q=g.bg?.q||null;g.tm=(g.trTm||[]).map(x=>({...x}));g.tc=g.tcIn||{};g.nu=0;g.bs={};g.dmgIn=0;g.phxU=0;g.rokouD=0;g.akaD=0;g.shoD=0;g.haoL=0;g.hoR=0;g.thR=0;g.g1=0;g.maoD=0;g.dr=0;g.hoN=0;g.setD=0;g.ssU=0;g.danD=0;g.kamD=0;g.kikD=0;g.dots=[];g.cnt={反討之計:3,明鏡:2};g.lj=0;g.noPrepR=0;g.first=0;g.sealR=0;g.tn=null;g.sb=[];g.sh=0;g.cb=0;g.imm=0;
@@ -259,6 +329,7 @@ export function battle(A,B,R=Math.random){
       if(t.arm==='騎')for(const k in g.gear.cav)g.b[k]+=g.gear.cav[k];
       for(const x of g.gear.tm)g.tm.push({...x})}
     g.gc=g.gear?.gc||{};
+    for(const s of g.skills)for(const x of s.bossTm||[])if(R()<(x.p??1))g.tm.push({k:x.k,v:x.v,from:x.from,until:99,src:g});   // 大將技的定時加成（海道第一：第 5 回合起）
     if(g.gc.修羅!==undefined)g.lfv=(g.lfv||0)+1+4*g.gc.修羅;   // 修羅：離反 1~5%
     if(g.gc.鬼謀!==undefined)g.lj=(g.lj||0)+1+4*g.gc.鬼謀;   // 鬼謀：攻心 1~5%
   }
@@ -299,7 +370,7 @@ export function battle(A,B,R=Math.random){
   }});
   // 合盟之陣：三人勢力各不相同、大將自帶戰法（skills[0]）是主動或突擊才生效
   for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.alliance){
-    const fs=t.gens.map(x=>x.f),bk=t.gens[0].skills[0]?.kind;
+    const fs=effFacs(t.gens.map(x=>({f:x.f,rule:x.tc?.facRule}))),bk=t.gens[0].skills[0]?.kind;   // 實際勢力（rules.js）
     if(fs.every(Boolean)&&new Set(fs).size===fs.length&&(bk==='主動'||bk==='突擊')){
       t.gens[0].tm.push({k:bk==='主動'?'rateAct':'rushRate',v:sk.alliance.boss,until:99});
       for(const m of t.gens.slice(1)){m.tm.push({k:'dmg',v:sk.alliance.sub,until:99});m.tm.push({k:'taken',v:sk.alliance.sub,until:99})}
@@ -310,7 +381,7 @@ export function battle(A,B,R=Math.random){
     kijiko:({t,g,o})=>{for(const m of t.gens){m.b.統率+=o.st;m.sb.push({k:'統率',v:o.st,until:4})}},
     nari:({g,o})=>{g.b.武勇+=o.st},
     akabe:({g,o})=>{g.tm.push({k:'crit',v:o.crit,until:99,src:g})},
-    bungo:({g,o})=>{const b=g.b,m=Math.max(b.武勇,b.智略,b.統率);if(b.武勇===m)g.tm.push({k:'dmgBlade',v:o.dmg,until:99,src:g});else if(b.智略===m)g.tm.push({k:'dmgStrat',v:o.dmg,until:99,src:g});else g.tm.push({k:'rateAct',v:o.rate,until:99,src:g})},
+    bungo:({g,o})=>{const b=g.b,m=Math.max(b.武勇,b.智略,b.統率);if(b.武勇===m)g.tm.push({k:'dmgBlade',v:o.dmg,until:99,src:g});else if(b.智略===m)g.tm.push({k:'dmgStrat',v:o.dmg,until:99,src:g});else g.tm.push({k:'rateAct',v:o.rate,until:99,src:g});if(o.boss){const k=b.武勇===m?'武勇':b.智略===m?'智略':'統率';b[k]+=o.boss}},
     yasha:({e,g,o})=>{g.tm.push({k:'taken',v:(e.arm==='騎'||e.arm==='鐵炮')?o.v2:o.v,until:99,src:g})},
     zuikei:({t,g,o})=>{for(const m of t.gens)m.tm.push({k:'dmg',v:o.v,until:3,src:g})},
     ouchi:({t,g,o})=>{const al=t.gens,s=[...al].sort((a,b)=>b.b.智略-a.b.智略)[0],w=[...al].sort((a,b)=>b.b.武勇-a.b.武勇)[0];s.tm.push({k:'dmgStrat',v:o.v,until:99,src:g});w.b.武勇*=.9},
@@ -331,7 +402,7 @@ export function battle(A,B,R=Math.random){
   }})});
   // 協同：隨機友軍單體造成的傷害提高
   for(const t of T)t.gens.forEach((g,i)=>{if(g.bx.ally){const j=Math.floor(R()*t.gens.length);t.gens[j].tm.push({k:'dmg',v:g.bx.ally,until:99})}});
-  const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round&&!(x.src&&x.src.troops<=0)?x.v:0),0);   // 官方：持有者陣亡後，其指揮戰法效果失效
+  const M=(g,k)=>(g.bx[k]||0)+g.tm.reduce((a,x)=>a+(x.k===k&&x.until>=round&&!(x.from&&round<x.from)&&!(x.src&&x.src.troops<=0)?x.v:0),0);   // 官方：持有者陣亡後，其指揮戰法效果失效
   const timed=(g,k,v,n)=>g.tm.push({k,v,until:round+n-1});   // 持續 n 回合（含本回合）
   const GP=(g,k,lo,hi)=>g.gc&&g.gc[k]!==undefined?lo+(hi-lo)*g.gc[k]:null;   // 裝備條件特技：擲值 0~1 → 說明的範圍
   const routed=t=>t.gens[0].troops<=0;
@@ -542,6 +613,7 @@ export function battle(A,B,R=Math.random){
     return false};
   outer:for(round=1;round<=K.rounds;round++){
     ev({type:'round',round});
+    for(const t of T)for(const m of t.gens)if(m.troops>0)for(const s of m.skills){const o=s.fx?.open;if(o?.t==='kenshin'&&o.boss){const ix=ixs(m);ix.c=Math.min(12,(ix.c||0)+o.boss)}}   // 軍神大將技：每回合行動前額外蓄力
     // 持續性狀態每回合結算（施加後的下一回合起；按施加者當下屬性算，官方是施加時快照，這裡為近似）
     for(const dt of T)for(let dj=0;dj<dt.gens.length;dj++){const d=dt.gens[dj];if(!d.dots.length||d.troops<=0)continue;
       d.dots=d.dots.filter(x=>x.until>=round);
@@ -562,7 +634,7 @@ export function battle(A,B,R=Math.random){
     // 指揮／被動的每回合治療（休養、每回合治療我軍群體）
     for(const t of T)t.gens.forEach((g,i)=>{if(g.troops>0)for(const sk of g.skills)if(sk.regen){
       const al=aliveIdx(t).sort((a,b)=>t.gens[a].troops/t.gens[a].max-t.gens[b].troops/t.gens[b].max);
-      const hs=(sk.regen.self?[i]:al.slice(0,sk.regen.n)).map(j=>healTo(t,j,g,sk.regen.rate)).filter(Boolean);
+      const hs=(sk.regen.self?[i]:sk.regen.pAll&&R()<sk.regen.pAll?al:al.slice(0,sk.regen.n)).map(j=>healTo(t,j,g,sk.regen.rate)).filter(Boolean);
       if(hs.length)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:hs});
     }});
     // 手工建模戰法（SKFX）的每回合效果：封擊、挑釁、每回合機率治療、蓄勢；到期的屬性加成還原
@@ -643,7 +715,7 @@ export function battle(A,B,R=Math.random){
       if(g.ix?.lfEnd<round){g.lfv=0;g.ix.lfEnd=99}
       const fk=g.skills.find(s=>s.fx?.open?.t==='fukushima')?.fx.open,rwp=(g.rwu>=round?g.rwp:0)+(fk?fk.p:0);
       const kn=g.skills.find(s=>s.fx?.open?.t==='kenshin')?.fx.open,mae=g.skills.some(s=>s.fx?.open?.t==='maeda')&&g.ix?.enh;
-      let tmpA=null;{const c=g.ix?.c||0,extra=(kn&&c>0?c*kn.v+(c>=12?kn.full:0):0)+(mae?50:0);if(extra&&swings>0){tmpA={k:'dmgAtk',v:extra,until:99};g.tm.push(tmpA)}}
+      let tmpA=null;{const c=g.ix?.c||0,extra=(kn&&c>0?c*kn.v+(c>=12?kn.full:0):0)+(mae?(g.skills.find(s=>s.fx?.open?.t==='maeda').fx.open.enh||50):0);if(extra&&swings>0){tmpA={k:'dmgAtk',v:extra,until:99};g.tm.push(tmpA)}}
       for(let sw=0;sw<swings;sw++){
         const al=aliveIdx(e);if(!al.length)break;
         const tn=g.tn&&g.tn.until>=round&&e.gens[g.tn.to]?.troops>0?g.tn.to:-1;   // 挑釁：強迫對挑釁者普通攻擊
@@ -728,41 +800,21 @@ export function statsAt(D,n,lv,r=4){
 // 滿紅（5 紅）的武將數值，劇本用：Lv50、4 個特性全部解鎖、自由點數 = 每 10 級 10 點（立身出世類特性另加）+ 紅度 5×10，全加在武勇／智略較高的一項；
 // 再乘上 兵種營 Lv5 與隊中已解鎖兵種特性（馬術、弓術…、X兵大將）提供的兵種等級（每級全屬性 +2%，上限 10＋大將數）、特性自身的屬性 %、我軍全體屬性 %。
 // 規則同 land.html 的組隊頁；沒有收錄的特性文字就只讀特性名稱。gens 是同隊武將名單。
-const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'},STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
-function traitFx(D,n,t){
-  const txt=D.traitText?.[n]?.[t];let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
-  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),c=txt.match(/等級上限增加(\d)級/);
-    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],+m[2]])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],+c[1]])):null}}
-  m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],m[2].length]))};
-  m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][m[2].length-1]};
-  m=(txt||'').match(/^我軍全體(武勇|智略|統率|速度)提高([\d.]+)%$/);if(m)return{team:m[1],tpct:+m[2]};
-  return{};
-}
-// 隊伍滿紅時自帶的兵種：把隊中每位武將 4 個特性裡的兵種加成（X術N、X兵大將）加總，最高的兵種為主；同分看大將自己，再依 騎→槍→弓→鐵炮→器械。都沒有就回 null。
-export function bestArm(D,names){
-  const score=n=>{const o={};for(const t of D.stats?.[n]?.traits||[]){const a=traitFx(D,n,t).arm;for(const k in a||{})o[k]=(o[k]||0)+a[k]}return o};
-  const tot={},lead=score(names[0]);for(const n of names){const o=score(n);for(const k in o)tot[k]=(tot[k]||0)+o[k]}
-  const order=['騎','槍','弓','鐵炮','器械'];
-  return order.filter(k=>tot[k]).sort((a,b)=>tot[b]-tot[a]||(lead[b]||0)-(lead[a]||0)||order.indexOf(a)-order.indexOf(b))[0]||null;
-}
+// 特性數值、兵種加成、兵種選擇、勢力、協力都在 slg/rules.js（唯一來源）。
 // red：紅度 0–5（預設 5＝滿紅）。特性欄 2～4 在 1／3／5 紅解鎖；自由點數每紅 +10（滿紅 50）。
-export const traitsAtRed=(D,n,red=5)=>(D.stats?.[n]?.traits||[]).slice(0,red>=5?4:red>=3?3:red>=1?2:1);
 // red 也可以是 {武將名:紅度}，隊中每人紅度不同時用（沒列的算滿紅）。
 // 設施加成（Joe 的設施截圖）：協力-勢力 Lv1～10 = 0.5,1,1.5,2,2.5,3,4,5,6,7%（三人同勢力才生效）、協力-家門 每級 1%（同家門才生效，家門資料沒收，由玩家勾選）、兵種營 每級 +1 兵種等級（×2%）。
-export const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
-const FAC6=['織田','豐臣','德川','武田','上杉','群雄'];
 // fac = {co, arm, ka, same}；不給就是舊行為（兵種營 Lv5、沒有協力與家門）
 export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const traits=traitsAtRed(D,n,rd(n));
-  let lvArm=fac?fac.arm:5,cap=10;const team={};
-  for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);lvArm+=x.arm?.[arm]||0;cap+=x.cap?.[arm]||0;if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
-  lvArm=Math.min(cap,lvArm);
+  const lvArm=armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};
+  for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
   const own={};let extra=0;
   for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}
   const st=statsAt(D,n,lv,D.stats?.[n]?.r),k=st.武勇>=st.智略?'武勇':'智略';
   st[k]+=Math.floor(lv/10)*(10+extra)+10*rd(n);
-  let fp=0;if(fac){const f0=D.stats?.[names[0]]?.f;if(fac.co&&FAC6.includes(f0)&&names.every(x=>D.stats?.[x]?.f===f0))fp+=CO_PCT[fac.co];if(fac.same&&fac.ka)fp+=fac.ka}
+  let fp=0;if(fac){fp+=coopPct(D,names,fac.co);if(fac.same&&fac.ka)fp+=fac.ka}   // 協力：實際勢力（含老獪／老狐狸）三人相同才生效
   return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+fp+(own[x]||0)+(team[x]||0))/100)*10)/10]));
 }
 
@@ -796,6 +848,7 @@ export function traitBattle(D,names,red=5){
   const eff=names.map(n=>traitsAtRed(D,n,rd(n)).map(t=>traitParse(D.traitText?.[n]?.[t]||'')).filter(Boolean));
   return names.map((n,i)=>{const tr={},tm=[],tc={};eff.forEach((l,j)=>l.forEach(e=>{if(j!==i&&!e.team)return;for(const k in e.tr||{})tr[k]=Math.round(((tr[k]||0)+e.tr[k])*100)/100;if(j===i)for(const x of e.tm||[])tm.push({...x})}));
     for(const t of traitsAtRed(D,n,rd(n)))Object.assign(tc,TC[t]||{});
+    {const fr=facRule(D,n);if(fr)tc.facRule=fr}   // 老獪／老狐狸：戰鬥裡判定合盟用實際勢力
     // 全隊型條件特性：隊友有就全隊生效
     names.forEach((m,j)=>{for(const t of traitsAtRed(D,m,rd(m))){if(t==='三河武士')tc.mikawa=1;if(t==='三矢家訓')tc.mitsuya=1;if(t==='四州稱雄')tc.shishu=6}});
     return{tr,tm,tc}});
