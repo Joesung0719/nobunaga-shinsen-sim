@@ -528,6 +528,7 @@ function load(){
     if(o.rtab==='cheap'||o.rtab==='best'||o.rtab==='official')o.rtab='field';   // 2026-11-21：一鍵推薦預設改成「官方編制」
     for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))if(m.t>10000||m.t===9900)m.t=10000;   // 每人兵力上限 1 萬（Joe）
     if(o.lvScale!==10){delete o.skLv;for(const m of[...(o.teams||[]),o.my].filter(Boolean).flatMap(t=>t.gens||[]))m.sl={};o.lvScale=10}
+    if(o.lvFull!==1){delete o.skLv;o.lvFull=1}   // 2026-11-24：預設改成滿級（舊存檔的預設 Lv8 一律改回滿級；個別設定的等級保留）
     return o;
   }catch{return{}}
 }
@@ -1373,7 +1374,7 @@ function renderAdvice(){
 function renderLvBar(){
   const box=$('lvDefault');box.replaceChildren(el('span',{class:'lbl'},'預設'));
   for(let v=1;v<=MAX_SKILL_LV;v++){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.skLv===v)},`Lv${v}`);b.onclick=()=>{S.skLv=v;save();renderAll()};box.append(b)}
-  $('lvInfo').replaceChildren(el('div',{class:'note',style:'font-size:.74rem'},`戰法等級是 Lv1～Lv${MAX_SKILL_LV}。沒個別設定的戰法都用 Lv${S.skLv}（預設 Lv${DEFAULT_SKILL_LV}，是推估的一般練度，請依你的帳號調整）；守軍用最高級 Lv${MAX_SKILL_LV}。每招旁邊的下拉選單可個別調；灰字＝用預設。說明文字只有 Lv1 與 Lv${MAX_SKILL_LV} 兩端數值，中間等級線性內插（推估）。`));
+  $('lvInfo').replaceChildren(el('div',{class:'note',style:'font-size:.74rem'},`戰法等級是 Lv1～Lv${MAX_SKILL_LV}。沒個別設定的戰法都用 Lv${S.skLv}（預設 Lv${DEFAULT_SKILL_LV}：上戰場戰法一定滿級，調低只是測試用）；守軍用最高級 Lv${MAX_SKILL_LV}。每招旁邊的下拉選單可個別調；灰字＝用預設。說明文字只有 Lv1 與 Lv${MAX_SKILL_LV} 兩端數值，中間等級線性內插（推估）。`));
 }
 $('fillSk').onclick=()=>{autofill(S.ti,false);trimStock();save();renderBuilder()};
 $('resetSk').onclick=()=>{S.teams.forEach((_,i)=>autofill(i,true));trimStock();save();renderBuilder()};

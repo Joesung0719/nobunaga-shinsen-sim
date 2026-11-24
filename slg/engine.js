@@ -29,7 +29,7 @@ const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 
 
 const num=s=>s==null?null:+s;
 // 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～10 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
-export const MAX_SKILL_LV=10,DEFAULT_SKILL_LV=8;   // 戰法等級 Lv1～Lv10（Joe 2026-11-20 更正，原先誤設 1～5）；預設 Lv8 是推估的一般玩家練度
+export const MAX_SKILL_LV=10,DEFAULT_SKILL_LV=10;   // 戰法等級 Lv1～Lv10（Joe 2026-11-20）；預設滿級：上戰場戰法一定滿級，等級下拉只給測試用（Joe 2026-11-22，2026-11-24 由 Lv8 改正）
 let curLv=null;
 const hi=(a,b)=>{const x=num(a),y=num(b);if(y==null||curLv==null)return y??x;return x+(y-x)*(Math.max(1,Math.min(MAX_SKILL_LV,curLv))-1)/(MAX_SKILL_LV-1)};
 function targetCount(s){

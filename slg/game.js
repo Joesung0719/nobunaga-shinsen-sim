@@ -64,7 +64,7 @@ function builderTeam(){
   return{src:'builder',arm:S.my.arm||'槍',gens:S.my.gens.map((m,i)=>({n:m.n,s:(m.s||[]).filter(Boolean),t:m.t||10000,st:S.my.calc?.[i]||null,red:m.red||0,bg:m.bg||null,sl:slOf(m,S)}))};
 }
 // 組隊頁每招戰法的等級（個別設定，沒有就用預設 S.skLv）
-function slOf(m,S){const o={};for(const n of[innateOf(D,m.n),...(m.s||[])].filter(Boolean))o[n]=m.sl?.[n]??S.skLv??8;return o}
+function slOf(m,S){const o={};for(const n of[innateOf(D,m.n),...(m.s||[])].filter(Boolean))o[n]=m.sl?.[n]??S.skLv??10;return o}
 const SET=Object.assign({mode:'land',lv:6,foe:'2p',gar:'hold',mine:[],enemy:[]},load());
 if(SET.hero){ensureHero(SET.hero);setSpec(SET.hero.name,heroSpec(SET.hero))}   // 戰役主角的外觀
 // 戰役串連：之前打贏某一關且評價夠高，這一關開場就有加成（記在 SET.camp，存在瀏覽器）
