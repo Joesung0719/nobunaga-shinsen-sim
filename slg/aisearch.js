@@ -40,7 +40,7 @@ export function allowedArms(D,names){
 }
 
 const SOFT_FAIL=/220|的兵種特性（|勢力混搭|個主動戰法，比官方/;
-export function makeAI(D,KIT,{rOf=n=>D.stats?.[n]?.r||5,fac={co:10,arm:5,ka:3,same:true},banditSk={}}={}){
+export function makeAI(D,KIT,{rOf=n=>D.stats?.[n]?.r||5,fac={co:10,arm:5,ka:3,same:false},banditSk={}}={}){
   const cache=new Map();
   // 我方 AI 隊：Lv50、紅度 red、戰法依組隊建議補滿（須通過搭配品質檢查）、戰法 Lv10、兵學依建議配滿、每人 1 萬兵
   function buildMe(names,arm,red,tr=10000){

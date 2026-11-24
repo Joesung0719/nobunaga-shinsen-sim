@@ -980,7 +980,7 @@ const kindOf=n=>D.kind?.[n]||null;
 const kindBadge=n=>{const k=kindOf(n);return el('span',{class:'kb',style:k?`background:${KCOL[k]}`:'',title:k?KLABEL[k]||k:'類型未知'},k?k[0]:'？')};
 const SKILL_POOL=SKILLS.filter(([n])=>kindOf(n)!=='內政');
 function normTeam(my){
-  my.fac={co:10,arm:5,ka:3,same:my.fac?.same??true};   // Joe：建設、勢力、家門玩家一定會升滿，一律用全滿值，不給調整
+  my.fac={co:10,arm:5,ka:3,same:my.fac?.kaV===2?!!my.fac.same:false,kaV:2};   // Joe：建設、勢力一律全滿；家門（+3%）沒有資料，預設不勾，玩家自己勾才算（2026-11-24；舊存檔一律重設成不勾）
   for(const m of my.gens){
     m.s=(m.s||['','']).map(x=>INNATE.has(x)||kindOf(x)==='內政'?'':x);while(m.s.length<2)m.s.push('');   // innate / 內政 picks saved by older versions
     m.sl=Object.fromEntries(Object.entries(m.sl||{}).filter(([n,v])=>(n===innateOf(m.n)||m.s.includes(n))&&v>=1&&v<=MAX_SKILL_LV));
@@ -1671,7 +1671,7 @@ function rankCard(t,i,k){
     el('div',{class:'acts'},go,opp));
 }
 // ---- 官方編制（一鍵推薦的底）：官方大名錄編制原樣，戰法照官方原配；只有指定「官方編制裡沒有的武將」時才做最小替換（換 1 位，其餘照原樣）----
-const FULLFAC={co:10,arm:5,ka:3,same:true};
+const FULLFAC={co:10,arm:5,ka:3,same:false};   // 家門預設不勾（Joe 2026-11-24）
 function ofCard(r,i){
   const go=el('button',{class:'pbtn ghost',type:'button'},`載入到第 ${S.ti+1} 隊`);
   go.onclick=()=>{loadInto(S.ti,r.names,r.arm,r.names.map(n=>r.skills[n]||[]));save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
