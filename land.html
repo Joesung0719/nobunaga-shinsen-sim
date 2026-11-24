@@ -463,7 +463,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=54';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=55';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=9';
 import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=1';
@@ -1387,7 +1387,7 @@ const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
   const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0])),tb=traitBattle(D,names,red);
   return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[m.n]?.f,
-    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear):null,troops:m.t,max:m.t,
+    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear):null,kaho:m.gear?gearBonus(m.gear.filter(x=>x.slot==='家寶')):null,gearN:m.gear?m.gear.filter(x=>x.trait?.n).length:0,troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
 // 只給武將名／紅度的隊伍（對手、搭配建議候選）：Lv50、戰法依推薦補滿、戰法預設等級
