@@ -1513,9 +1513,9 @@ function renderAiBar(){
   const bar=$('aibar');bar.replaceChildren(el('b',{style:'color:var(--gold,#e3b75a)'},'AI 配隊'));
   const mk=(i)=>{const x=el('select',{'aria-label':`指定武將${i+1}`},el('option',{value:''},`（不指定 ${i+1}）`),...ALLN.filter(n=>rOf(n)===5).map(n=>el('option',{value:n},`${n}　C${costOf(n)}`)));x.value=AI.lock[i];x.onchange=()=>{AI.lock[i]=x.value};return x};
   const rs=el('select',{'aria-label':'我方紅度'},...[[5,'5 紅'],[3,'3 紅'],[0,'0 紅']].map(([v,t])=>el('option',{value:String(v)},`我方${t}`)));rs.value=String(AI.red);rs.onchange=()=>{AI.red=+rs.value};
-  const b1=el('button',{class:'pbtn',type:'button'},'AI 配出能打贏的隊伍'),b2=el('button',{class:'pbtn ghost',type:'button'},'AI 幫我補齊（指定 1～2 位）');
-  b1.onclick=()=>aiRun(false);b2.onclick=()=>aiRun(true);
-  bar.append(rs,b1,mk(0),mk(1),b2,el('span',{class:'note',style:'flex-basis:100%'},'目標是上方選的對手（土地守軍或對戰隊伍）。我方由系統搜尋：只用金將、總 Cost ≤ 上方上限、戰法 Lv10、兵學依建議配滿、每人 1 萬兵；「補齊」會鎖定你指定的武將，其餘由 AI 挑並說明理由。對戰隊伍的兵力也用 1 萬。'));
+  const b1=el('button',{class:'pbtn',type:'button'},'AI 配出能打贏的隊伍');
+  b1.onclick=()=>aiRun();
+  bar.append(el('span',{class:'note'},'我想用：'),mk(0),mk(1),rs,b1,el('span',{class:'note',style:'flex-basis:100%'},'流程：①上方設好對手（土地守軍或對戰隊伍）→②左邊最多指定 2 位自己想用的武將（可不指定）→③按鈕，AI 把指定的武將鎖進我方隊伍、其餘挑最能贏的，並寫出推薦理由。只用金將（指定的不限）、總 Cost ≤ 上方上限、戰法 Lv10、兵學依建議配滿、每人 1 萬兵。結果可一鍵套用到我方隊伍，並帶到⑤戰報估算看逐回合戰報。'));
 }
 const AI_ARMS=['騎','槍','弓','鐵炮'];
 async function aiSearch(locked,redv,say){
@@ -1591,9 +1591,8 @@ function adviceCard(names,redv,arm,locked){   // 推薦理由：為什麼是這�
   return el('div',{},el('div',{class:'ac'},el('b',{class:'nm'},`隊伍整體：${arm}兵`),el('div',{},ftTxt),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
     checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null),...cards);
 }
-async function aiRun(lockMode){
-  const out=$('aiOut'),locked=lockMode?AI.lock.filter(Boolean):[];
-  if(lockMode&&!locked.length){out.innerHTML='<p class="note">請先在旁邊的下拉選單指定 1～2 位武將。</p>';return}
+async function aiRun(){
+  const out=$('aiOut'),lockMode=AI.lock.some(Boolean),locked=AI.lock.filter(Boolean);
   if(new Set(locked).size!==locked.length){out.innerHTML='<p class="note">指定的武將不能重複。</p>';return}
   if(S.tgt==='opp'&&!oppReady()){out.innerHTML='<p class="note">對手要選滿 3 位不同武將。</p>';return}
   if(locked.reduce((a,n)=>a+costOf(n),0)>S.cmax){out.innerHTML=`<p class="note">指定武將的 Cost 已超過上限 ${S.cmax}。</p>`;return}
@@ -1611,9 +1610,10 @@ async function aiRun(lockMode){
     const rate=f.w/f.n,cost=f.names.reduce((a,n)=>a+costOf(n),0);
     const det=el('details',{class:'bg',open:i===0?'':null});if(i===0)det.open=true;
     det.append(el('summary',{},`${i?'備選 '+i:'最佳'}：${f.names.join('、')}（${f.arm}兵，Cost ${cost}）　勝 ${pc(rate)}／平 ${pc(f.d/f.n)}／敗 ${pc(1-rate-f.d/f.n)}`),adviceCard(f.names,AI.red,f.arm,locked));
-    const ap=el('button',{class:'pbtn ghost',type:'button'},`套用到我方第 ${S.ti+1} 隊`);
-    ap.onclick=()=>{loadInto(S.ti,f.names,f.arm);S.my.gens.forEach(m=>{m.red=AI.red});autofill(S.ti,true);S.my.gens.forEach(m=>{for(const n of[innateOf(m.n),...m.s].filter(Boolean))m.sl[n]=MAX_SKILL_LV});trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
-    det.append(el('div',{class:'row',style:'margin-top:8px'},ap));out.append(det);
+    const apply=go=>{loadInto(S.ti,f.names,f.arm);S.my.gens.forEach(m=>{m.red=AI.red});autofill(S.ti,true);S.my.gens.forEach(m=>{for(const n of[innateOf(m.n),...m.s].filter(Boolean))m.sl[n]=MAX_SKILL_LV});trimStock();save();renderAll();$(go?'board':'team').scrollIntoView({behavior:'smooth'})};
+    const ap=el('button',{class:'pbtn ghost',type:'button'},`套用到我方第 ${S.ti+1} 隊`),ap2=el('button',{class:'pbtn',type:'button'},'套用並到⑤看戰報估算');
+    ap.onclick=()=>apply(false);ap2.onclick=()=>apply(true);
+    det.append(el('div',{class:'row',style:'margin-top:8px;gap:8px'},ap2,ap));out.append(det);
   });
 }
 // ================= ② 一鍵推薦 =================
