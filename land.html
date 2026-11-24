@@ -1652,7 +1652,7 @@ function rankCard(t,i,k){
   const opp=el('button',{class:'pbtn ghost',type:'button'},'設為對手');opp.onclick=()=>{S.tgt='opp';setOppPreset(`${k}:${i}`);save();renderPredict();$('predict').scrollIntoView({behavior:'smooth'})};
   return el('div',{class:'rcard'},el('div',{class:'no'},String(i+1)),
     el('div',{},el('div',{class:'gl'},...t.team.map((n,gi)=>el('div',{class:'gg'},el('b',{},(gi?'':'★')+n),el('span',{class:'rc'},`Cost${costOf(n)}`),el('span',{class:'sk'},[innateOf(n),...(t.skills[n]||[])].filter(Boolean).join('・'))))),
-      el('div',{class:'meta'},`${ARMN[t.arm]||t.arm}・總 Cost ${t.team.reduce((a,n)=>a+costOf(n),0)}・${k} 紅`)),
+      el('div',{class:'meta'},`${ARMN[t.arm]||t.arm}・總 Cost ${t.team.reduce((a,n)=>a+costOf(n),0)}・${k} 紅${t.type?'・'+({same:'同勢力',alliance:'三勢力',mixed:'兩勢力混搭'}[t.type]||''):''}`),t.armWhy?el('div',{class:'meta'},t.armWhy):null),
     el('div',{class:'pc'},el('b',{},pc(t.winRate)),el('small',{},'榜內平均勝率')),
     el('div',{class:'acts'},go,opp));
 }
@@ -1747,7 +1747,7 @@ function renderRec(){
   if(S.rtab==='rank'){
     const k=S.rred||'0',rk=(RANK?.[k]||[]).filter(t=>t.team.reduce((a,n)=>a+costOf(n),0)<=S.cmax&&t.team.reduce((a,n)=>a+costOf(n),0)>=S.cmin);
     const sw=el('div',{class:'fl',style:'margin-bottom:8px'},...[['0','0 紅（資源最省）'],['5','5 紅（滿紅）']].map(([v,t])=>{const b=el('button',{class:'chip',type:'button','aria-pressed':String(k===v)},t);b.onclick=()=>{S.rred=v;save();renderRec()};return b}),
-      el('span',{class:'note'},'循環賽平均勝率（隊伍互打，Lv50、戰法滿級；tools/team-rank.mjs）。可設為上方④的對手。'));
+      el('span',{class:'note'},'隊伍互打的平均勝率（Lv50、戰法 Lv10、兵學全開、特性與大將技都計入，和 AI 配隊同一套建隊；兵種依特性）。同勢力、三勢力（合盟）、兩勢力混搭分開取樣、公平比勝率，每個 Cost 各列 8 隊。可設為上方④的對手。'));
     L.replaceChildren(sw,...(rk.length?rk.slice(0,10).map((t,i)=>rankCard(t,i,k)):empty('這個 Cost 範圍沒有對戰榜資料')));return;
   }
   L.replaceChildren(el('p',{class:'note'},note+(S.lv<4?'（Lv3 沒有推薦資料）':'')),...(list.length?list.map(card):empty('這個範圍內沒有資料')));

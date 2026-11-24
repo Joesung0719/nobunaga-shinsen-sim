@@ -1,4 +1,5 @@
 // Joe 2026-11-23 對 A~D 四隊的更正，當成回測答案。用法：node tools/joe-fix-eval.mjs
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
@@ -6,7 +7,7 @@ import {fullRedStats,innateOf} from '../slg/engine.js';
 import {adviseBingaku,advisePoints} from '../slg/advisor.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const OFF=J('official.json'),kit=makeKit(D,{power:J('skillpower.json'),field:J('field.json'),official:OFF});
-const FULL={co:10,arm:5,ka:3,same:true};
+const FULL=FAC_FULL;
 const run=(names,arm)=>{const st=names.map(n=>({n,red:0,st:fullRedStats(D,n,names,arm,50,0,FULL)}));const pl=kit.pick(st,null,{},{arm});return{st,pl,names,arm}};
 const heal=s=>kit.tierOf(s).heal, sup=s=>{const o=kit.tierOf(s),q=kit.ps(s);return o.support&&(o.heal||o.tier==='cut'||q.status)};
 const res=[];const ok=(name,c,info='')=>{res.push(c);console.log((c?'✓ ':'✗ ')+name+(info?`  （${info}）`:''))};

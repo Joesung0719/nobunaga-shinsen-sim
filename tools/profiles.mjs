@@ -1,6 +1,7 @@
 // 武將檔案：對每位金將（5★）建立檔案（能力、特性、固有戰法與代價、兵種、可傳承戰法、兵學樹），
 // 再由檔案「單人」推導第 2、3 戰法與兵學方向，附理由；並拿官方編制（玩家配法）回測吻合率、列出判斷不了的資料缺口。
 // 用法：node tools/profiles.mjs   → profiles.json、audit/profiles-backtest.md
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
@@ -10,7 +11,7 @@ import {hasTree} from '../slg/bingaku.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const OFF=J('official.json'),POWER=J('skillpower.json'),FIELD=J('field.json');
 const kit=makeKit(D,{power:POWER,field:FIELD,official:OFF.map(t=>({...t,gens:[]}))});   // 規則版：不看官方先驗（官方只用來回測）
-const FULL={co:10,arm:5,ka:3,same:true},A={足輕:'槍',弓兵:'弓',騎兵:'騎',鐵炮:'鐵炮'};
+const FULL=FAC_FULL,A={足輕:'槍',弓兵:'弓',騎兵:'騎',鐵炮:'鐵炮'};
 const ARMN={槍:'足輕',弓:'弓兵',騎:'騎兵',鐵炮:'鐵炮',器械:'器械'};
 const ps=s=>kit.ps(s),gaps={};
 const gap=(k,who)=>{(gaps[k]??=new Set()).add(who)};

@@ -8,6 +8,7 @@ import {makeKit} from '../slg/teamlib.js';
 import {battle,statsAt} from '../slg/engine.js';
 import {adviseBingaku} from '../slg/advisor.js';
 import {compile as bgCompile} from '../slg/bingaku.js';
+import {chooseArm,FAC_FULL} from '../slg/rules.js';
 const {D,CARDS}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const POWER=J('skillpower.json'),FIELD=J('field.json'),EX=J('generals_extra.json');
 const TAGS=Object.fromEntries(Object.entries(EX).map(([k,v])=>[k,v.tags||[]]));
@@ -15,7 +16,7 @@ const CARD=new Map(CARDS.map(c=>[c.n,c]));
 const RATE={5:0.0016,4:0.009,3:0.0344};
 const pulls=n=>1/(CARD.get(n)?.s1/100||RATE[L.rarityOf(n)]||RATE[5]);
 const kit=makeKit(D,{power:POWER,tags:TAGS,pulls,field:FIELD,official:J('official.json')});
-const CMIN=15,CMAX=20,FAC={co:10,arm:5,ka:3,same:true},TROOPS=10000,LV=50,LANDS=[4,5,6,7,8,9,10];
+const CMIN=15,CMAX=20,FAC=FAC_FULL,TROOPS=10000,LV=50,LANDS=[4,5,6,7,8,9,10];
 const R=L.rng(20261120),t0=Date.now(),log=m=>console.error(`[${((Date.now()-t0)/1000).toFixed(0)}s] ${m}`);
 // Joe 2026-11-21：第六季，玩家已有大部分武將、差在紅度，沒人用紫將 → 戰法滿級（Lv10）、兵學不計；只推金將（5★），不算抽數／取得成本
 const GEN=Object.keys(D.stats).filter(n=>D.stats[n].season!=='限定'&&L.rarityOf(n)===5),cost=L.costOf;
@@ -24,7 +25,7 @@ const mrg=(my,foe)=>{const A=L.clone(my),B=L.clone(foe);const r=battle(A,B,R);re
 const FOE8=L.garrisonsAt(8).map(k=>L.garrison(k,8)),FOE9=L.garrisonsAt(9).map(k=>L.garrison(k,9));
 // 原始屬性代理分（Lv50）：先篩掉明顯弱的組合
 const raw={};for(const n of GEN){const s=statsAt(D,n,LV,L.rarityOf(n));raw[n]=Math.max(s.武勇,s.智略)+s.統率*.7+s.速度*.5}
-const defArm=names=>[...L.armsWithSynergy(names)][0]||'騎';
+const defArm=names=>chooseArm(D,names).arms[0];
 // 兵學全開（Joe 2026-11-23：劇本裡能打玩家的都是 45 級以上、兵學一定全開）：每位用 adviseBingaku 選最適合的方向／奇／正節點，再 compile 成戰鬥數值
 const mkTeam=(names,arm,sk,slv=null,red=0,bg=false)=>{const st=L.teamStats(names,arm,LV,red,FAC),team=L.myTeam(names,arm,st,sk,TROOPS,slv,red);
   if(bg){const ctx={names,skillsOf:Object.fromEntries(names.map((n,i)=>[n,sk[i]]))};
@@ -57,7 +58,7 @@ for(const x of uniq.values()){
   let best=null;
   // 大將由規則決定（大將技 > Cost > 指揮型 > 政務，見 teamlib leaderFirst），不再靠 4 次隨機模擬挑——那樣大將位幾乎是雜訊，Cost6 常被排到大將
   { const names=kit.leaderFirst(x.names);
-    for(const arm of ARMS){
+    for(const arm of chooseArm(D,names).arms){   // 兵種只在特性允許的範圍內選（slg/rules.js）
       const pl=plan(names,arm);if(!pl.q.ok){rej++;continue}   // 搭配不合格的直接不入榜
       const{team}=mkTeam(names,arm,pl.sel);let a=0;
       for(let q=0;q<4;q++)a+=mrg(team,FOE8[q%FOE8.length]);

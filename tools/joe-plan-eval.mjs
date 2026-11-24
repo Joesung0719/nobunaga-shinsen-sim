@@ -1,10 +1,11 @@
 // Joe 四隊的「配點主屬性／兵學方向」回測：用 Joe 實際戰法當輸入，看引擎（advisePoints／adviseBingaku）推導是否與 Joe 一致。
+import {FAC_FULL} from '../slg/rules.js';
 import * as L from './recommend-lib.mjs';
 import {fullRedStats} from '../slg/engine.js';
 import {adviseBingaku,advisePoints} from '../slg/advisor.js';
 import {JOE,kit} from './joe-teams.mjs';
 import {planPoints,planBingaku} from '../slg/playbook.js';
-const {D}=L,FULL={co:10,arm:5,ka:3,same:true};
+const {D}=L,FULL=FAC_FULL;
 // 配點主屬性（Joe 截圖）；兵學方向（Joe 口述＋卡面色；政宗為推定）
 export const TRUTH={
  明智光秀:{pt:['智略'],bg:'機略',qi:'詭計百出'},阿松:{pt:['智略'],bg:'臨戰',qi:'掎手之策'},堀直政:{pt:['智略'],bg:'臨戰',qi:'鼓舞奮迅'},

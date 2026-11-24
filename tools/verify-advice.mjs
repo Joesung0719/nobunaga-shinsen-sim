@@ -1,12 +1,13 @@
 // 推薦自我驗證：拿戰報裡出現過的贏隊（以及幾組常見搭配），比較「推薦戰法」與「亂配（每人兩個隨機主動）」對 Lv8／Lv9 守軍的勝率，
 // 並檢查：自帶突擊的武將有沒有搭突擊／普攻類、兵種技與隊伍兵種是否相符、整隊主動戰法數。用法：node tools/verify-advice.mjs
+import {FAC_FULL} from '../slg/rules.js';
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
 import {makeKit} from '../slg/teamlib.js';
 import {battle,bestArm} from '../slg/engine.js';
 const {D}=L,J=f=>JSON.parse(fs.readFileSync(new URL('../'+f,import.meta.url)));
 const kit=makeKit(D,{power:J('skillpower.json'),field:J('field.json')});
-const R=L.rng(20261121),FAC={co:10,arm:5,ka:3,same:true},TROOPS=10000;
+const R=L.rng(20261121),FAC=FAC_FULL,TROOPS=10000;
 const sumT=t=>t.gens.reduce((a,g)=>a+Math.max(0,g.troops),0),sumM=t=>t.gens.reduce((a,g)=>a+g.max,0);
 const FOES=[8,9].flatMap(lv=>L.garrisonsAt(lv).map(k=>L.garrison(k,lv)));
 function winrate(names,arm,sk,reps=3){const st=L.teamStats(names,arm,50,5,FAC),my=L.myTeam(names,arm,st,sk,TROOPS);let w=0,n=0,left=0;
