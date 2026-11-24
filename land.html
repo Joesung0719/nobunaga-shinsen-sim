@@ -465,7 +465,7 @@ input[type=range]{accent-color:var(--gold)}
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
 import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=52';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
-import {makeKit} from './slg/teamlib.js?v=7';
+import {makeKit} from './slg/teamlib.js?v=8';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=2';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
@@ -1364,6 +1364,8 @@ function renderAdvice(){
   const sel=my.gens.map(m=>m.s.filter(Boolean)),why=WHY[S.ti]||[];
   const checks=KIT.check(stt,sel,my.arm);
   const head=el('h3',{},`玩家建議：第 ${S.ti+1} 隊（${my.arm}兵）每位武將怎麼配`);
+  const bossFix=(()=>{const b=my.gens.find(m=>KIT.BOSS.has(m.n));if(!b||KIT.BOSS.has(my.gens[0].n))return null;
+    return Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto;margin:4px 0'},`讓 ${b.n} 當大將（用上他的大將技）`),{onclick:()=>{my.gens.splice(my.gens.indexOf(b),1);my.gens.unshift(b);save();renderAll()}})})();
   const ar=armReason(D,my.arm,names),aSk=KIT.POOL.filter(s=>KIT.ps(s).kind==='兵種'&&KIT.ps(s).arm===my.arm);
   const top=el('div',{class:'ac'},el('b',{class:'nm'},`兵種：${my.arm}兵`),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
     aSk.length?el('div',{},`可搭兵種技（開場直接生效、整隊吃到）：${aSk.map(x=>KIT.ps(x).text?`${x}`:x).join('、')}；目前${my.gens.some(m=>m.s.some(x=>aSk.includes(x)))?'已裝上':'沒裝，若有可考慮換掉最弱的戰法'}`):null,
@@ -1380,7 +1382,7 @@ function renderAdvice(){
         el('dt',{},'配點'),el('dd',{},`${Object.entries(m.pts||{}).filter(([,v])=>v).map(([k,v])=>k+' +'+v).join('、')||'尚未配點'}（共 ${ptsPool(m)} 點）`,el('small',{},pt.why)),
         el('dt',{},'兵種'),el('dd',{},`${my.arm}兵`,el('small',{},ar||''))));
   });
-  box.replaceChildren(head,top,...cards,el('div',{class:'row'},Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto'},'照建議重配兵學與配點（覆蓋目前的）'),{onclick:()=>{autofill(S.ti,false);my.gens.forEach((m,i)=>{const b=adviseBingaku(KIT,D,m.n,ROSTER.get(m.n)?.r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st,teamCtx(my));if(b)m.bg=b.sel;m.pts=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills:[innateOf(m.n),...m.s].filter(Boolean),team:teamCtx(my)}).pts;clampPts(m)});save();renderBuilder()}})));
+  box.replaceChildren(head,...(bossFix?[bossFix]:[]),top,...cards,el('div',{class:'row'},Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto'},'照建議重配兵學與配點（覆蓋目前的）'),{onclick:()=>{autofill(S.ti,false);my.gens.forEach((m,i)=>{const b=adviseBingaku(KIT,D,m.n,ROSTER.get(m.n)?.r,[innateOf(m.n),...m.s].filter(Boolean),stt[i].st,teamCtx(my));if(b)m.bg=b.sel;m.pts=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills:[innateOf(m.n),...m.s].filter(Boolean),team:teamCtx(my)}).pts;clampPts(m)});save();renderBuilder()}})));
 }
 function renderLvBar(){
   const box=$('lvDefault');box.replaceChildren(el('span',{class:'lbl'},'預設'));
@@ -1512,7 +1514,7 @@ $('sug').onclick=async()=>{
     const res=[];let k=0;
     for(const n of cands){
       if(spec.some(g=>g.n===n))continue;
-      const t=spec.map((g,j)=>j===i?{n,red:g.red,s:[]}:{...g,s:[]});
+      const t=KIT.leaderFirst(spec.map((g,j)=>j===i?n:g.n)).map(x=>{const g=spec.find(y=>y.n===x);return{n:x,red:g?g.red:spec[i].red,s:[]}});
       if(t.reduce((a,g)=>a+costOf(g.n),0)>cap)continue;
       res.push({n,sc:(await sim(t,N)).score,res:resourceOf({gens:t.map(g=>({n:g.n,red:g.red,s:[]}))})});
       if(++k%8===0){$('prog').textContent=`分析第 ${i+1} 位…（${k}）`;await pause()}
@@ -1521,7 +1523,7 @@ $('sug').onclick=async()=>{
     html+=`<div class="scrollx"><table><tr><th>換掉 ${spec[i].n}</th><th>勝率</th><th>變化</th><th>Cost</th><th></th></tr>${res.slice(0,5).map(x=>{const dl=x.sc-base;return`<tr><td>${x.n}</td><td>${pc(x.sc)}</td><td class="${dl>=0?'pos':'neg'}">${dl>=0?'+':''}${Math.round(dl*100)}%</td><td>${costOf(x.n)}</td><td><button class="pbtn ghost" data-i="${i}" data-n="${x.n}">換上</button></td></tr>`}).join('')}</table></div>`;
   }
   out.innerHTML=html+'<p class="note">每個候選只模擬少數場，差距在 ±15% 內視為相近。</p>';$('prog').textContent='';
-  out.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{const m=my.gens[+b.dataset.i];m.n=b.dataset.n;m.bg=null;m.sl={};m.s=['',''];m.pts={};trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})});
+  out.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{const m=my.gens[+b.dataset.i];m.n=b.dataset.n;m.bg=null;m.sl={};m.s=['',''];m.pts={};{const o=KIT.leaderFirst(my.gens.map(g=>g.n));my.gens.sort((a,c)=>o.indexOf(a.n)-o.indexOf(c.n))}trimStock();autofill(S.ti);trimStock();save();renderAll();$('team').scrollIntoView({behavior:'smooth'})});
 };
 
 // ================= ④-b AI 配隊 =================
@@ -1579,7 +1581,7 @@ async function aiSearch(locked,redv,say){
     say('試兵種與大將順序…');
     for(const e of best(top,6)){
       const vs=[];for(const a of AI_ARMS)if(a!==e.arm)vs.push(entry(e.names,a));
-      for(let r=1;r<3;r++){const ns=[...e.names.slice(r),...e.names.slice(0,r)];vs.push(entry(ns,e.arm,true))}
+      for(let r=1;r<3;r++){const ns=[...e.names.slice(r),...e.names.slice(0,r)];if(e.names.some(n=>KIT.BOSS.has(n))&&!KIT.BOSS.has(ns[0]))continue;vs.push(entry(ns,e.arm,true))}
       for(const v of vs)if(v.n===0)await run(v,12)
     }
     // 階段 4：入圍者重新打 150 場（不沿用前面的結果，避免挑選偏差）
@@ -1647,6 +1649,7 @@ function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣�
 }
 const fieldLine=f=>`戰報實戰：${f.each.map(n=>`${n}場`).join('／')}出場（${f.n<5?'樣本很少，只是估計':'樣本尚可'}）${f.pairs.length?'；同隊搭配 '+f.pairs.join('、'):'；戰報裡沒有這組搭配'}${f.trio?`；整隊 ${f.trio[0]} 場 ${Math.round(f.trio[1]/f.trio[0]*100)}% 勝率`:''}。`;
 function loadInto(ti,names,arm,skills){
+  const ord=KIT.leaderFirst(names);if(skills)skills=ord.map(n=>skills[names.indexOf(n)]);names=ord;   // 大將順序一律走共用規則（teamlib leaderFirst：大將技持有者優先）
   const old=S.teams[ti];S.teams[ti]=mkMy(names,arm,old?.fac||S.my.fac);
   if(skills)S.teams[ti].gens.forEach((m,i)=>{m.s=[...(skills[i]||[]),'',''].slice(0,2)});
   if(ti===S.ti)S.my=S.teams[ti];

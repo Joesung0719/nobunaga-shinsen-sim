@@ -96,14 +96,15 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   const FEAT={};const F=n=>FEAT[n]??=feat(n);
   // 大將位偏好（Joe 2026-11-21：大將通常只給有大將技的武將，但遊戲讓玩家自己配、模擬器不設限制，只當加分；大將技寫在武將自身（固有）戰法的說明裡，即 skillText[固有戰法].boss）。
   // 例外：官方編制裡實際擔任過大將的武將一律算（目前只有阿市的夢幻泡影沒收到大將技說明，疑似資料缺口）。
-  const LEAD=new Set([...Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss),...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);
+  const BOSS=new Set(Object.keys(D.stats).filter(n=>D.skillText?.[innateOf(D,n)]?.boss));   // 固有戰法真的有大將技說明的武將（Joe 2026-11-24：有大將技的人要優先當大將，不浪費大將技）
+  const LEAD=new Set([...BOSS,...official.map(t=>t.gens[0]?.n).filter(Boolean),'阿市']);   // 有資格當大將：大將技持有者＋官方編制擔任過大將者（阿市無大將技說明，只靠官方紀錄）
   // 大將位排序（Joe 2026-11-22：有大將技的武將都有資格當大將，Cost 7 不該自動壓過 Cost 6，只是不要把強力大將排成副將）。
   // 排序＝ 有大將技 > 「官方大將率」（貝氏收縮：官方當大將次數＋先驗 .3，權重 2 場；Cost 完全不參與）> 固有戰法指揮型 > 政務高。
   // 官方常當大將的人（前田利家、伊達晴宗、福島正則…不論 Cost）排前面；沒有官方紀錄的人先驗都一樣，再看固有戰法型態與政務。
   // 官方 148 隊留一法猜大將命中 135 隊（91%；舊的只看 Cost 為 117 隊）。只是排序偏好，手動組隊不受限。
   const OFLEAD={},OFAPP={};for(const t of official){t.gens.forEach((g,i)=>{OFAPP[g.n]=(OFAPP[g.n]||0)+1;if(i===0)OFLEAD[g.n]=(OFLEAD[g.n]||0)+1})}
   const leadRate=n=>((OFLEAD[n]||0)+2*.3)/((OFAPP[n]||0)+2);
-  const leadKey=n=>[LEAD.has(n)?1:0,(F(n).tank&&F(n).innK==='被動')?0:1,leadRate(n),D.stats[n].kind==='指'?1:0,D.stats[n].st?.政務?.[0]||0];
+  const leadKey=n=>[BOSS.has(n)?1:0,LEAD.has(n)?1:0,(F(n).tank&&F(n).innK==='被動')?0:1,leadRate(n),D.stats[n].kind==='指'?1:0,D.stats[n].st?.政務?.[0]||0];
   const leadCmp=(a,b)=>{const x=leadKey(a),y=leadKey(b);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return y[i]-x[i];return 0};
   const leaderFirst=names=>[...names].sort(leadCmp);
   // 官方編制先驗：戰法人氣、武將×戰法搭配次數
@@ -347,7 +348,10 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
   // 組好之後的檢查：回傳 [{lv:'warn'|'ok', t}]，給畫面顯示「這組搭配有沒有問題」
   function check(team,sel,arm){
     const out=[],K=n=>kindOf(n),inn=team.map(g=>K(innateOf(D,g.n)));
-    if(LEAD.has(team[0].n))out.push({lv:'ok',t:`大將${team[0].n}有大將技（玩家通常讓有大將技的武將當大將；只是慣例，不是限制）`});
+    if(BOSS.has(team[0].n))out.push({lv:'ok',t:`大將${team[0].n}有大將技（玩家通常讓有大將技的武將當大將；只是慣例，不是限制）`});
+    else{const b=team.find(g=>BOSS.has(g.n));
+      if(b)out.push({lv:'warn',t:`${b.n}有大將技卻不是大將，大將技會浪費（大將是${team[0].n}${LEAD.has(team[0].n)?'，他在官方編制擔任過大將、但沒有收到大將技說明':''}）`});
+      else if(LEAD.has(team[0].n))out.push({lv:'ok',t:`大將${team[0].n}沒有大將技說明，但官方編制擔任過大將；隊上也沒有人有大將技`})}
     team.forEach((g,i)=>{
       const mine=sel[i].filter(Boolean),all=[innateOf(D,g.n),...mine].filter(Boolean);
       if(inn[i]==='突擊'||mine.some(x=>K(x)==='突擊')){
@@ -374,5 +378,5 @@ export function makeKit(D,{power={},tags={},pulls=()=>1000,field={},official=[]}
         if(/敵軍全體都處於持續性狀態/.test(x)){const dots=team.reduce((a,t)=>a+[innateOf(D,t.n),...(sel[team.indexOf(t)]||[])].filter(y=>y&&/持續受到傷害|火傷|水攻|中毒|潰走|消沉/.test(ps(y).text||'')).length,0);if(dots<2)out.push({lv:'warn',t:`${g.n}的固有補血要「敵軍全體都處於持續性狀態」才觸發，隊內持續傷害來源只有 ${dots} 個，建議搭明智光秀（方今之時、囊沙之計）這類`})}}}
     return out;
   }
-  return{facsOf,catOf,LEAD,leaderFirst,leadCmp,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
+  return{facsOf,catOf,LEAD,BOSS,leaderFirst,leadCmp,kindOf,feedsAtk,check,quality,tierOf,facType,FEMALE,ofGS,ofS,ps,SRC,INN,POOL,count,usable,pick,options,roleOf,srcPull,pw,fieldScore,TWO:POOL.filter(s=>count(s)>1),MULTI:POOL.filter(s=>count(s)>1).map(s=>[s,count(s)])};
 }
