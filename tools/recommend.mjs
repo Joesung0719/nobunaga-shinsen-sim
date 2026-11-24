@@ -1,6 +1,6 @@
 // 開荒隊伍推薦 v3：總 Cost 15～20 的所有三人組合 → 引擎模擬打各級土地守軍 → 輸出 recommend.json。
 // 戰法由 slg/teamlib.js 評估（武將特性、勢力／一門、發動機率、干擾、紅度＋戰報實戰紀錄），同隊戰法依「數量」不重複。
-// 假設（頁面也會寫出來）：武將 Lv50、0 紅（最省資源）、戰法滿級、設施 協力 Lv5／兵種營 Lv5、每人 10000 兵。
+// 假設（頁面也會寫出來）：武將 Lv50、0 紅（最省資源）、戰法滿級、設施 設施全滿（協力 Lv10、家門 Lv3、兵種營 Lv5）、每人 10000 兵。
 // 用法：node tools/recommend.mjs     （先跑過 tools/skill-power.mjs 與 tools/mine-reports.py）
 import fs from 'node:fs';
 import * as L from './recommend-lib.mjs';
@@ -93,7 +93,7 @@ const names=new Set(teams.flatMap(t=>[...t.n,...t.r[2]]));
 const info=n=>({r:L.rarityOf(n),c:cost(n),f:D.stats[n].f,season:D.stats[n].season,inn:L.innateOf(D,n),tags:TAGS[n]||[],pulls:Math.round(pulls(n)),st:Object.fromEntries(['武勇','智略','統率','速度'].map(k=>[k,Math.round(statsAt(D,n,LV,L.rarityOf(n))[k])]))});
 const gens=Object.fromEntries([...names].map(n=>[n,info(n)]));
 const assumptions={cost:[CMIN,CMAX],lands:LANDS,lv:LV,red:0,reds:[0,3,5],troops:TROOPS,fac:FAC,built:new Date().toISOString().slice(0,10),
-  note:'武將 Lv50、戰法滿級、兵學全開（每位依定位選方向與節點）、協力 Lv5／兵種營 Lv5、每人 10000 兵；勝率 = 對該級每一支守軍隊各打 8 次的平均（一隊打一支守軍，平局算沒贏；整級連打不補兵的成功率另存、僅供參考）；裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
+  note:'武將 Lv50、戰法滿級、兵學全開（每位依定位選方向與節點）、設施全滿（協力 Lv10、家門 Lv3、兵種營 Lv5）、每人 10000 兵；勝率 = 對該級每一支守軍隊各打 8 次的平均（一隊打一支守軍，平局算沒贏；整級連打不補兵的成功率另存、僅供參考）；裝備未計。只推金將（5★），假設已擁有大部分武將、差在紅度，不計抽數／取得成本；升級路線＝Cost 提高後用繼承券換將（最少更換 1 位／全面換血）。'};
 // ---- 升級路線：Cost 提高後用繼承券換將 ----
 // 最少更換＝只換一位（繼承券 1 張，其餘兩人沿用）；全面換血＝不顧資源，直接換成該 Cost 內最強的另一組。
 const sc=t=>(t.w[9][0]+t.w[10][0])/2;
