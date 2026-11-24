@@ -77,7 +77,7 @@ export function armReason(D,arm,names){
   const parts=[];
   for(const n of names)for(const t of D.stats?.[n]?.traits||[]){
     const x=D.traitText?.[n]?.[t]||'',m=x.match(/^部隊的(.+?)等級上升(\d)級/);
-    if(m&&m[1].split('、').includes(ARMW[arm]))parts.push(`${n}「${t}」+${m[2]}`);
+    if(m){if(m[1].split('、').includes(ARMW[arm]))parts.push(`${n}「${t}」+${m[2]}`);continue}   // 有說明文字就只算這一次（2026-11-24：阿市「炮術II」原本被說明文字和名稱各算一次）
     const m2=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
     if(m2&&[...m2[1]].some(c=>({馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'})[c]===arm))parts.push(`${n}「${t}」+${m2[2].length}`);
   }
