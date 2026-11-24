@@ -115,7 +115,7 @@ td.n,th.n{text-align:right}
 .advice{margin-top:14px;display:grid;gap:10px}.advice h3{margin:0;font-family:var(--display);font-size:1rem;color:var(--gold);letter-spacing:.06em}
 .advice .ac{border:1px solid var(--line);border-radius:6px;background:#171412;padding:10px 12px;font-size:.82rem;line-height:1.6}
 .advice .ac b.nm{color:var(--gold);font-size:.95rem}.advice .ac dl{margin:6px 0 0;display:grid;grid-template-columns:4.2em 1fr;gap:3px 10px}.advice dt{color:var(--muted)}.advice dd{margin:0}.advice dd small{display:block;color:var(--muted);font-size:.76rem}
-.advice .warn{color:#ff9a7a}.advice .okk{color:#8fd19e}.advice ul{margin:4px 0 0;padding-left:1.2em}
+.advice .warn{color:#ff9a7a}.advice .okk{color:#8fd19e}.advice .note{color:#c9c2b0}.advice ul{margin:4px 0 0;padding-left:1.2em}
 .empty{padding:22px;text-align:center;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 /* team builder: picture-first cards; every choice opens a picker instead of a dropdown */
@@ -463,11 +463,12 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=52';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=53';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
-import {makeKit} from './slg/teamlib.js?v=8';
-import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=3';
-import {makeAI,aiSearch as aiSearchCore,makePool,allowedArms,armTraits} from './slg/aisearch.js?v=1';
+import {makeKit} from './slg/teamlib.js?v=9';
+import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=1';
+import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=4';
+import {makeAI,aiSearch as aiSearchCore,makePool,allowedArms,armTraits} from './slg/aisearch.js?v=2';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
 const artSrc=i=>typeof i==='number'?`img/c${String(i).padStart(3,'0')}.webp`:`img/${i}.webp?v=s3b`;
 const LV=Object.keys(D.levels).map(Number).sort((a,b)=>a-b);
@@ -1007,39 +1008,23 @@ function clampPts(m){   // drop points from the last stats first when the pool s
   for(const k of [...ST4].reverse()){if(over<=0)break;const d=Math.min(over,m.pts[k]||0);m.pts[k]-=d;over-=d}
 }
 // facility all-stat bonuses (Joe's 設施 screenshots): 協力 Lv1–10, 家門 Lv1–3, 兵種營 Lv1–5
-const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
 const ARMS=[['騎','騎兵'],['弓','弓兵'],['槍','足輕'],['鐵炮','鐵炮'],['器械','器械']];
 const ARM_CAMP={槍:'足輕營',騎:'騎兵營',弓:'弓兵營',鐵炮:'鐵炮營',器械:'器械營'};
 const ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'};
 const FACTIONS=['織田','豐臣','德川','武田','上杉','群雄'];
 const RED_AT=[0,1,3,5];   // 紅度 (階) needed for trait slots 1–4
-const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'};
-const STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
-const NUM={I:1,II:2,III:3};
-function traitFx(t,n){   // effects we can read from the trait text (when collected) or the trait name
-  const txt=D.traitText?.[n]?.[t];
-  let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
-  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),c=txt.match(/等級上限增加(\d)級/);
-    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],+m[2]])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],+c[1]])):null}}
-  m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);
-  if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],NUM[m[2]]]))};
-  m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);
-  if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][NUM[m[2]]-1]};   // I 2%, II 2.5%, III 3% (screenshots)
-  return{};
-}
+const traitFx=(t,n)=>traitFxR(D,n,t);   // 特性數值：slg/rules.js（引擎同一份）
 const traitsOf=n=>D.stats?.[n]?.traits||[];
 const activeTraits=m=>traitsOf(m.n).filter((_,i)=>(m.red||0)>=RED_AT[i]);
-const ARM_CAP=10;   // 兵種 level cap; each active 「X兵大將」 trait for that 兵種 raises it (Joe, 2026-10-30)
-function armLevel(){
-  const f=S.my.fac;let t=0,cap=ARM_CAP;
-  for(const m of S.my.gens)for(const tr of activeTraits(m)){const x=traitFx(tr,m.n);t+=x.arm?.[S.my.arm]||0;cap+=x.cap?.[S.my.arm]||0}
-  return{lv:Math.min(cap,f.arm+t),raw:f.arm+t,cap,camp:f.arm,tr:t};
+function armLevel(){   // 兵種等級：slg/rules.js armLevel（引擎同一份，每個特性只算一次）
+  const f=S.my.fac,r=armLevelR(D,S.my.gens.map(m=>m.n),S.my.arm,Object.fromEntries(S.my.gens.map(m=>[m.n,m.red||0])),f.arm);
+  return{lv:r.lv,raw:r.raw,cap:r.cap,camp:r.camp,tr:r.tr};
 }
 function ownPct(m){const o={};for(const tr of activeTraits(m)){const x=traitFx(tr,m.n);if(x.stat)o[x.stat]=(o[x.stat]||0)+x.pct}return o}
 function teamBonus(){
   const f=S.my.fac,parts=[];
-  const facs=S.my.gens.map(m=>D.stats?.[m.n]?.f);
-  if(f.co&&facs[0]&&FACTIONS.includes(facs[0])&&facs.every(x=>x===facs[0]))parts.push([`協力-${facs[0]}`,CO_PCT[f.co]]);
+  const names=S.my.gens.map(m=>m.n),facs=facsOfR(D,names),cp=coopPct(D,names,f.co);   // 實際勢力（含老獪／老狐狸）
+  if(cp)parts.push([`協力-${facs[0]}`,cp]);
   if(f.same&&f.ka)parts.push(['協力-家門',f.ka]);
   const al=armLevel();if(al.lv)parts.push([`${S.my.arm}兵 Lv${al.lv}`,al.lv*2]);
   return{pct:parts.reduce((a,p)=>a+p[1],0),parts};
@@ -1133,7 +1118,7 @@ function showSkill(n,role){
   openPicker(n,({q,body})=>{
     q.hidden=true;
     body.append(skillRow(n,true),el('div',{class:'tip',style:'margin-top:8px'},
-      el('span',{class:'kicker'},role),t?t.text:'效果說明尚未收集',t?.boss?el('div',{class:'boss'},`大將技：${t.boss}`):null,t?.ev?el('div',{class:'boss'},`事件「${t.ev}」取得`):null));
+      el('span',{class:'kicker'},role),t?t.text:'效果說明尚未收集',bossText(D,n)?el('div',{class:'boss'},`大將技：${bossText(D,n)}`):null,t?.ev?el('div',{class:'boss'},`事件「${t.ev}」取得`):null));
   });
 }
 
@@ -1367,10 +1352,10 @@ function renderAdvice(){
   const head=el('h3',{},`玩家建議：第 ${S.ti+1} 隊（${my.arm}兵）每位武將怎麼配`);
   const bossFix=(()=>{const b=my.gens.find(m=>KIT.BOSS.has(m.n));if(!b||KIT.BOSS.has(my.gens[0].n))return null;
     return Object.assign(el('button',{class:'sbtn',type:'button',style:'width:auto;margin:4px 0'},`讓 ${b.n} 當大將（用上他的大將技）`),{onclick:()=>{my.gens.splice(my.gens.indexOf(b),1);my.gens.unshift(b);save();renderAll()}})})();
-  const ar=armReason(D,my.arm,names),aSk=KIT.POOL.filter(s=>KIT.ps(s).kind==='兵種'&&KIT.ps(s).arm===my.arm);
+  const ar=armReason(D,my.arm,names,Object.fromEntries(my.gens.map(m=>[m.n,m.red||0]))),aSk=KIT.POOL.filter(s=>KIT.ps(s).kind==='兵種'&&KIT.ps(s).arm===my.arm);
   const top=el('div',{class:'ac'},el('b',{class:'nm'},`兵種：${my.arm}兵`),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
     aSk.length?el('div',{},`可搭兵種技（開場直接生效、整隊吃到）：${aSk.map(x=>KIT.ps(x).text?`${x}`:x).join('、')}；目前${my.gens.some(m=>m.s.some(x=>aSk.includes(x)))?'已裝上':'沒裝，若有可考慮換掉最弱的戰法'}`):null,
-    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null);
+    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':c.lv==='note'?'note':'okk'},(c.lv==='warn'?'⚠ ':c.lv==='note'?'ⓘ ':'✓ ')+c.t))):null);
   const cards=my.gens.map((m,i)=>{
     const r=ROSTER.get(m.n)?.r,skills=[innateOf(m.n),...m.s].filter(Boolean),b=adviseBingaku(KIT,D,m.n,r,skills,stt[i].st,teamCtx(my)),pt=advisePoints(stt[i].st,ptsPool(m),{kit:KIT,D,n:m.n,skills,team:teamCtx(my)});
     const mine=m.bg&&b&&JSON.stringify(m.bg)!==JSON.stringify(b.sel);
@@ -1552,7 +1537,7 @@ async function aiSearch(locked,redv,say){
   const popular={};const bump=n=>{popular[n]=(popular[n]||0)+1};
   for(const t of OFFICIAL||[])for(const g of t.gens||[])bump(g.n);for(const k of['0','5'])for(const t of RANK?.[k]||[])t.team.forEach(bump);for(const t of RT?.teams||[])t.n.forEach(bump);
   const local=makeAI(D,KIT,{rOf,fac,banditSk:BANDIT_SK});
-  const wp=makePool(new URL('./slg/aiworker.js?v=1',location.href),{target,red:redv,fac,rmap,banditSk:BANDIT_SK,levels:{[BANDIT]:D.levels[BANDIT]}},{fallback:j=>local.evalJob(j,target,redv)});
+  const wp=makePool(new URL('./slg/aiworker.js?v=2',location.href),{target,red:redv,fac,rmap,banditSk:BANDIT_SK,levels:{[BANDIT]:D.levels[BANDIT]}},{fallback:j=>local.evalJob(j,target,redv)});
   try{
     const budget=Math.max(1500,Math.min(3600,wp.n*550));
     const r=await aiSearchCore({D,KIT,pool,locked,cap,costOf,run:wp.run,say,popular,budget});
@@ -1579,7 +1564,7 @@ function adviceCard(names,redv,arm,locked){   // 推薦理由：為什麼是這�
   });
   const aa=allowedArms(D,names);
   return el('div',{},el('div',{class:'ac'},el('b',{class:'nm'},`隊伍整體：${arm}兵`),el('div',{},`兵種怎麼定：${aa.why}`),el('div',{},ftTxt),el('div',{},ar||'沒有武將的特性提供這個兵種等級，只吃兵種營'),
-    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':'okk'},(c.lv==='warn'?'⚠ ':'✓ ')+c.t))):null),...cards);
+    checks.length?el('ul',{},...checks.map(c=>el('li',{class:c.lv==='warn'?'warn':c.lv==='note'?'note':'okk'},(c.lv==='warn'?'⚠ ':c.lv==='note'?'ⓘ ':'✓ ')+c.t))):null),...cards);
 }
 async function aiRun(){
   const out=$('aiOut'),lockMode=AI.lock.some(Boolean),locked=AI.lock.filter(Boolean);
@@ -1671,7 +1656,7 @@ function rankCard(t,i,k){
     el('div',{class:'acts'},go,opp));
 }
 // ---- 官方編制（一鍵推薦的底）：官方大名錄編制原樣，戰法照官方原配；只有指定「官方編制裡沒有的武將」時才做最小替換（換 1 位，其餘照原樣）----
-const FULLFAC={co:10,arm:5,ka:3,same:false};   // 家門預設不勾（Joe 2026-11-24）
+const FULLFAC=FAC_FULL;   // 設施全滿、家門預設不勾（slg/rules.js）
 function ofCard(r,i){
   const go=el('button',{class:'pbtn ghost',type:'button'},`載入到第 ${S.ti+1} 隊`);
   go.onclick=()=>{loadInto(S.ti,r.names,r.arm,r.names.map(n=>r.skills[n]||[]));save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};

@@ -1,6 +1,6 @@
 // AI 配隊的平行運算 Worker：載入資料、建隊、打模擬。由 slg/aisearch.js 的 makePool 驅動。
-import {makeKit} from './teamlib.js?v=8';
-import {makeAI} from './aisearch.js?v=1';
+import {makeKit} from './teamlib.js?v=9';
+import {makeAI} from './aisearch.js?v=2';
 let AI=null,T=null,RED=5,ready=null;
 const J=f=>fetch(new URL('../'+f,import.meta.url),{cache:'no-cache'}).then(r=>r.json()).catch(()=>null);
 self.onmessage=async ev=>{

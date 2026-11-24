@@ -31,6 +31,10 @@ for(const s of new Set([...INN,...Object.values(D.teach||{})])){const t=D.skillT
   if(p.modeled!=='text')W(`${who}戰法引擎沒有模擬`,s);else if(p.partial)W(`${who}戰法只模擬一部分`,s)}
 for(const[t,x]of Object.entries(TRAIT_TODO(D)))W('特性引擎沒有模擬',`${t}：${x.slice(0,30)}`);
 for(const[k,t]of Object.entries(D.teams||{}))for(const g of t)for(const s of g.s||[]){if(!D.skillText[s])W('守軍戰法沒有說明（引擎用推估值）',`${k} ${g.n}：${s}`);else if(parseSkill(s,D).modeled!=='text')W('守軍戰法引擎沒有模擬',`${k} ${g.n}：${s}`)}
+// 規則只能有一份（slg/rules.js）：其他檔案不能再自己解析兵種特性、勢力變化、女性名單、協力表
+{const files=['slg/engine.js','slg/teamlib.js','slg/advisor.js','slg/aisearch.js','slg/game.js','land.html','generals.html','tools/recommend-lib.mjs'];
+  const pats=[[/部隊的\(\.\+\?\)等級上升/,'兵種特性解析'],[/勢力將與大將保持一致/,'老獪判定'],[/轉變為其勢力/,'老狐狸判定'],[/new Set\(\['阿市','寧寧'/,'女性名單'],[/\[0,0\.5,1,1\.5,2,2\.5,3,4,5,6,7\]/,'協力表']];
+  for(const f of files){const x=fs.readFileSync(new URL('../'+f,import.meta.url),'utf8');for(const[re,nm]of pats)if(re.test(x))E('規則重複（只能寫在 slg/rules.js）',`${f}：${nm}`)}}
 fs.writeFileSync(new URL('./audit-result.json',import.meta.url),JSON.stringify({err,warn},null,1));
 const nE=Object.values(err).reduce((a,v)=>a+v.length,0);
 console.log(`錯誤 ${nE} 筆`);for(const[k,v]of Object.entries(err))console.log(`  ✗ ${k}：${v.length}（${v.slice(0,5).join('、')}${v.length>5?'…':''}）`);

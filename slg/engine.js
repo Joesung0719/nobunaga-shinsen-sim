@@ -2,6 +2,8 @@
 // 官方公式沒有公開，這裡的傷害公式、相剋倍率、地形加成都是推估值（集中在 K 裡，方便之後用戰報對照調整）。
 // 戰法效果從 land.json 的 skillText 說明文字讀出（發動率、傷害率、目標數、治療率、控制狀態、自身屬性加點），
 // 沒有說明文字的戰法依類型與等級給通用值，並標成「推估」。
+import {traitFx,traitsAtRed,armLevel,bestArm,coopPct,CO_PCT,FAC6,facRule,effFacs} from './rules.js?v=1';
+export {traitsAtRed,bestArm,CO_PCT};
 
 export const K={
   rounds:8,
@@ -299,7 +301,7 @@ export function battle(A,B,R=Math.random){
   }});
   // 合盟之陣：三人勢力各不相同、大將自帶戰法（skills[0]）是主動或突擊才生效
   for(const t of T)t.gens.forEach(g=>{for(const sk of g.skills)if(sk.alliance){
-    const fs=t.gens.map(x=>x.f),bk=t.gens[0].skills[0]?.kind;
+    const fs=effFacs(t.gens.map(x=>({f:x.f,rule:x.tc?.facRule}))),bk=t.gens[0].skills[0]?.kind;   // 實際勢力（rules.js）
     if(fs.every(Boolean)&&new Set(fs).size===fs.length&&(bk==='主動'||bk==='突擊')){
       t.gens[0].tm.push({k:bk==='主動'?'rateAct':'rushRate',v:sk.alliance.boss,until:99});
       for(const m of t.gens.slice(1)){m.tm.push({k:'dmg',v:sk.alliance.sub,until:99});m.tm.push({k:'taken',v:sk.alliance.sub,until:99})}
@@ -728,41 +730,21 @@ export function statsAt(D,n,lv,r=4){
 // 滿紅（5 紅）的武將數值，劇本用：Lv50、4 個特性全部解鎖、自由點數 = 每 10 級 10 點（立身出世類特性另加）+ 紅度 5×10，全加在武勇／智略較高的一項；
 // 再乘上 兵種營 Lv5 與隊中已解鎖兵種特性（馬術、弓術…、X兵大將）提供的兵種等級（每級全屬性 +2%，上限 10＋大將數）、特性自身的屬性 %、我軍全體屬性 %。
 // 規則同 land.html 的組隊頁；沒有收錄的特性文字就只讀特性名稱。gens 是同隊武將名單。
-const ARM_CH={馬:'騎',弓:'弓',槍:'槍',炮:'鐵炮',器:'器械'},ARM_WORD={騎兵:'騎',弓兵:'弓',足輕:'槍',鐵炮:'鐵炮',器械:'器械'},STAT_TR={武威:'武勇',智慧:'智略',領兵:'統率',靈巧:'速度'};
-function traitFx(D,n,t){
-  const txt=D.traitText?.[n]?.[t];let m=txt&&txt.match(/^部隊的(.+?)等級上升(\d)級/);
-  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),c=txt.match(/等級上限增加(\d)級/);
-    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],+m[2]])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],+c[1]])):null}}
-  m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],m[2].length]))};
-  m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][m[2].length-1]};
-  m=(txt||'').match(/^我軍全體(武勇|智略|統率|速度)提高([\d.]+)%$/);if(m)return{team:m[1],tpct:+m[2]};
-  return{};
-}
-// 隊伍滿紅時自帶的兵種：把隊中每位武將 4 個特性裡的兵種加成（X術N、X兵大將）加總，最高的兵種為主；同分看大將自己，再依 騎→槍→弓→鐵炮→器械。都沒有就回 null。
-export function bestArm(D,names){
-  const score=n=>{const o={};for(const t of D.stats?.[n]?.traits||[]){const a=traitFx(D,n,t).arm;for(const k in a||{})o[k]=(o[k]||0)+a[k]}return o};
-  const tot={},lead=score(names[0]);for(const n of names){const o=score(n);for(const k in o)tot[k]=(tot[k]||0)+o[k]}
-  const order=['騎','槍','弓','鐵炮','器械'];
-  return order.filter(k=>tot[k]).sort((a,b)=>tot[b]-tot[a]||(lead[b]||0)-(lead[a]||0)||order.indexOf(a)-order.indexOf(b))[0]||null;
-}
+// 特性數值、兵種加成、兵種選擇、勢力、協力都在 slg/rules.js（唯一來源）。
 // red：紅度 0–5（預設 5＝滿紅）。特性欄 2～4 在 1／3／5 紅解鎖；自由點數每紅 +10（滿紅 50）。
-export const traitsAtRed=(D,n,red=5)=>(D.stats?.[n]?.traits||[]).slice(0,red>=5?4:red>=3?3:red>=1?2:1);
 // red 也可以是 {武將名:紅度}，隊中每人紅度不同時用（沒列的算滿紅）。
 // 設施加成（Joe 的設施截圖）：協力-勢力 Lv1～10 = 0.5,1,1.5,2,2.5,3,4,5,6,7%（三人同勢力才生效）、協力-家門 每級 1%（同家門才生效，家門資料沒收，由玩家勾選）、兵種營 每級 +1 兵種等級（×2%）。
-export const CO_PCT=[0,0.5,1,1.5,2,2.5,3,4,5,6,7];
-const FAC6=['織田','豐臣','德川','武田','上杉','群雄'];
 // fac = {co, arm, ka, same}；不給就是舊行為（兵種營 Lv5、沒有協力與家門）
 export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const traits=traitsAtRed(D,n,rd(n));
-  let lvArm=fac?fac.arm:5,cap=10;const team={};
-  for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);lvArm+=x.arm?.[arm]||0;cap+=x.cap?.[arm]||0;if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
-  lvArm=Math.min(cap,lvArm);
+  const lvArm=armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};
+  for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
   const own={};let extra=0;
   for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}
   const st=statsAt(D,n,lv,D.stats?.[n]?.r),k=st.武勇>=st.智略?'武勇':'智略';
   st[k]+=Math.floor(lv/10)*(10+extra)+10*rd(n);
-  let fp=0;if(fac){const f0=D.stats?.[names[0]]?.f;if(fac.co&&FAC6.includes(f0)&&names.every(x=>D.stats?.[x]?.f===f0))fp+=CO_PCT[fac.co];if(fac.same&&fac.ka)fp+=fac.ka}
+  let fp=0;if(fac){fp+=coopPct(D,names,fac.co);if(fac.same&&fac.ka)fp+=fac.ka}   // 協力：實際勢力（含老獪／老狐狸）三人相同才生效
   return Object.fromEntries(ST4.map(x=>[x,Math.round(st[x]*(1+(lvArm*2+fp+(own[x]||0)+(team[x]||0))/100)*10)/10]));
 }
 
@@ -796,6 +778,7 @@ export function traitBattle(D,names,red=5){
   const eff=names.map(n=>traitsAtRed(D,n,rd(n)).map(t=>traitParse(D.traitText?.[n]?.[t]||'')).filter(Boolean));
   return names.map((n,i)=>{const tr={},tm=[],tc={};eff.forEach((l,j)=>l.forEach(e=>{if(j!==i&&!e.team)return;for(const k in e.tr||{})tr[k]=Math.round(((tr[k]||0)+e.tr[k])*100)/100;if(j===i)for(const x of e.tm||[])tm.push({...x})}));
     for(const t of traitsAtRed(D,n,rd(n)))Object.assign(tc,TC[t]||{});
+    {const fr=facRule(D,n);if(fr)tc.facRule=fr}   // 老獪／老狐狸：戰鬥裡判定合盟用實際勢力
     // 全隊型條件特性：隊友有就全隊生效
     names.forEach((m,j)=>{for(const t of traitsAtRed(D,m,rd(m))){if(t==='三河武士')tc.mikawa=1;if(t==='三矢家訓')tc.mitsuya=1;if(t==='四州稱雄')tc.shishu=6}});
     return{tr,tm,tc}});
