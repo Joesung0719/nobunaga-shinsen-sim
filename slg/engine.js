@@ -290,7 +290,7 @@ const INNFIX={
   野之虎:s=>{s.fx={open:{t:'atkS'}};s.rushN=true},                     // 普攻變謀略傷害；突擊打敵軍群體 2 人（普攻目標＋另一人）
   當機立斷:s=>{s.fx={rush:{t:'tanki'}}},                                // 先解除目標 2 個增益再打；50% 對重新選的敵軍單體再執行 1 次
   雨夜手拍子:s=>{s.fx={cast:{t:'amayo',v:hi(17.5,35),cd:1}}},           // 自身非自帶主動傷害 +35% 持續 2 回合；發動後冷卻 1 回合
-  能鷹隱爪:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'nouka',dmg:hi(71,142)/100,heal:hi(65,130)/100}}},   // 隨機 2-4 次，每次 50% 謀略傷害／50% 治療我軍單體（兩者機率各半是假設）
+  能鷹隱爪:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'nouka',dmg:hi(71,142)/100,heal:hi(65,130)/100}}},   // 隨機 2-4 次，每次 50% 謀略傷害／50% 治療我軍單體（兩者機率各半，Joe 2026-11-25 確認）
   孤注一擲:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'kochu',dmg:hi(80,160)/100,heal:hi(86,172)/100}}},   // 未連擊友軍各打 1 次（智武較高）；連擊中友軍治療（受統率影響）。「80%-160%」＝Lv1→滿級（Joe 2026-11-25 確認）
 };
 const PFIX=new Set(['三階菅笠','如水','疾風迅雷','肥前之熊','破竹之勢','比翼連理','月華鶴影','天神山殘照','鈴鳴','一念亂志','智者樂水','堅忍不拔','七十二欺計','一領具足']);
@@ -834,7 +834,7 @@ export function battle(A,B,R=Math.random){
       for(let mi=0;mi<t.gens.length;mi++){const m=t.gens[mi];if(m.troops<=0)continue;for(const s of m.skills){const o=s.fx?.open;if(o?.t!=='sasa')continue;
         const top=aliveIdx(t).filter(x=>x!==mi).sort((a,b)=>t.gens[b].b.武勇-t.gens[a].b.武勇)[0];if(g!==m&&i!==top)continue;
         const ix=ixs(m),bs=ix.base||(ix.base={});let h=null;
-        if(g.dmgIn-(bs[i]||0)>=g.max*.2){if(R()<o.p){h=healTo(t,i,m,o.heal,'武勇');bs[i]=g.dmgIn}}   // 假設：只有治療成功才重新累計
+        if(g.dmgIn-(bs[i]||0)>=g.max*.2){if(R()<o.p){h=healTo(t,i,m,o.heal,'武勇');bs[i]=g.dmgIn}}   // 治療成功後才重新累計（Joe 2026-11-25 確認）
         else if(R()<o.p){const al=aliveIdx(e);if(al.length)h=hit(t,ti,mi,e,al[Math.floor(R()*al.length)],o.dmg,'兵刃','指揮')}
         if(h){if(o.boss&&m.sb.filter(x=>x.sasa&&x.until>=round).length<2){m.b.武勇+=o.boss;m.sb.push({k:'武勇',v:o.boss,until:round,sasa:1})}evS(t,mi,s.name,s.kind,[h])}}}
       if(routed(e)){res=ti===0?'W':'L';break outer}
