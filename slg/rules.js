@@ -13,9 +13,9 @@ export const RED_AT=[0,1,3,5];   // 特性欄 1～4 在 0／1／3／5 紅解鎖
 // 一個特性的數值效果：兵種等級 arm{兵種:級}、等級上限 cap、自身屬性 % stat/pct、我軍全體屬性 % team/tpct。
 // 有說明文字就只看說明文字（同一個特性只算一次）；沒有說明才看特性名稱（X術I～III、武威I～III…）。
 export function traitFx(D,n,t){
-  const txt=D.traitText?.[n]?.[t]||'';let m=txt.match(/^部隊的(.+?)等級上升(\d)級/);
-  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),c=txt.match(/等級上限增加(\d)級/);
-    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],+m[2]])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],+c[1]])):null,big:!!c}}
+  const txt=D.traitText?.[n]?.[t]||'';let m=txt.match(/^部隊的?(.+?)等級(?:上升(\d)級|\+(\d))/);   // 舊寫法「部隊的騎兵等級上升3級」、新賽季預告「部隊騎兵等級+3，等級上限+1」
+  if(m){const ws=m[1].split('、').filter(w=>ARM_WORD[w]),lv=+(m[2]||m[3]),c=txt.match(/等級上限(?:增加(\d)級|\+(\d))/),cv=c&&+(c[1]||c[2]);
+    return{arm:Object.fromEntries(ws.map(w=>[ARM_WORD[w],lv])),cap:c?Object.fromEntries(ws.map(w=>[ARM_WORD[w],cv])):null,big:!!c}}
   if(!txt){m=t.match(/^([馬弓槍炮器]+)術(I{1,3})$/);if(m)return{arm:Object.fromEntries([...m[1]].map(c=>[ARM_CH[c],m[2].length]))}}
   m=t.match(/^(武威|智慧|領兵|靈巧)(I{1,3})$/);if(m)return{stat:STAT_TR[m[1]],pct:[2,2.5,3][m[2].length-1]};
   m=txt.match(/^我軍全體(武勇|智略|統率|速度)提高([\d.]+)%$/);if(m)return{team:m[1],tpct:+m[2]};
