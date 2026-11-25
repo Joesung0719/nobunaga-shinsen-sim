@@ -869,7 +869,7 @@ export function battle(A,B,R=Math.random){
         }
         if(t.arm==='鐵炮'&&(p=GP(g,'破空',4,12))!=null&&!g.bs.hakuu&&R()*100<p){g.bs.hakuu=1;const j=pickN(aliveIdx(e),1,R)[0];if(j!=null){const h=hit(t,ti,i,e,j,.5+.5*g.gc.破空,'謀略','eq');if(h)evS(t,i,'破空','裝備',[h])}}   // 破空：鐵炮隊每回合 4~12%，每場 1 次
         for(const[k,c]of[['繚亂','混亂'],['蜃氣樓','無策'],['斷刃','封擊']])if((p=GP(g,k,20,80))!=null&&round===(g.gc[k]>.5?5:4)&&e.gens[0].troops>0&&R()*100<p){const ok=!resist(e,0,c);if(ok)setFx(e,0,c,1,[ti,i]);evS(t,i,k,'裝備',[{side:e.side,i:0,status:ok?c:'抵抗了「'+c+'」'}])}   // 白鷺圖／孫子／李衛公問對：第 4~5 回合敵軍大將控制 1 回合
-        if((p=GP(g,'幻影',5,30))!=null&&round>=2&&round<=4){const al=aliveIdx(e),set=pickN(al,R()<.2+.3*g.gc.幻影?2:1,R);g.genei={round,set,v:p}}   // 幻影（維吉諾琴）：第 2~4 回合，選定敵將對自身傷害 −5~30%（魅力影響沒算）
+        if((p=GP(g,'幻影',5,30))!=null&&round>=2&&round<=4){const al=aliveIdx(e),set=pickN(al,R()<.2+.3*g.gc.幻影?2:1,R);g.genei={round,set,v:Math.min(60,p*(1+((g.chr??80)-80)/220))}}   // 幻影（維吉諾琴）：第 2~4 回合，選定敵將對自身傷害 −5~30%，受魅力影響（Joe 2026-11-26 確認；換算比照治療的「受屬性影響」(1+(魅力−80)/220)，Lv50 魅力由 land.html 帶入，沒帶時當 80）
         if((p=GP(g,'扶危',45,90))!=null)for(const j of aliveIdx(t)){const m=t.gens[j];if(!m.bs.fuki&&m.troops<m.max*p/100){m.bs.fuki=1;const hh=healTo(t,j,g,.1+.3*g.gc.扶危);if(hh)evS(t,i,'扶危（休整）','裝備',[hh])}}   // 扶危（司馬法）：友軍兵力首次低於 45~90% → 休整（近似為當下治療一次）
         if((p=GP(g,'底力',5,10))!=null&&!g.bs.sokoji&&g.troops<g.max*(.5+.2*g.gc.底力)){g.bs.sokoji=1;timed(g,'takenBlade',p,1+Math.round(2*g.gc.底力))}   // 底力（黑漆塗五枚胴）
         if((p=GP(g,'復甦',.4,.8))!=null&&g.troops<g.max*p&&(g.bs.fukkyu||0)<(g.gc.復甦>.5?2:1)){g.bs.fukkyu=(g.bs.fukkyu||0)+1;const hh=healTo(t,i,g,.3+.2*g.gc.復甦);if(hh)aux('復甦',t.side,i,hh,BG)}   // 復甦
