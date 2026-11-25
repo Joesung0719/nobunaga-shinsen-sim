@@ -10,7 +10,13 @@ export const K={
   // 2026-11-18 校正（第一版）：由 52 場詳細戰報、394 次普通攻擊擬合（35 場擬合、15 場回測）；
   // bootstrap 80% 區間 statDiv 240～340、base 4.0～4.4；中位絕對對數誤差 0.56 → 0.32。
   // 限制：資料未含兵學／標籤／評定眾／裝備（裝備為隨機打造無法還原）；戰法發動率與相剋倍率尚未校正，僅為第一版。
-  base:4.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
+  // 2026-11-25 第二版：107 場戰報（Mac 內建文字辨識）逐筆帶入戰報寫明的實際屬性、累計造成／受到傷害％、相剋、會心後擬合：
+  // 普攻 821 筆 → 5.1、戰法傷害 1236 筆 → 5.25、持續傷害 182 跳 → 5.2，三者一致，所以 base 由 4.2 改為 5.2。
+  // 舊值 4.2 是沒扣掉戰報裡的減傷／增傷時擬合的，等於把平均減傷算進 base；引擎自己會再算一次兵學、特性、裝備的增減傷，所以要用扣掉後的值。
+  base:5.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
+  healBase:4.4,      // 治療基數（259 筆治療擬合 ≈ 4.5，與舊值 4.2 接近，維持獨立，不跟著傷害 base 變）
+  // 個別戰法實測校正（戰報實際傷害 ÷ 引擎預測，樣本 ≥12 次且離散小）：說明文字的傷害率和實戰對不上，乘上這個倍率
+  skCal:{亂世戰華:1.41,比翼連理:1.25,勇猛無前:1.17,破陣亂舞:1.3,誘敵深入:1.34,矢石飛交:.8,荷馱崩:.73,疾風迅雷:.73,電光雷轟:.77,反討之計:.65},
   statDiv:280,       // 屬性差係數 = 1 + (攻方屬性 − 守方屬性) / statDiv，夾在 0.3～3
   counter:[1.10,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.10，被剋方 ×0.87（2026-11-25 由 107 場戰報 821 次普攻擬合，原本 1.15）
   // 士氣（戰報準備階段，107 場精確吻合）：士氣低於 100 時造成傷害 = 100% − (100 − 士氣) × 0.7%，100 以上一律 100%。用法：team.morale（預設 100）
@@ -273,7 +279,7 @@ const INNFIX={
 const PFIX=new Set(['如水','疾風迅雷','肥前之熊','破竹之勢','比翼連理','月華鶴影','天神山殘照','鈴鳴','一念亂志','智者樂水','堅忍不拔','七十二欺計','一領具足']);
 export function parseSkill(name,D,lv=null){
   curLv=lv;
-  try{const sk=parseSkill0(name,D);if(INNFIX[name]){INNFIX[name](sk);if(PFIX.has(name))delete sk.partial}return sk}finally{curLv=null}
+  try{const sk=parseSkill0(name,D);if(INNFIX[name]){INNFIX[name](sk);if(PFIX.has(name))delete sk.partial}const c=K.skCal[name];if(c&&sk.dmg){sk.dmg*=c;sk.cal=c}return sk}finally{curLv=null}
 }
 function parseSkill0(name,D){
   const t=D.skillText?.[name],kind=t?.kind||D.kind?.[name]||(t?'?':'主動'),g=t?.g||D.skills?.[name]||'B';
@@ -534,7 +540,7 @@ export function battle(A,B,R=Math.random){
     if(d.baba&&d.troops>0&&R()<d.baba.p){const hv=Math.round(Math.min(d.max-d.troops,healAmt(d,d.baba.rate)));if(hv>0)d.troops+=hv}   // 鬼美濃：受傷時機率恢復自身兵力
     return{side:dst.side,i:dt,v,left:d.troops,dtype,rout:d.troops<=0,crit};
   }
-  const healAmt=(g,rate)=>Math.sqrt(g.troops)*K.base*rate*(1+(g.b.智略-80)/220);
+  const healAmt=(g,rate)=>Math.sqrt(g.troops)*K.healBase*rate*(1+(g.b.智略-80)/220);
   function healTo(t,j,g,rate){
     const m=t.gens[j];if(!m||m.troops<=0)return null;
     const raw=healAmt(g,rate)*(1+M(g,'heal')/100)*(1+M(m,'healIn')/100),v=Math.round(Math.min(m.max-m.troops,raw));
@@ -560,11 +566,15 @@ export function battle(A,B,R=Math.random){
     }
   }
   function useSkill(t,ti,i,sk,o){
-    const g=t.gens[i],e=T[1-ti],tg=[],ctl=[];
+    const g=t.gens[i],e=T[1-ti],tg=[],ctl=[],allyTg=[];
     let tmpDmg=null;if(sk.kind==='主動'&&sk===g.skills[0]){const o=g.skills.find(x=>x.fx?.open?.t==='shutsu')?.fx.open;if(o){tmpDmg={k:'dmg',v:o.dmg,until:99};g.tm.push(tmpDmg)}}   // 出奇制勝：自帶主動傷害提高
     if(sk.dmg){
-      const ids=pickN(aliveIdx(e),sk.n[0]+Math.floor(R()*(sk.n[1]-sk.n[0]+1)),R);
-      for(const j of ids){const h=hit(t,ti,i,e,j,sk.dmg,sk.dtype,sk.kind,!!o?.prepared);if(h)tg.push(h)}
+      const nT=sk.n[0]+Math.floor(R()*(sk.n[1]-sk.n[0]+1));
+      if(g.fx.混亂){   // 混亂：戰法傷害目標也在敵我全部武將中隨機選（戰報 176 次混亂中的戰法傷害 40% 打到友軍，2026-11-25）
+        const pool=[...aliveIdx(e).map(j=>[e,j]),...aliveIdx(t).filter(j=>j!==i).map(j=>[t,j])];
+        for(const [side,j] of pickN(pool,nT,R)){const h=hit(t,ti,i,side,j,sk.dmg,sk.dtype,sk.kind,!!o?.prepared);if(h)(side===e?tg:allyTg).push(side===e?h:{...h,confused:true})}}
+      else{const ids=pickN(aliveIdx(e),nT,R);
+      for(const j of ids){const h=hit(t,ti,i,e,j,sk.dmg,sk.dtype,sk.kind,!!o?.prepared);if(h)tg.push(h)}}
     }
     if(sk.dot){   // 施加持續傷害：同一戰法再次施加只刷新回合、不疊加
       const dj=tg.length&&tg.every(x=>x.v!=null)?tg.map(x=>x.i):pickN(aliveIdx(e),sk.n[1],R);
@@ -621,7 +631,7 @@ export function battle(A,B,R=Math.random){
         if(ix.n===1&&R()<o2.p){for(const j of aliveIdx(t).sort((a,b)=>t.gens[a].troops/t.gens[a].max-t.gens[b].troops/t.gens[b].max).slice(0,2)){const h=healTo(t,j,g,o2.heal);if(h)tg.push(h)}}
         else if(ix.n===2&&R()<o2.p){for(const j of pickN(aliveIdx(t),2,R)){t.gens[j].tm.push({k:'dmgStrat',v:o2.v,until:round+2,src:g});tg.push({side:t.side,i:j,status:`謀略傷害 +${Math.round(o2.v)}%`})}}}}
     if(tmpDmg)g.tm.splice(g.tm.indexOf(tmpDmg),1);
-    ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,guess:sk.modeled==='guess',tg,...o});
+    ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,guess:sk.modeled==='guess',tg:allyTg.length?[...tg,...allyTg]:tg,...o});
     for(const j of ctl)onControl(t,ti,i,e,j);
     if(sk.kind==='主動'&&g.q==='離間之計'&&g.lj<4)g.lj++;
   }
