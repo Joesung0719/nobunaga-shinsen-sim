@@ -240,12 +240,7 @@ function skillCard(s,{withHolders=true}={}){
   return el('div',{class:'sk',id:`s-${s}`},kindBadge(s),el('div',{},
     el('h3',{},el('span',{class:`g g${gr}`},gr),s,t?.pre?el('span',{class:'pvt',title:D.preview?.note||'',style:'margin-left:6px;font-size:.7rem;color:var(--gold);border:1px solid #b98a3a;border-radius:999px;padding:0 7px;font-weight:400'},'預告'):null),el('div',{class:'meta'},meta),
     t?el('p',{},t.text):el('p',{class:'unk'},'效果說明尚未收集'),
-    bossText(D,s)?el('div',{class:'boss'},`大將技：${bossText(D,s)}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,evInfo(s),who));
-}
-// 新賽季預告的事件戰法：消耗武將、適用兵種、官方分析
-function evInfo(s){const p=D.preview?.events?.[s];if(!p)return null;
-  return el('dl',{class:'note',style:'display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 10px;margin:6px 0 0;font-size:.78rem'},
-    ...[['消耗武將',p.cost],['適用兵種',p.arms],...Object.entries(p.ana||{})].filter(([,v])=>v).flatMap(([k,v])=>[el('dt',{style:'color:var(--muted)'},k),el('dd',{style:'margin:0'},k==='推薦指數'?`${v} / 5`:v)]));
+    bossText(D,s)?el('div',{class:'boss'},`大將技：${bossText(D,s)}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
 }
 function renderSkills(){
   $('f3').replaceChildren();$('f4').replaceChildren();
