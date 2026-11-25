@@ -15,7 +15,7 @@
 //            已含發動機率、傷害率、目標數、控制、增益）；
 //   再依這一隊調整：干擾（控制狀態隊內補位、同種重複打折、快手優先）、受哪項屬性影響（本隊該屬性最高者加成）、
 //   勢力／一門（來源武將同勢力、同標籤略加分）、等級紅度（紅度低偏好發動率高、不用準備；紅度高才吃準備型）。
-import {parseSkill,innateOf} from './engine.js?v=62';
+import {parseSkill,innateOf} from './engine.js?v=63';
 import {facsOf as facsOfR,facTypeOf,armTraits,bossText,FEMALE as FEMALE_R,ARM_NAME} from './rules.js?v=2';
 
 // 權重（2026-11-21）：基礎分是模擬強度，其餘是官方大名錄編制校正的倍率。校正方式：用官方 123 隊的偶數號隊伍座標下降調整、奇數號隊伍檢驗（留出測試），
