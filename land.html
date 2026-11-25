@@ -740,21 +740,23 @@ const CTRL=new Set(['麻痺','混亂','威壓','無策','封擊','挑釁','牽�
 function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊戲戰報：「X由於Y【技能】的傷害，損失了兵力N（剩M）」「效果已施加」「統率降低了8.00%(變化)(結果)」
   const tr=[w.t0[0].slice(),w.t0[1].slice()],trq=[w.t0[0].map(()=>0),w.t0[1].map(()=>0)],rounds=[];let cur=null,last=null;
   const setT=t=>{if((t.q??Infinity)>=trq[t.side][t.i]){tr[t.side][t.i]=t.left;trq[t.side][t.i]=t.q??trq[t.side][t.i]}};   // 事件順序跟實際結算順序偶爾不同，以結算序號（q）為準
-  const bc=w.stats.map(a=>a.map(x=>({...x})));const kills=[w.names[0].map(()=>0),w.names[1].map(()=>0)],resc=[w.names[0].map(()=>0),w.names[1].map(()=>0)];
+  const bc=w.stats.map(a=>a.map(x=>({...x})));let act=null;   // 遊戲戰報的行動標題：殺敵／救援＝這位武將「這一次行動」自己造成的傷害與恢復（含治療自己），不是累計（對照 107 場實際戰報）
   const nm=(s,i)=>`<span class="${s===0?'cb':'cr'}">[${w.names[s][i]}]</span>`;
-  const close=()=>{if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
+  const fin=()=>{if(act){act.c.lines[act.li]=act.h.replace('@K',fm(act.k)).replace('@R',fm(act.r));act=null}};
+  const close=()=>{fin();if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
   const stv=(s,i,k)=>w.stats?.[s]?.[i]?.[k];
   const push=h=>cur.lines.push(h);
   const head=(side,i,spd)=>{if(!last||last.side!==side||last.i!==i){last={side,i};
-    push(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 ${fm(kills[side][i])}　救援 ${fm(resc[side][i])}　速度 ${(spd??(w.spd?w.spd[side][i]:null))?.toFixed(2)??'?'}</span></div>`)}};
+    fin();act={side,i,k:0,r:0,c:cur,li:cur.lines.length,h:''};act.h=(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 @K　救援 @R　速度 ${(spd??(w.spd?w.spd[side][i]:null))?.toFixed(2)??'?'}</span></div>`);push(act.h)}};
   const sk=(e,name,kind)=>push(`<div class="sk ${e.side===0?'me':'en'}"><i>${kind==='普攻'?'普':(kind||'').slice(0,1)}</i>${name}</div>`);
   const eff=(t,e,name)=>{
     const by=nm(e.side,e.i),who=nm(t.side,t.i);
-    if(t.heal!=null){setT(t);if(t.i!==e.i||t.side!==e.side)resc[e.side][e.i]+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
+    const mine=act&&act.side===e.side&&act.i===e.i;
+    if(t.heal!=null){setT(t);if(mine)act.r+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
     if(t.v!=null){setT(t);
       if(t.shield)return`${who}由於【鐵壁】，免受${by}【${name}】的傷害`;
       if(t.evade)return`${who}迴避了${by}【${name}】的攻擊`;
-      if(t.side!==e.side)kills[e.side][e.i]+=t.v;
+      if(t.side!==e.side&&mine)act.k+=t.v;
       return`${who}由於${by}【${name}】的傷害，損失了兵力 <span class="dm">${fm(t.v)}</span><small>（${fm(t.left)}）</small>${t.crit?`<span class="st">　${t.dtype==='謀略'?'奇謀':'會心'}</span>`:''}<small>・${t.dtype||''}</small>${t.rout?' <b>潰敗</b>':''}`}
     if(t.status){const parts=t.status.split('、'),out=[],cur0=bc[t.side][t.i];let snapDone=false;
       if(t.b){for(const k of['武勇','智略','統率','速度']){const d=t.b[k]-cur0[k];
@@ -793,12 +795,12 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
   close();return rounds;
 }
 function repStats(w){
-  const n=[0,1].map(s=>w.names[s].map(()=>({atk:0,sk:{},dmg:0,taken:0,heal:0})));
+  const n=[0,1].map(s=>w.names[s].map(()=>({atk:0,sk:{},dmg:0,taken:0,heal:0,resc:0})));   // 殺敵＝自己造成的傷害；救援＝自己的戰法／效果恢復的兵力（給誰都算，含自己，同遊戲戰報）；受到回復＝別人或自己替他恢復的
   for(const e of w.log){
-    if(e.type==='atk'){n[e.side][e.i].atk++;for(const t of e.tg||[])if(t.v!=null){n[e.side][e.i].dmg+=t.v;n[t.side][t.i].taken+=t.v}}
+    if(e.type==='atk'){n[e.side][e.i].atk++;for(const t of e.tg||[])if(t.v!=null){if(t.side!==e.side)n[e.side][e.i].dmg+=t.v;n[t.side][t.i].taken+=t.v}}   // 混亂打到友軍不算殺敵
     else if(e.type==='skill'){const x=n[e.side][e.i],k=`${e.skill}`;if(e.kind!=='持續'&&!e.aux)x.sk[k]=(x.sk[k]||0)+1;   // 持續傷害的每回合結算只是持續產生傷害，不算發動（Joe）
      
-      for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side){x.dmg+=t.v;n[t.side][t.i].taken+=t.v}if(t.v!=null&&t.side===e.side)n[t.side][t.i].taken+=t.v;if(t.heal!=null)n[t.side][t.i].heal+=t.heal}}
+      for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side){x.dmg+=t.v;n[t.side][t.i].taken+=t.v}if(t.v!=null&&t.side===e.side)n[t.side][t.i].taken+=t.v;if(t.heal!=null){n[t.side][t.i].heal+=t.heal;x.resc+=t.heal}}}
   }
   return n;
 }
@@ -826,8 +828,8 @@ function waveNode(w,open){
   const nm=s=>w.names[s].map((x,i)=>`${i===0?'★':''}${x} ${fm(w.t0[s][i])}→${fm(w.t1[s][i])}`).join('　');
   body.append(el('div',{class:'rs',html:`<span style="color:#5aa0e3">我方（${w.arms[0]}）</span> ${nm(0)}`}),el('div',{class:'rs',html:`<span style="color:#d4574a">守軍（${w.arms[1]}）</span> ${nm(1)}`}));
   const st=repStats(w);
-  const rows=[0,1].flatMap(s=>w.names[s].map((x,i)=>{const q=st[s][i];return`<tr><td>${s?'守':'我'}</td><td>${x}</td><td>${q.atk}</td><td>${Object.entries(q.sk).map(([k,v])=>`${k}×${v}`).join('、')||'—'}</td><td>${fm(q.dmg)}</td><td>${fm(q.taken)}</td><td>${fm(q.heal)}</td></tr>`}));
-  body.append(el('div',{class:'scrollx',html:`<table><tr><th></th><th>武將</th><th>普攻</th><th>戰法發動次數</th><th>造成傷害</th><th>承受傷害</th><th>回復</th></tr>${rows.join('')}</table>`}));
+  const rows=[0,1].flatMap(s=>w.names[s].map((x,i)=>{const q=st[s][i];return`<tr><td>${s?'守':'我'}</td><td>${x}</td><td>${q.atk}</td><td>${Object.entries(q.sk).map(([k,v])=>`${k}×${v}`).join('、')||'—'}</td><td>${fm(q.dmg)}</td><td>${fm(q.resc)}</td><td>${fm(q.taken)}</td><td>${fm(q.heal)}</td></tr>`}));
+  body.append(el('div',{class:'scrollx',html:`<table><tr><th></th><th>武將</th><th>普攻</th><th>戰法發動次數</th><th>殺敵（造成傷害）</th><th>救援（恢復友軍）</th><th>承受傷害</th><th>受到回復</th></tr>${rows.join('')}</table>`}));
   for(const r of repLines(w,w.log)){
     body.append(el('div',{class:'rh'},r.round===0?'戰鬥開始（開場效果）':`第 ${r.round} 回合`),el('div',{html:r.lines.join('')||'<div class="rs">（無行動）</div>'}),
       el('div',{class:'rs',html:`回合末兵力　我方 ${r.sum[0]}　守軍 ${r.sum[1]}`}));
@@ -889,7 +891,7 @@ function renderRep(){
   const box=$('rep');box.className='rep';box.replaceChildren();
   if(!REP||!ENG())return;
   box.append(el('h3',{style:'margin:0 0 4px'},'查看戰報（引擎逐回合）'),
-    el('p',{class:'note'},'格式仿遊戲戰報詳情：每回合依行動順序列出誰發動什麼、傷害與剩餘兵力；左邊色條藍＝我方、紅＝守軍。每筆兵力變化都有列出：治療、離反／吸血、鬼美濃、死守等回復，紫電、反影、霸王、魔王等追加損失，控制與持續傷害的施加和消失；表格「回復」是該武將收到的回復總量。'));
+    el('p',{class:'note'},'格式仿遊戲戰報詳情：每回合依行動順序列出誰發動什麼、傷害與剩餘兵力；左邊色條藍＝我方、紅＝守軍。每筆兵力變化都有列出：治療、離反／吸血、鬼美濃、死守等回復，紫電、反影、霸王、魔王等追加損失，控制與持續傷害的施加和消失；行動標題的殺敵／救援跟遊戲一樣只算這一次行動；表格「救援」是該武將的戰法替我軍（含自己）恢復的總兵力，「受到回復」是該武將被恢復的總兵力。'));
   REP.forEach((w,i)=>box.append(waveNode(w,i===REP.length-1)));
   box.append(renderCompare());
 }
