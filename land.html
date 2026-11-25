@@ -725,7 +725,7 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
     if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
     else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
     else if(e.type==='atk'||e.type==='skill'){
-      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
+      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊')+(e.tg?.some(x=>x.confused)?'（混亂，打到友軍）':''):e.skill;
       sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
       const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
       for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
