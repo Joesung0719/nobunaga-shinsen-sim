@@ -12,7 +12,9 @@ export const K={
   // 限制：資料未含兵學／標籤／評定眾／裝備（裝備為隨機打造無法還原）；戰法發動率與相剋倍率尚未校正，僅為第一版。
   base:4.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
   statDiv:280,       // 屬性差係數 = 1 + (攻方屬性 − 守方屬性) / statDiv，夾在 0.3～3
-  counter:[1.15,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.15，被剋方 ×0.87
+  counter:[1.10,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.10，被剋方 ×0.87（2026-11-25 由 107 場戰報 821 次普攻擬合，原本 1.15）
+  // 士氣（戰報準備階段，107 場精確吻合）：士氣低於 100 時造成傷害 = 100% − (100 − 士氣) × 0.7%，100 以上一律 100%。用法：team.morale（預設 100）
+  morale:m=>m>=100?1:Math.max(0,1-(100-m)*.007),
   terrain:{},        // 地形對傷害的倍率，例如 {林:0.9}；遊戲內地形沒有攻防加成（Joe）
   // 火炬（Joe 截圖 2026-11-20）：占領後擁有火炬視野，視野內同一門玩家部隊戰鬥時造成傷害 +3%、受到傷害 −3%。
   // 用法：team.mods={dmg:K.torch.dmg,taken:K.torch.taken}（視野範圍的格數尚未收集，由呼叫端決定誰在範圍內）
@@ -478,6 +480,7 @@ export function battle(A,B,R=Math.random){
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
     f*=K.terrain[dst.terrain]??1;
     f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）、火炬視野
+    f*=K.morale(src.morale??100);   // 士氣
     f*=dst.mods?.taken??1;   // 火炬視野：受到傷害降低
     if(g.tc.kengo&&d.st.武勇>=g.st.武勇)f*=1.09;if(d.tc.kengo&&g.st.武勇<d.st.武勇)f*=.91;   // 劍豪
     if(d.tc.phx)f*=1.015;   // 鳳凰：受到傷害 +1.5%
@@ -900,7 +903,7 @@ export function statsAt(D,n,lv,r=4){
 export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const traits=traitsAtRed(D,n,rd(n));
-  const lvArm=armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};
+  const lvArm=fac?.armLv??armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};   // fac.armLv：直接指定兵種等級（例如照戰報準備階段的「屬性調整為 110%」＝Lv5）
   for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
   const own={};let extra=0;
   for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}

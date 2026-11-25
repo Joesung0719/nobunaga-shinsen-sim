@@ -1,5 +1,5 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=56';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=57';
 import {chibi,SIDE_COL,setSpec} from './chibi.js?v=44';
 import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=44';
 import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=44';
@@ -999,7 +999,7 @@ function overButtons(win){   // 戰役：勝利後只留「回戰役畫面」（
 $('again').onclick=()=>{$('over').hidden=true;startGame()};
 $('toSetup').onclick=()=>{$('over').hidden=true;G=null;play('title');$('game').hidden=true;$('setup').hidden=false;renderSetup()};
 $('skDlg').addEventListener('click',e=>{if(e.target===$('skDlg'))$('skDlg').close()});
-$('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；地形不影響傷害。`;
+$('formula').textContent=`傷害 = √兵力 × ${K.base} × 傷害率 × (1 + (攻方屬性 − 守方屬性) ÷ ${K.statDiv})，兵刃用武勇對統率、謀略用智略對智略；兵種相剋（騎兵剋弓兵、弓兵剋鐵炮、鐵炮剋足輕、足輕剋騎兵；器械被其他兵種剋制）兵刃傷害 ×${K.counter[0]}／×${K.counter[1]}；士氣低於 100 時傷害 −0.7%／點；地形不影響傷害。`;
 renderSetup();
 document.documentElement.dataset.slgReady='1';
 // 除錯／自動測試用（網址加 ?debug 才開）
