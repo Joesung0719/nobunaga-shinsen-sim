@@ -494,8 +494,8 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=59';
-import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=60';
+import {rollGear,gearBonus,GEAR_OPTIONS,traitStatus} from './slg/equipment.js?v=2';
 import {makeKit} from './slg/teamlib.js?v=9';
 import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=2';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=4';
@@ -1291,7 +1291,7 @@ function gearPanel(m){
     if(it){const line=el('div',{class:'row',style:'flex-wrap:wrap;gap:6px;align-items:center'});
       for(const k of Object.keys(it.attrs)){const ni=el('input',{type:'number',min:'0',max:'15',step:'0.1',value:String(it.attrs[k]),style:'width:4.5em','aria-label':sl+k});
         ni.onchange=()=>{it.attrs[k]=Math.max(0,Math.min(15,+ni.value||0));save();renderBuilder()};line.append(el('label',{},k+' +',ni))}
-      line.append(el('small',{},`${it.name}　特技「${it.trait.n}」${it.trait.v!=null?it.trait.v:''}${it.trait.fx?'':'（引擎尚未模擬，只顯示）'}`));box.append(line)}
+      line.append(el('small',{},`${it.name}　特技「${it.trait.n}」${it.trait.v!=null?it.trait.v:''}${{battle:'',off:'（政務／魅力／經驗／行軍用，不影響戰鬥）',todo:'（還沒有說明資料，只顯示）'}[traitStatus(it.trait.n)]}${GEAR_OPTIONS.excl[it.name]===it.trait.n?'【專屬】':''}`));box.append(line)}
   }
   const b1=el('button',{type:'button',class:'sbtn',style:'width:auto'},m.gear?'重擲數值':'擲數值');b1.onclick=()=>{m.gear=rollGear(Math.random,Object.fromEntries(GEAR_SLOTS.map(sl=>[sl,{attrs:want[sl]?.attrs?.length?want[sl].attrs:null}])));save();renderBuilder()};
   const b2=el('button',{type:'button',class:'sbtn',style:'width:auto;margin-left:6px'},'卸下全部');b2.onclick=()=>{m.gear=null;save();renderBuilder()};
@@ -1450,7 +1450,7 @@ const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
   const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0])),tb=traitBattle(D,names,red);
   return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',morale:my.morale??100,gens:my.gens.map((m,i)=>({n:m.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[m.n]?.f,
-    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear):null,kaho:m.gear?gearBonus(m.gear.filter(x=>x.slot==='家寶')):null,gearN:m.gear?m.gear.filter(x=>x.trait?.n).length:0,troops:m.t,max:m.t,
+    st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear,m.n):null,kaho:m.gear?gearBonus(m.gear.filter(x=>x.slot==='家寶'),m.n):null,gearN:m.gear?m.gear.filter(x=>x.trait?.n).length:0,troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
 // 只給武將名／紅度的隊伍（對手、搭配建議候選）：Lv50、戰法依推薦補滿、戰法預設等級

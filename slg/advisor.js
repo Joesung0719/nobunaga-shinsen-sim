@@ -1,7 +1,7 @@
 // 玩家建議：每位武將的兵學方向／節點、自由配點、兵種，並附理由。瀏覽器與 node 都能用。
 // 全部是推估：沒有官方公式，權重來自戰報歸納（突擊傷害占贏方輸出 18%／輸方 10%、普攻約 21～25%、主動 17～25%）與引擎的傷害公式。
 import {TREES,DIRS,RULE,capOf,dirOf,hasTree,cleanSel} from './bingaku.js';
-import {innateOf} from './engine.js?v=59';
+import {innateOf} from './engine.js?v=60';
 import {planBingaku,planPoints} from './playbook.js';
 
 // 兵學節點效果鍵 → 權重（1 = 造成傷害 +1%）。依這位武將的戰法組成調整。
