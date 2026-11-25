@@ -494,10 +494,10 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=58';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=59';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=9';
-import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=1';
+import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=2';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=4';
 import {makeAI,aiSearch as aiSearchCore,makePool,allowedArms,armTraits} from './slg/aisearch.js?v=2';
 const D=await (await fetch('land.json',{cache:'no-cache'})).json();
@@ -1669,8 +1669,8 @@ function composite(t){   // 模擬勝率（含剩兵）＋戰報實戰分（樣�
   return(1-wf)*sim+wf*Math.max(0,Math.min(1,(t.f[0]-.5)*2+.5));
 }
 const fieldLine=f=>`戰報實戰：${f.each.map(n=>`${n}場`).join('／')}出場（${f.n<5?'樣本很少，只是估計':'樣本尚可'}）${f.pairs.length?'；同隊搭配 '+f.pairs.join('、'):'；戰報裡沒有這組搭配'}${f.trio?`；整隊 ${f.trio[0]} 場 ${Math.round(f.trio[1]/f.trio[0]*100)}% 勝率`:''}。`;
-function loadInto(ti,names,arm,skills){
-  const ord=KIT.leaderFirst(names);if(skills)skills=ord.map(n=>skills[names.indexOf(n)]);names=ord;   // 大將順序一律走共用規則（teamlib leaderFirst：大將技持有者優先）
+function loadInto(ti,names,arm,skills,keep=false){
+  const ord=keep?names:KIT.leaderFirst(names);if(skills)skills=ord.map(n=>skills[names.indexOf(n)]);names=ord;   // 大將順序一律走共用規則（teamlib leaderFirst：大將技持有者優先）
   const old=S.teams[ti];S.teams[ti]=mkMy(names,arm,old?.fac||S.my.fac);
   if(skills)S.teams[ti].gens.forEach((m,i)=>{m.s=[...(skills[i]||[]),'',''].slice(0,2)});
   if(ti===S.ti)S.my=S.teams[ti];
@@ -1732,6 +1732,28 @@ function ofCard(r,i){
     el('div',{class:'pc'},el('b',{},pc(r.winRate)),el('small',{},'官方隊互打勝率')),
     el('div',{class:'acts'},go));
 }
+// ---- 新賽季預告（官方「PK賽季武將全面解析」陣容推薦，tools/pk_preview.txt）：官方原樣顯示，載入時大將照官方 ----
+const ARMW={騎兵:'騎',足輕:'槍',弓兵:'弓',鐵炮:'鐵炮'};
+function pvLoad(tm){
+  const al=D.preview.alias||{},names=tm.gens.map(g=>g.n);
+  const skills=tm.gens.map(g=>g.s.map(x=>al[x]||x).filter(x=>x!==innateOf(g.n)&&D.skillText?.[x]).slice(0,2));
+  const need=skills.flat().map(x=>ARMW[D.skillText[x]?.arm]).find(Boolean);
+  return{names,skills,arm:need||bestArm(D,names)||'槍',why:need?'戰法限定兵種':'依隊伍特性推算'};
+}
+function renderPreview(L){
+  const P=D.preview;
+  const head=el('p',{class:'note'},`${P.note}。來源：${P.src}。截圖沒有的：${P.unknown.join('、')}（標未知，不推測）。官方每位武將列 6 個推薦戰法（S 欄 3 個、A 欄 3 個），載入時取 S 欄前兩個（不含自帶），兵種依戰法限定或隊伍特性；載入後可以自己改戰法再模擬。`);
+  const card=(tm,i)=>{const ld=pvLoad(tm),go=el('button',{class:'pbtn ghost',type:'button'},`載入到第 ${S.ti+1} 隊`);
+    go.onclick=()=>{loadInto(S.ti,ld.names,ld.arm,ld.skills,true);save();renderAll();$('team').scrollIntoView({behavior:'smooth'})};
+    return el('div',{class:'rcard'},el('div',{class:'no'},String(tm.id)),
+      el('div',{},el('div',{class:'gl'},...tm.gens.map(g=>el('div',{class:'gg'},el('b',{},(g.lead?'★':'')+g.n+(D.stats[g.n]?.pre?'（預告）':'')),el('span',{class:'rc'},`Cost${g.c}`),
+          el('span',{class:'sk'},`自帶 ${innateOf(g.n)||'?'}｜S：${g.s.join('、')}｜A：${g.a.join('、')}｜加點：${g.pt}｜兵學：${g.bg.join('、')}`)))),
+        el('div',{class:'meta'},`${tm.title}・總 Cost ${tm.cost}・載入：${ARMN[ld.arm]||ld.arm}（${ld.why}）、${ld.names.map((n,j)=>n+' '+(ld.skills[j].join('・')||'—')).join('｜')}`),
+        el('div',{class:'meta'},`配將思路（官方）：${tm.note}`)),
+      el('div',{class:'pc'},el('b',{},'預告'),el('small',{},'以上線為準')),
+      el('div',{class:'acts'},go))};
+  L.replaceChildren(head,...P.teams.map(card));
+}
 // ---- 戰報實戰（主要依據）：107～131 場戰報裡「實際出場過」的隊伍，依實戰勝率排序；每隊附出場場數、勝平負、陣型、實際用過的戰法 ----
 const FACN={same:'同勢力',alliance:'三勢力皆不同（可合盟）',mixed:'兩勢力混合'};
 const fieldRate=t=>(t.w+.5*t.d+2)/(t.w+t.d+t.l+4);   // 平局算半勝，先驗 4 場 0.5 收縮：樣本少的隊伍不會因為一兩場全勝排第一
@@ -1792,7 +1814,7 @@ function renderRec(){
   $('cnote').textContent='Cost 範圍可自己調（預設 18～20）；推薦榜以戰法滿級、兵學不計模擬。開荒隊伍會隨劇本與建設提高 Cost，之後用繼承券換將；後期隊伍多為 Cost 18～20、沒人用紫將，所以這裡只推金將（5★），並假設你已有大部分武將、差在紅度，不計抽數。每隊都附「升級路線」：只換一位的最少更換，或不顧資源的全面換血。預先算好的推薦榜假設：協力 Lv10（三人同勢力才 +7% 全能力）、兵種營 Lv5、家門 +3%（同家門才算）；你在組隊頁設定的協力／兵種營／家門，會用在③的預測、搭配建議與戰法推薦。';
   $('nteam').value=String(S.nteam);
   const box=$('rtabs');box.replaceChildren();
-  for(const[k,t]of[['field','戰報實戰'],['official','官方編制'],['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
+  for(const[k,t]of[['field','戰報實戰'],['official','官方編制'],...(D.preview?[['preview','新賽季預告']]:[]),['best','勝率最高'],['pro','戰報實戰高'],['rank','對戰榜']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.rtab===k)},t);b.onclick=()=>{S.rtab=k;save();renderRec()};box.append(b)}
   {const rs=el('select',{id:'rred2','aria-label':'模擬紅度',style:'width:auto;display:inline-block;margin-left:6px'},...[[0,'0 紅'],[3,'3 紅'],[5,'5 紅']].map(([v,t])=>el('option',{value:String(v),...(v===(S.rred2??5)?{selected:''}:{})},t)));rs.onchange=()=>{S.rred2=+rs.value;save();renderRec()};box.append(el('span',{class:'note',style:'margin-left:10px'},'模擬紅度'),rs)}
   if(S.rtab==='best'){const sel=el('select',{id:'rlv','aria-label':'顯示的守軍等級',style:'width:auto;display:inline-block;margin-left:6px'},...[6,7,8,9,10].map(v=>el('option',{value:String(v),...(v===(S.rlv||9)?{selected:''}:{})},`Lv${v}`)));sel.onchange=()=>{S.rlv=+sel.value;save();renderRec()};box.append(el('span',{class:'note',style:'margin-left:8px'},'顯示守軍等級'),sel)}
   const L=$('rlist');
@@ -1800,6 +1822,7 @@ function renderRec(){
   const empty=m=>[el('p',{class:'note',style:'text-align:center;padding:16px'},m)];
   if(S.rtab==='field'){renderField(L,empty);return}
   if(S.rtab==='official'){renderOfficial(L,empty);return}
+  if(S.rtab==='preview'&&D.preview){renderPreview(L);return}
   const rows=R.teams.filter(inRange);let list=[],note='';
   // 低等級土地（Lv4～6）守軍太弱，模擬勝率常常全部飽和成 100%，分不出隊伍好壞：
   // 所以同時看「再高兩級」的勝率當壓力測試，只留下兩關都過關的隊伍，並用較高等級的勝率與戰報實戰分排序。

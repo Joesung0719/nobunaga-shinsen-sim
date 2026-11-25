@@ -66,6 +66,12 @@ input[type=search]{flex:1;min-width:0}
 .who button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:#1f1a17;color:var(--paper);font:inherit;font-size:.75rem;padding:2px 10px 2px 2px;cursor:pointer}
 .who img,.who .ph{width:24px;height:24px;border-radius:50%;object-fit:cover;object-position:top;background:#2a2420;display:grid;place-items:center;font-size:.7rem}
 .who small{color:var(--muted)}
+.pv{border:1px dashed #b98a3a;border-radius:8px;padding:10px 12px;margin:0;background:rgba(185,138,58,.07)}
+.pv h4{margin-top:0}
+.pv .tag{display:inline-block;border:1px solid #b98a3a;color:var(--gold);border-radius:999px;padding:0 8px;font-size:.72rem;margin-left:6px;vertical-align:middle}
+.pv dl{margin:6px 0 0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 10px;font-size:.8rem;line-height:1.6}
+.pv dt{color:var(--muted)} .pv dd{margin:0}
+.gc .s.pre{background:#b98a3a;color:#1a1208}
 .sk .ev{display:inline-block;margin-top:8px;border:1px solid #6a5a2c;border-radius:999px;padding:1px 10px;font-size:.75rem;color:var(--gold)}
 /* general sheet */
 dialog.sheet{background:var(--lacquer);color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0;width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 48px)}
@@ -146,7 +152,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.72)}
 
 <script type="module">
 import{DIRS,TREES,RULE,capOf,dirOf,BASE_TEXT}from'./slg/bingaku.js';
-import{armTraits,bossText}from'./slg/rules.js?v=1';
+import{armTraits,bossText}from'./slg/rules.js?v=2';
 const [D,CARDS,EXTRA,PROF]=await Promise.all([fetch('land.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data.json',{cache:'no-cache'}).then(r=>r.json()),fetch('generals_extra.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),fetch('profiles.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>null)]);
 const $=id=>document.getElementById(id);
 const el=(t,a={},...kids)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids)if(c!=null)e.append(c);return e};
@@ -199,7 +205,7 @@ $('sort').onchange=e=>{S.sort=e.target.value;save();render()};
 $('q').oninput=()=>render();
 
 function renderGenerals(){
-  chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['限定','限定']],'season');
+  chips($('f1'),'季度',[['','全部'],['S1','S1'],['S2','S2'],['S3','S3'],['PK','PK'],['限定','限定'],...(D.preview?[['預告','新賽季預告']]:[])],'season');
   const f2=$('f2');chips(f2,'勢力',[['','全部'],...FACTIONS.map(f=>[f,f])],'fac');
   f2.append(el('span',{class:'lbl',style:'margin-left:8px'},'稀有度'));
   for(const[k,t]of[['5','5★'],['4','4★'],['3','3★'],['2','2★'],['1','1★'],['','全部']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.r===k)},t);b.onclick=()=>{S.r=k;save();render()};f2.append(b)}
@@ -209,7 +215,7 @@ function renderGenerals(){
   for(const[k,t]of[['','全部'],...costs.map(c=>[String(c),String(c)])]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.cost===k)},t);b.onclick=()=>{S.cost=k;save();render()};f3.append(b)}
   if(TAGS.length)chips($('f4'),'標籤',[['','全部'],...TAGS.map(t=>[t,t])],'tag');else $('f4').replaceChildren();
   const q=$('q').value.trim();
-  const list=[...G.values()].filter(g=>(!S.season||g.x?.season===S.season)&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!S.arm||armsOf(g.n)[S.arm]>0)&&(!S.cost||String(g.c)===S.cost)&&(!S.tag||tagsOf(g.n).includes(S.tag))&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)||tagsOf(g.n).some(t=>t.includes(q))));
+  const list=[...G.values()].filter(g=>(!S.season||(S.season==='預告'?!!g.x?.pre:g.x?.season===S.season))&&(!S.fac||g.f===S.fac)&&(!S.r||g.r===+S.r)&&(!S.arm||armsOf(g.n)[S.arm]>0)&&(!S.cost||String(g.c)===S.cost)&&(!S.tag||tagsOf(g.n).includes(S.tag))&&(!q||g.n.includes(q)||innOf(g.n)?.includes(q)||teachOf(g.n)?.includes(q)||tagsOf(g.n).some(t=>t.includes(q))));
   const key=S.sort;
   list.sort((a,b)=>key==='name'?a.n.localeCompare(b.n,'zh-Hant'):key==='cost'?b.r-a.r||(b.c||0)-(a.c||0)||a.n.localeCompare(b.n,'zh-Hant'):(b.x?lv(b.x,key,50):-1)-(a.x?lv(a.x,key,50):-1));
   $('count').textContent=`${list.length} 名武將（${list.filter(g=>g.x).length} 名有屬性資料）`;
@@ -218,7 +224,7 @@ function renderGenerals(){
     const inn=innOf(g.n),v=g.x&&ST6.includes(key)?Math.round(lv(g.x,key,50)):null;
     const b=el('button',{class:`gc r${g.r}`,type:'button'},
       el('div',{class:'im'},g.img!=null?el('img',{src:artSrc(g.img),alt:'',loading:'lazy'}):g.n[0]),
-      el('div',{class:'c'},String(g.c??'?')),g.x?.season?el('div',{class:'s'},g.x.season):null,
+      el('div',{class:'c'},String(g.c??'?')),g.x?.pre?el('div',{class:'s pre',title:D.preview?.note||''},'預告'):g.x?.season?el('div',{class:'s'},g.x.season):null,
       el('div',{class:'n'},g.n),
       el('div',{class:'m'},inn?kindBadge(inn):null,el('span',{},g.f||''),v!=null?el('span',{class:'v'},String(v)):null),g.x?el('div',{class:'m',style:'opacity:.8'},armStr(g.n)||'兵種—'):null);
     b.onclick=()=>openGeneral(g.n);grid.append(b);
@@ -232,9 +238,14 @@ function skillCard(s,{withHolders=true}={}){
   const who=withHolders&&HOLD.get(s)?el('div',{class:'who'},...HOLD.get(s).map(([n,how])=>{const g=G.get(n);
     const b=el('button',{type:'button'},g?.img!=null?el('img',{src:artSrc(g.img),alt:''}):el('span',{class:'ph'},n[0]),n,el('small',{},how));b.onclick=()=>openGeneral(n);return b})):null;
   return el('div',{class:'sk',id:`s-${s}`},kindBadge(s),el('div',{},
-    el('h3',{},el('span',{class:`g g${gr}`},gr),s),el('div',{class:'meta'},meta),
+    el('h3',{},el('span',{class:`g g${gr}`},gr),s,t?.pre?el('span',{class:'pvt',title:D.preview?.note||'',style:'margin-left:6px;font-size:.7rem;color:var(--gold);border:1px solid #b98a3a;border-radius:999px;padding:0 7px;font-weight:400'},'預告'):null),el('div',{class:'meta'},meta),
     t?el('p',{},t.text):el('p',{class:'unk'},'效果說明尚未收集'),
-    bossText(D,s)?el('div',{class:'boss'},`大將技：${bossText(D,s)}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,who));
+    bossText(D,s)?el('div',{class:'boss'},`大將技：${bossText(D,s)}`):null,t?.ev?el('div',{class:'ev'},`事件「${t.ev}」取得`):null,evInfo(s),who));
+}
+// 新賽季預告的事件戰法：消耗武將、適用兵種、官方分析
+function evInfo(s){const p=D.preview?.events?.[s];if(!p)return null;
+  return el('dl',{class:'note',style:'display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 10px;margin:6px 0 0;font-size:.78rem'},
+    ...[['消耗武將',p.cost],['適用兵種',p.arms],...Object.entries(p.ana||{})].filter(([,v])=>v).flatMap(([k,v])=>[el('dt',{style:'color:var(--muted)'},k),el('dd',{style:'margin:0'},k==='推薦指數'?`${v} / 5`:v)]));
 }
 function renderSkills(){
   $('f3').replaceChildren();$('f4').replaceChildren();
@@ -308,6 +319,19 @@ function profileBox(n){
     gp.length?el('p',{class:'unk'},'判斷不了的部分：'+gp.join('；')):null,
     el('p',{class:'note'},'檔案與建議由說明文字推導（tools/profiles.mjs），單人視角；隊伍補位（補血、減傷、控制）另在組隊分析處理。'));
 }
+// 新賽季官方預告（land.json preview，來源 tools/pk_preview.txt）
+function previewBox(n){
+  const P=D.preview,p=P?.gens?.[n];if(!p)return null;
+  const rows=[];
+  if(p.house)rows.push(['家門',p.house]);
+  if(p.heijo)rows.push(['評定眾技能',`${p.heijo.name}（${p.heijo.cat}）`],['　正面',p.heijo.pos],['　負面',p.heijo.neg]);
+  for(const[k,v]of Object.entries(p.ana||{}))rows.push([k,k==='推薦指數'?`${v} / 5`:v]);
+  if(p.story)rows.push(['傳記',p.story]);
+  return el('div',{class:'pv'},el('h4',{},'新賽季官方預告',el('span',{class:'tag'},'以上線為準')),
+    el('p',{class:'note',style:'margin:0'},P.note+'。截圖沒有的：'+P.unknown.join('、')+'（標未知，不推測）。Lv50 數字是用 1 級屬性＋每級成長推算的。'),
+    el('dl',{},...rows.flatMap(([k,v])=>[el('dt',{},k),el('dd',{},v)])),
+    ...(P.teams||[]).filter(tm=>tm.gens.some(g=>g.n===n)).map(tm=>el('p',{class:'note',style:'margin:8px 0 0'},`官方陣容推薦 ${tm.id}（${tm.title}・Cost ${tm.cost}）：${tm.gens.map(g=>g.n+(g.lead?'（大將）':'')).join('、')}。完整戰法與兵學見組隊分析「新賽季預告」。`)));
+}
 function openGeneral(n){
   const g=G.get(n);if(!g)return;const x=g.x;
   history.replaceState(null,'',`#${encodeURIComponent(n)}`);
@@ -331,9 +355,10 @@ function openGeneral(n){
     el('div',{class:'sh-top'},close,
       el('div',{class:`sh-pic r${g.r}`},g.img!=null?el('img',{src:artSrc(g.img),alt:n}):n[0]),
       el('div',{},el('h2',{class:'sh-name'},n),
-        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null,armStr(n)?el('span',{class:'badge'},`兵種 ${armStr(n)}`):null,...tagsOf(n).map(t=>el('span',{class:'badge'},t))),
+        el('div',{class:'badges'},el('span',{class:'badge gold'},`${g.r}★`),el('span',{class:'badge'},`Cost ${g.c??'?'}`),g.f?el('span',{class:'badge'},g.f):null,x?.season?el('span',{class:'badge'},x.season):null,x?.pre?el('span',{class:'badge gold',title:D.preview?.note||''},'預告・以上線為準'):null,D.preview?.gens?.[n]?.house?el('span',{class:'badge'},D.preview.gens[n].house):null,armStr(n)?el('span',{class:'badge'},`兵種 ${armStr(n)}`):null,...tagsOf(n).map(t=>el('span',{class:'badge'},t))),
         x?el('div',{class:'lvsw'},'等級',lvIn,lvB):null,bars)),
     el('div',{class:'sh-body'},
+      previewBox(n),
       el('div',{},el('h4',{},'特性'),traits),
       el('div',{},el('h4',{},'固有戰法'),inn?skillCard(inn,{withHolders:false}):el('p',{class:'note'},'尚未收集')),
       el('div',{},el('h4',{},'傳授戰法'),teach?skillCard(teach):el('p',{class:'note'},'尚未收集')),
