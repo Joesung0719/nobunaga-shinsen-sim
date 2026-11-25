@@ -261,7 +261,26 @@ ul.note{padding-left:1.2em}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
 
 /* ---- 整合頁：戰法等級、庫存、多隊、兵學說明、預測、推薦 ---- */
-section.panel{scroll-margin-top:12px}
+section.panel{scroll-margin-top:64px}
+/* 步驟導覽、可收合、下一步 */
+nav.stepnav{position:sticky;top:6px;z-index:25;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;background:rgba(18,16,16,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(227,183,90,.4);border-radius:999px;padding:5px}
+nav.stepnav::-webkit-scrollbar{display:none}
+nav.stepnav a{flex:1;min-width:max-content;text-align:center;text-decoration:none;color:var(--muted);font-size:.84rem;padding:5px 12px;border-radius:999px}
+nav.stepnav a:hover{color:var(--paper);background:rgba(227,183,90,.14)}
+nav.stepnav a.on{color:var(--ink);background:var(--gold);font-weight:700}
+.panel-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.panel-hd h2{margin:0}
+.panel.collapsed .panel-hd{margin:0}
+.panel.collapsed .panel-body{display:none}
+.cbadge{display:none;font-size:.78rem;color:var(--paper);border:1px solid rgba(227,183,90,.4);border-radius:999px;padding:2px 10px}
+.panel.collapsed .cbadge{display:inline-block}
+.cbtn{margin-left:auto;cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 12px;font:inherit;font-size:.78rem}
+.cbtn:hover{color:var(--gold);border-color:var(--gold)}
+.panel-hd{flex-wrap:nowrap}.panel-hd h2{min-width:0}.cbtn{flex:none}
+@media(max-width:560px){.panel-hd h2{font-size:1rem}.cbadge{font-size:.72rem;padding:1px 8px;white-space:nowrap}}
+.step-next{display:flex;justify-content:flex-end;margin-top:14px;padding-top:10px;border-top:1px dashed rgba(227,183,90,.2)}
+.next-link{cursor:pointer;background:transparent;color:var(--gold);border:1px solid rgba(227,183,90,.45);border-radius:999px;padding:6px 16px;font:inherit;font-size:.84rem;font-weight:700}
+.next-link:hover{background:var(--gold);color:var(--ink)}
 .skrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch}
 .sklv{background:#1f1a17;color:var(--paper);border:1px solid var(--line);border-radius:6px;font:inherit;font-size:.78rem;padding:0 4px;min-width:3.6em}
 .sklv.dflt{color:var(--muted)}
@@ -331,19 +350,29 @@ input[type=range]{accent-color:var(--gold)}
     <nav class="site" aria-label="頁面"><a href="./">登用模擬</a><a href="generals.html">武將資料庫</a><a href="land.html">組隊分析</a><a href="slg.html?m=camp">Q版戰棋</a></nav>
   </header>
 
+  <nav class="stepnav" id="stepnav" aria-label="步驟">
+    <a href="#land">① 目標</a><a href="#rec">② 推薦</a><a href="#team">③ 組隊</a><a href="#predict">④ 預測</a><a href="#board">⑤ 出征</a>
+  </nav>
+
   <section class="panel" id="land">
-    <h2>① 選擇目標：土地等級</h2>
+    <div class="panel-hd"><h2>① 選擇目標：土地等級</h2><span class="cbadge" id="landBadge"></span><button class="cbtn" type="button" data-toggle="land" aria-expanded="true">收合 ▲</button></div>
+    <div class="panel-body">
     <div class="row" role="group" aria-label="土地等級" id="lvChips"></div>
     <div class="spec" id="spec"></div>
     <p class="lvnote" id="lvNote"></p>
+    <div class="step-next"><button class="next-link" type="button" data-next="rec" data-fold="land">下一步：② 推薦 ↓</button></div>
+    </div>
   </section>
 
   <section class="panel" id="rec">
-    <h2>② 一鍵推薦</h2>
+    <div class="panel-hd"><h2>② 一鍵推薦</h2><span class="cbadge">已收合</span><button class="cbtn" type="button" data-toggle="rec" aria-expanded="true">收合 ▲</button></div>
+    <div class="panel-body">
     <div class="fl"><span class="lbl">總 Cost</span><select id="cmin" aria-label="總 Cost 下限"></select><span class="lbl">～</span><select id="cmax" aria-label="總 Cost 上限"></select><span class="note" id="cnote"></span></div>
     <div class="fl" style="margin-top:8px"><span class="lbl">隊數</span><select id="nteam" aria-label="一鍵組幾隊"><option value="1">1 隊</option><option value="2">2 隊</option><option value="3">3 隊</option></select><button class="pbtn big" id="ai" type="button">AI 一鍵組隊</button><span class="note" id="aiNote">依「模擬打下這一級的勝率」與「戰報裡玩家實際搭配的勝率」綜合挑出隊伍，戰法依庫存自動配好，載入下方編輯。</span></div>
     <div class="tabs" role="group" aria-label="推薦清單" id="rtabs" style="margin:14px 0 0"></div>
     <div class="rlist" id="rlist"></div>
+    <div class="step-next"><button class="next-link" type="button" data-next="team" data-fold="rec">下一步：③ 組隊 ↓</button></div>
+    </div>
   </section>
 
   <section class="panel" id="team">
@@ -390,6 +419,7 @@ input[type=range]{accent-color:var(--gold)}
         <li>隊伍 Cost 上限 20。⑤ 出征預設改用引擎逐回合計算（可展開逐回合戰報、與實際戰報對照）；也可切回舊的實戰戰報抽樣。</li>
       </ul>
     </details>
+    <div class="step-next"><button class="next-link" type="button" data-next="predict">下一步：④ 預測勝率 ↓</button></div>
   </section>
   <dialog class="pick" id="pick"></dialog>
 
@@ -401,6 +431,7 @@ input[type=range]{accent-color:var(--gold)}
     <div class="fl" id="aibar" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"></div>
     <div id="aiOut" style="margin-top:12px"></div>
     <div id="out" style="margin-top:12px"></div>
+    <div class="step-next"><button class="next-link" type="button" data-next="board">下一步：⑤ 出征看戰報 ↓</button></div>
   </section>
 
   <section class="panel" id="board">
@@ -1806,6 +1837,23 @@ if(SLG){   // bar to send the team back to the Q版戰棋 slot
   document.body.style.paddingBottom='120px';
   $('slots').closest('.panel').scrollIntoView({block:'start'});
 }
+</script>
+<script>
+// 步驟導覽：目前位置高亮、①②可收合、每步「下一步」
+(()=>{
+  const fold=(id,on)=>{const sec=document.getElementById(id),b=sec.querySelector('.cbtn');sec.classList.toggle('collapsed',on);if(b){b.textContent=on?'展開 ▼':'收合 ▲';b.setAttribute('aria-expanded',String(!on))}
+    if(id==='land'){const c=document.querySelector('#lvChips [aria-pressed="true"]');document.getElementById('landBadge').textContent=c?`已選 ${c.textContent.trim()}`:''}};
+  const go=id=>document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.cbtn').forEach(b=>b.onclick=()=>fold(b.dataset.toggle,!document.getElementById(b.dataset.toggle).classList.contains('collapsed')));
+  document.querySelectorAll('.next-link').forEach(b=>b.onclick=()=>{if(b.dataset.fold)fold(b.dataset.fold,true);go(b.dataset.next)});
+  // 在②按「載入到第 N 隊／加為新一隊」後，②自動收合（原本就會捲到③）
+  document.getElementById('rlist').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&/載入到|加為新一隊/.test(b.textContent))setTimeout(()=>fold('rec',true),0)});
+  // 從導覽跳到被收合的步驟時自動展開
+  const links=[...document.querySelectorAll('#stepnav a')],secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+  links.forEach(a=>a.addEventListener('click',()=>{const id=a.getAttribute('href').slice(1);if(id==='land'||id==='rec')fold(id,false)}));
+  const spy=()=>{const y=innerHeight*.3;let cur=0;secs.forEach((s,i)=>{if(s.getBoundingClientRect().top<=y)cur=i});links.forEach((a,i)=>a.classList.toggle('on',i===cur))};
+  addEventListener('scroll',spy,{passive:true});spy();
+})();
 </script>
 <script src="site-nav.js?v=8" data-page="land"></script>
 </body>
