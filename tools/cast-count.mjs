@@ -11,7 +11,7 @@ const gens=Object.keys(D.stats).filter(n=>D.stats[n].r===5||D.stats[n].inn),mx={
 for(const g0 of gens){const team=[g0,gens[Math.floor(R()*gens.length)],gens[Math.floor(R()*gens.length)]];if(new Set(team).size<3)continue;
  try{const arm='騎',st=L.teamStats(team,arm,50,5,FAC),pl=kit.pick(team.map((nm,i)=>({n:nm,red:5,st:st[i]})),null,{},{arm}),my=L.myTeam(team,arm,st,pl.sel,10000);
   const r=battle(L.clone(my),L.garrison('l10a',10),R),c={};
-  for(const e of r.log)if(e.type==='skill'&&e.kind!=='持續'&&e.kind!=='兵學'){const k=e.side+'|'+e.i+'|'+e.skill;c[k]=(c[k]||0)+1}
+  for(const e of r.log)if(e.type==='skill'&&e.kind!=='持續'&&e.kind!=='兵學'&&!e.aux){const k=e.side+'|'+e.i+'|'+e.skill;c[k]=(c[k]||0)+1}
   for(const[k,v]of Object.entries(c)){const nm=k.split('|')[2];mx[nm]=Math.max(mx[nm]||0,v);
     const t=D.skillText?.[nm],prep=/準備(\d)回合/.exec(t?.text||''),cap=prep?Math.ceil(r.rounds/(+prep[1]+1)):r.rounds;
     if(v>cap)bad.push(`${nm}（${t?.kind}${prep?'・準備'+prep[1]:''}）一場 ${v} 次 > 上限 ${cap}`)}

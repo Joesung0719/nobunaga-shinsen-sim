@@ -463,7 +463,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=57';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=58';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=9';
 import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=1';
@@ -571,12 +571,33 @@ function renderTeamSel(){
   sel.value=S.team;
   sel.onchange=()=>{S.team=sel.value;shown=null;save();renderDefender()};
 }
+function renderOppCards(box){
+  const sp=oppSpec(),per=trAvg(),R0=REP?.[0]?.k===null?REP[0]:null;
+  $('defTitle').textContent='對戰隊伍（④設定的對手）';
+  $('defType').textContent=`兵種 ${ARMS.find(a=>a[0]===S.opp.arm)?.[1]||'隊伍特性最佳'}`;
+  if(sp.length<3){box.append(el('div',{class:'empty',style:'grid-column:1/-1'},'對手還沒選滿 3 位：請到④「對戰隊伍」設定。'));return}
+  sp.forEach((g,i)=>{
+    const ro=ROSTER.get(g.n)||{n:g.n,r:5,c:'?',img:null},rr=ro.r??5;
+    const j=R0?R0.names[1].indexOf(g.n):-1,left=j>=0?R0.t1[1][j]:per;
+    const pic=el('div',{class:'pic'});
+    if(ro.img!=null)pic.append(el('img',{src:artSrc(ro.img),alt:g.n,loading:'lazy'}));else pic.append(el('div',{class:'ph'},g.n[0]));
+    pic.append(el('div',{class:'role'+(i===0?' boss':'')},i===0?'大將':'副將'),el('div',{class:'cost'},String(ro.c??'?')));
+    if(j>=0&&left===0)pic.append(el('div',{class:'rout'},'潰敗'));
+    const tb=el('div',{class:'tb'});tb.append(el('div',{class:'bar red'},el('i',{style:`width:${Math.max(0,Math.min(1,left/(j>=0?R0.t0[1][j]||per:per)))*100}%`})));
+    const ul=el('ul');
+    for(const s of[innateOf(g.n),...(g.s||[])].filter(Boolean)){const gr=D.skillText?.[s]?.g||GRADE[rr]||'S';ul.append(el('li',{title:s,html:`<b class="g${gr}">${gr}</b>${s}`}))}
+    box.append(el('div',{class:'gen r'+rr},pic,el('div',{class:'nm'},g.n),
+      el('div',{class:'meta'},el('span',{},`Lv${g.lv||50}・${g.red??5}紅`),el('span',{},`兵 ${fmt(left)}`)),tb,ul));
+  });
+}
 function typeOf(k,lv){const r=D.reports.find(r=>r.t===k&&(lv===BANDIT?true:r.lv===lv)&&r.ty);return r?r.ty:'?'}
 function renderDefender(){
   const lv=S.lv,per=perTroops(lv);
   const k=shown?.t||S.team||null;
-  $('defTitle').textContent=`${lv}級土地守軍`;
   const box=$('gens');box.replaceChildren();
+  $('teamSel').closest('.form').hidden=OPPM();
+  if(OPPM()){renderOppCards(box);return}   // ⑤ 對象是④的對手隊：右側顯示對手隊頭像，讓人看得出打的是誰
+  $('defTitle').textContent=lv===BANDIT?'野盜 Lv10':`${lv}級土地守軍`;
   if(!k){
     $('defType').textContent='';
     box.append(el('div',{class:'empty',style:'grid-column:1/-1'},'按「出征」隨機遭遇一組守軍，或在上方指定。'));return;
@@ -649,11 +670,12 @@ let REP=null;   // 最近一次出征的逐回合戰報（不存檔）
 const OPPM=()=>S.mtgt==='opp';   // ⑤ 的出征對象：對戰隊伍（④設定的對手隊）
 const ENG=()=>OPPM()||S.lv===BANDIT||S.eng!==false;
 function renderMode(){
+  if(OPPM()&&!S.opp.gens?.length)setOppPreset(S.opp.preset||'0:5');   // 跟④預設的對手一致，不會出現「未選」卻照打
   const box=$('modeBar');box.replaceChildren(el('span',{class:'lbl'},'出征方式'));
   for(const[v,t]of[[true,'引擎逐回合（用組隊頁這一隊，可看戰報）'],[false,'抽樣實戰戰報（舊）']]){
     const b=el('button',{class:'chip',type:'button','aria-pressed':String(ENG()===v)},t);b.onclick=()=>{S.eng=v;save();renderMode();renderRep()};box.append(b)}
   const tb=el('span',{class:'lbl',style:'margin-left:12px'},'對象');box.append(tb);
-  for(const[v,t]of[['land','土地守軍（①目標）'],['opp','對戰隊伍（④設定的對手）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String((S.mtgt||'land')===v)},t);b.onclick=()=>{S.mtgt=v;save();renderMode();renderRep()};box.append(b)}
+  for(const[v,t]of[['land','土地守軍（①目標）'],['opp','對戰隊伍（④設定的對手）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String((S.mtgt||'land')===v)},t);b.onclick=()=>{S.mtgt=v;save();renderMode();renderDefender();renderRep()};box.append(b)}
   box.append(el('span',{class:'note'},OPPM()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）對 ④ 的對手隊 ${oppSpec().map(g=>g.n).join('、')||'（未選）'}；對手的紅度、等級、戰法、兵學、兵種照④設定，每人兵力同④（我方平均）。`:ENG()?`我方：第 ${S.ti+1} 隊 ${S.my.gens.map(m=>m.n).join('、')}（${S.my.arm}兵）；守軍戰法滿級。`:'不跑戰鬥，從同等級的實戰戰報抽一筆。'));
 }
 function mySplit(){   // 三名武將各自的兵力：上次連戰剩下的，否則依 S.cur／S.max 比例
@@ -685,7 +707,8 @@ function marchEngine(lv,ks,start,P){
 const fm=n=>Math.round(n).toLocaleString('en-US');
 const CTRL=new Set(['麻痺','混亂','威壓','無策','封擊','挑釁','牽制']);
 function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊戲戰報：「X由於Y【技能】的傷害，損失了兵力N（剩M）」「效果已施加」「統率降低了8.00%(變化)(結果)」
-  const tr=[w.t0[0].slice(),w.t0[1].slice()],rounds=[];let cur=null,last=null;
+  const tr=[w.t0[0].slice(),w.t0[1].slice()],trq=[w.t0[0].map(()=>0),w.t0[1].map(()=>0)],rounds=[];let cur=null,last=null;
+  const setT=t=>{if((t.q??Infinity)>=trq[t.side][t.i]){tr[t.side][t.i]=t.left;trq[t.side][t.i]=t.q??trq[t.side][t.i]}};   // 事件順序跟實際結算順序偶爾不同，以結算序號（q）為準
   const bc=w.stats.map(a=>a.map(x=>({...x})));const kills=[w.names[0].map(()=>0),w.names[1].map(()=>0)],resc=[w.names[0].map(()=>0),w.names[1].map(()=>0)];
   const nm=(s,i)=>`<span class="${s===0?'cb':'cr'}">[${w.names[s][i]}]</span>`;
   const close=()=>{if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
@@ -696,8 +719,8 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
   const sk=(e,name,kind)=>push(`<div class="sk ${e.side===0?'me':'en'}"><i>${kind==='普攻'?'普':(kind||'').slice(0,1)}</i>${name}</div>`);
   const eff=(t,e,name)=>{
     const by=nm(e.side,e.i),who=nm(t.side,t.i);
-    if(t.heal!=null){tr[t.side][t.i]=t.left;if(t.i!==e.i||t.side!==e.side)resc[e.side][e.i]+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
-    if(t.v!=null){tr[t.side][t.i]=t.left;
+    if(t.heal!=null){setT(t);if(t.i!==e.i||t.side!==e.side)resc[e.side][e.i]+=t.heal;return`${who}由於${by}【${name}】的效果，恢復了兵力 <span class="hl">${fm(t.heal)}</span><small>（${fm(t.left)}）</small>`}
+    if(t.v!=null){setT(t);
       if(t.shield)return`${who}由於【鐵壁】，免受${by}【${name}】的傷害`;
       if(t.evade)return`${who}迴避了${by}【${name}】的攻擊`;
       if(t.side!==e.side)kills[e.side][e.i]+=t.v;
@@ -722,10 +745,15 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
     if(e.type==='stat'){const who=nm(e.side,e.i),b0=bc[e.side][e.i][e.k];bc[e.side][e.i][e.k]=e.res;
       push(`<div class="ln ${e.side===0?'me':'en'} fx">${who}${e.k}${e.d>0?'提高':'降低'}了${Math.abs(e.d).toFixed(2)}${b0?`（${(Math.abs(e.d)/b0*100).toFixed(2)}%）`:''}(${e.res.toFixed(2)})<small>　來源：${e.cause}${e.until<99?`・持續至第 ${e.until} 回合`:'・整場'}</small></div>`);continue}
     if(e.type==='buff'){push(`<div class="ln ${e.side===0?'me':'en'} fx">${nm(e.side,e.i)}【${e.label}】${e.v>=0?'+':''}${(+e.v).toFixed(2)}%<small>　來源：${e.src?'['+e.src+'] ':''}${e.cause}${e.until<99?`・持續至第 ${e.until} 回合`:'・整場'}</small></div>`);continue}
+    if(e.type==='st'){const who=nm(e.side,e.i),c=e.side===0?'me':'en';
+      if(e.off)push(`<div class="ln ${c} fx">${who}的「<span class="st">${e.k}</span>」${e.dot?'持續傷害':''}效果已消失</div>`);
+      else if(e.dot)push(`<div class="ln ${c} fx">${who}受到${e.src!=null&&e.srcSide!=null?nm(e.srcSide,e.srcI):''}【${e.k}】的持續傷害效果<small>　至第 ${e.until} 回合</small></div>`);
+      else push(`<div class="ln ${c} fx">${who}「<span class="st">${e.k}</span>」效果已施加<small>　${e.note||('持續 '+e.dur+' 次行動')}・來源：${e.cause}</small></div>`);
+      continue}
     if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
     else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
     else if(e.type==='atk'||e.type==='skill'){
-      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊')+(e.tg?.some(x=>x.confused)?'（混亂，打到友軍）':''):e.skill;
+      if(!(e.type==='skill'&&(e.aux||e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊')+(e.tg?.some(x=>x.confused)?'（混亂，打到友軍）':''):e.skill;
       sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
       const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
       for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
@@ -737,7 +765,7 @@ function repStats(w){
   const n=[0,1].map(s=>w.names[s].map(()=>({atk:0,sk:{},dmg:0,taken:0,heal:0})));
   for(const e of w.log){
     if(e.type==='atk'){n[e.side][e.i].atk++;for(const t of e.tg||[])if(t.v!=null){n[e.side][e.i].dmg+=t.v;n[t.side][t.i].taken+=t.v}}
-    else if(e.type==='skill'){const x=n[e.side][e.i],k=`${e.skill}`;if(e.kind!=='持續')x.sk[k]=(x.sk[k]||0)+1;   // 持續傷害的每回合結算只是持續產生傷害，不算發動（Joe）
+    else if(e.type==='skill'){const x=n[e.side][e.i],k=`${e.skill}`;if(e.kind!=='持續'&&!e.aux)x.sk[k]=(x.sk[k]||0)+1;   // 持續傷害的每回合結算只是持續產生傷害，不算發動（Joe）
      
       for(const t of e.tg||[]){if(t.v!=null&&t.side!==e.side){x.dmg+=t.v;n[t.side][t.i].taken+=t.v}if(t.v!=null&&t.side===e.side)n[t.side][t.i].taken+=t.v;if(t.heal!=null)n[t.side][t.i].heal+=t.heal}}
   }
@@ -830,7 +858,7 @@ function renderRep(){
   const box=$('rep');box.className='rep';box.replaceChildren();
   if(!REP||!ENG())return;
   box.append(el('h3',{style:'margin:0 0 4px'},'查看戰報（引擎逐回合）'),
-    el('p',{class:'note'},'格式仿遊戲戰報詳情：每回合依行動順序列出誰發動什麼、傷害與剩餘兵力；左邊色條藍＝我方、紅＝守軍。回合末兵力由事件推算（離反吸血等未入事件的回復不含）。'));
+    el('p',{class:'note'},'格式仿遊戲戰報詳情：每回合依行動順序列出誰發動什麼、傷害與剩餘兵力；左邊色條藍＝我方、紅＝守軍。每筆兵力變化都有列出：治療、離反／吸血、鬼美濃、死守等回復，紫電、反影、霸王、魔王等追加損失，控制與持續傷害的施加和消失；表格「回復」是該武將收到的回復總量。'));
   REP.forEach((w,i)=>box.append(waveNode(w,i===REP.length-1)));
   box.append(renderCompare());
 }
@@ -850,7 +878,7 @@ function attackOpp(){   // ⑤ 對戰隊伍：我方這隊打④設定的對手�
   S.dead+=dead;S.wounded+=wounded;S.pend=null;shown=null;save();
   const v=$('verdict');v.className='verdict '+r.res;v.textContent=RES[r.res];
   $('loss').innerHTML=`我方 死 <b>${fmt(dead)}</b>　傷 <b>${fmt(wounded)}</b><br>對手 剩 <b>${fmt(sumT(G))}</b> / ${fmt(e0.reduce((a,b)=>a+b,0))}<br><span style="font-size:.72rem">引擎逐回合模擬：第 ${S.ti+1} 隊 vs ${label}（④設定的對手）</span>`;
-  renderArmy();renderDefender();renderTab();renderPend();renderRep();
+  renderMode();renderArmy();renderDefender();renderTab();renderPend();renderRep();
 }
 function attack(){
   if(OPPM())return attackOpp();
@@ -1436,7 +1464,8 @@ function setOppPreset(v){
   const[k,i]=v.split(':'),t=RANK?.[k]?.[+i];if(!t)return;
   S.opp={preset:v,arm:t.arm||'',gens:t.team.map(n=>({n,red:+k,lv:50,s:(t.skills?.[n]||[]).filter(x=>x!==innateOf(n)).slice(0,2),sl:{},bgMode:'auto',bg:null}))};
 }
-function renderPredict(){
+function renderPredict(){renderPredict0();renderMode();if(OPPM())renderDefender()}   // ④改對手 → ⑤說明與右側頭像跟著更新
+function renderPredict0(){
   const bar=$('tgtbar');bar.replaceChildren(el('span',{class:'lbl'},'對手'));
   for(const[k,t]of[['land',`打土地守軍 ${lvName(S.lv)}（同上方目標）`],['opp','對戰隊伍（對手隊）']]){const b=el('button',{class:'chip',type:'button','aria-pressed':String(S.tgt===k)},t);b.onclick=()=>{S.tgt=k;save();renderPredict()};bar.append(b)}
   const box=$('oppBox');box.replaceChildren();

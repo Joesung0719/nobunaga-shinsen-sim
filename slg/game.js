@@ -1,5 +1,5 @@
 // 真戰 Q版戰棋：設定 → 地圖（每格一支部隊）→ 接觸時 8 回合自動戰鬥（engine.js）並播放。
-import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=57';
+import {battle,parseSkill,statsAt,innateOf,fullRedStats,bestArm,K,COUNTER,ST4} from './engine.js?v=58';
 import {chibi,SIDE_COL,setSpec} from './chibi.js?v=44';
 import {ATTRS,ATTR_NAME,ATTR_HINT,ARMS as HARMS,COLORS,CHAIN,MAXLV,expNeed,stageExp,routExp,enemyLv,newHero,addExp,heroStats,heroTroops,charmDmg,heroSpec,SCENES,generic,SHOP,ensureHero,price,gearMul,stageSilver,banditScenario,banditSilver,banditExp,STARTERS,JOIN,RECRUIT,recruitPrice,PARTY_MAX} from './campaign.js?v=44';
 import {FAV_NEED,FAVS,spotTile,dirText,atSpot,farCorner} from './favor.js?v=44';
@@ -971,7 +971,7 @@ async function playBattle(a,d,before,r){
   // per-general totals: damage dealt (兵刃／謀略), damage taken, healing — for comparing with real 戰報
   const tot={};const at=(s,i)=>tot[s+'-'+i]??={out:0,bing:0,mou:0,taken:0,heal:0,act:0};
   for(const e of r.log)if(e.type==='atk'||e.type==='skill'){
-    const me=at(e.side,e.i);if(e.type==='skill'&&e.kind!=='兵學')me.act++;
+    const me=at(e.side,e.i);if(e.type==='skill'&&e.kind!=='兵學'&&!e.aux)me.act++;
     for(const t of e.tg){if(t.v!=null){me.out+=t.v;me[t.dtype==='謀略'?'mou':'bing']+=t.v;at(t.side,t.i).taken+=t.v}if(t.heal)me.heal+=t.heal}
   }
   const trs=[];
