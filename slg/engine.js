@@ -194,7 +194,7 @@ const SKFX={
   神妙劍:()=>({open:{t:'shinmyo',v:hi(12,24),p:hi(42.5,85)/100}}),
   // 2026-11-25 新賽季官方預告（tools/pk_preview.txt，以上線為準）：照預告說明文字；「受XX影響」的縮放照慣例不模擬，取顯示的數值
   三階菅笠:()=>({open:{t:'sasa',p:hi(17.5,35)/100,heal:hi(73,146)/100,dmg:hi(80,160)/100}}),   // 佐佐成政：自身與武勇最高友軍行動前，累計受傷 ≥20% 最大兵力 → 機率治療（受武勇影響），否則機率兵刃傷害
-  南予智將:()=>({open:{t:'nanyo',v:hi(10,20),p:hi(17.5,35)/100,dmg:hi(62,124)/100}}),   // 土居清良：前 3 回合敵我全體兵刃傷害降低；友軍普攻後機率追加謀略傷害（假設「友軍」不含自己）
+  南予智將:()=>({open:{t:'nanyo',v:hi(10,20),p:hi(17.5,35)/100,dmg:hi(62,124)/100}}),   // 土居清良：前 3 回合敵我全體兵刃傷害降低；友軍普攻後機率追加謀略傷害（「友軍」＝自己以外的友軍武將，Joe 2026-11-25 確認）
   風聲鶴唳:()=>({cast:{t:'fuusei',dmg:hi(83,166)/100,spd:hi(10,20)}}),   // 兵刃＋謀略各一次，速度降低 2 回合
   武士之鑒:()=>({cast:{t:'bushi',dot:hi(54,108)/100,dmg:hi(70,140)/100,dur:2}}),   // 全體潰走（兵刃持續傷害）；目標已潰走則兵刃傷害
 };
@@ -291,7 +291,7 @@ const INNFIX={
   當機立斷:s=>{s.fx={rush:{t:'tanki'}}},                                // 先解除目標 2 個增益再打；50% 對重新選的敵軍單體再執行 1 次
   雨夜手拍子:s=>{s.fx={cast:{t:'amayo',v:hi(17.5,35),cd:1}}},           // 自身非自帶主動傷害 +35% 持續 2 回合；發動後冷卻 1 回合
   能鷹隱爪:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'nouka',dmg:hi(71,142)/100,heal:hi(65,130)/100}}},   // 隨機 2-4 次，每次 50% 謀略傷害／50% 治療我軍單體（兩者機率各半是假設）
-  孤注一擲:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'kochu',dmg:hi(80,160)/100,heal:hi(86,172)/100}}},   // 未連擊友軍各打 1 次（智武較高）；連擊中友軍治療（受統率影響）。「80%-160%」當作 Lv1→滿級
+  孤注一擲:s=>{delete s.dmg;delete s.heal;s.fx={rush:{t:'kochu',dmg:hi(80,160)/100,heal:hi(86,172)/100}}},   // 未連擊友軍各打 1 次（智武較高）；連擊中友軍治療（受統率影響）。「80%-160%」＝Lv1→滿級（Joe 2026-11-25 確認）
 };
 const PFIX=new Set(['三階菅笠','如水','疾風迅雷','肥前之熊','破竹之勢','比翼連理','月華鶴影','天神山殘照','鈴鳴','一念亂志','智者樂水','堅忍不拔','七十二欺計','一領具足']);
 export function parseSkill(name,D,lv=null){
@@ -895,7 +895,7 @@ export function battle(A,B,R=Math.random){
         const tgs=h?[h]:[];if(rwp&&h&&R()<rwp){const o3=aliveIdx(e).filter(x=>x!==j);if(o3.length){const h4=hit(t,ti,i,e,o3[Math.floor(R()*o3.length)],1,g.atkS?'謀略':'兵刃','atk');if(h4)tgs.push(h4)}}   // 亂舞：普攻時對同隊其他武將造成傷害if(mae&&sw===0&&h)for(const k of aliveIdx(e))if(k!==j){const h2=hit(t,ti,i,e,k,1,'兵刃','atk');if(h2)tgs.push(h2)}   // 槍之又左：強化普攻擴散至敵軍全體
         ev({type:'atk',side:t.side,i,tg:tgs,combo:sw>0});
         if(h&&g.tc.tosa&&R()<.7&&g.sb.filter(x=>x.tosa&&x.until>=round).length<4){g.b.智略+=10;g.sb.push({k:'智略',v:10,until:round+1,tosa:1})}   // 土佐基石：普攻後 70% 智略 +10，持續 2 回合，最多疊 4 次
-        if(h)for(let mi=0;mi<t.gens.length;mi++){const m=t.gens[mi];if(m===g||m.troops<=0)continue;for(const s of m.skills){const o=s.fx?.open;   // 南予智將：友軍普攻後機率謀略傷害
+        if(h)for(let mi=0;mi<t.gens.length;mi++){const m=t.gens[mi];if(m===g||m.troops<=0)continue;for(const s of m.skills){const o=s.fx?.open;   // 南予智將：自己以外的友軍普攻後機率謀略傷害
           if(o?.t==='nanyo'&&R()<o.p){const al=aliveIdx(e);if(al.length){const h3=hit(t,ti,mi,e,al[Math.floor(R()*al.length)],o.dmg,'謀略','指揮');if(h3)ev({type:'skill',side:t.side,i:mi,skill:s.name,kind:s.kind,tg:[h3]})}}}}
         if(h){e.gens[j].hitBy={round,i};for(const m of e.gens){const gx=m.ix?.gk2;if(gx&&gx.includes(j))m.ix.gkc=(m.ix.gkc||0)+1}}
         if(h&&!h.shield&&!h.evade){const dj=e.gens[j];
