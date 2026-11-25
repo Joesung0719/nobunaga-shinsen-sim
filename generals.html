@@ -328,7 +328,7 @@ function previewBox(n){
   for(const[k,v]of Object.entries(p.ana||{}))rows.push([k,k==='推薦指數'?`${v} / 5`:v]);
   if(p.story)rows.push(['傳記',p.story]);
   return el('div',{class:'pv'},el('h4',{},'新賽季官方預告',el('span',{class:'tag'},'以上線為準')),
-    el('p',{class:'note',style:'margin:0'},P.note+'。截圖沒有的：'+P.unknown.join('、')+'（標未知，不推測）。Lv50 數字是用 1 級屬性＋每級成長推算的。'),
+    el('p',{class:'note',style:'margin:0'},P.note+'。尚未收錄：'+P.unknown.join('、')+'。推算：'+(P.derived||[]).join('；')+'（和其他武將相同）。'),
     el('dl',{},...rows.flatMap(([k,v])=>[el('dt',{},k),el('dd',{},v)])),
     ...(P.teams||[]).filter(tm=>tm.gens.some(g=>g.n===n)).map(tm=>el('p',{class:'note',style:'margin:8px 0 0'},`官方陣容推薦 ${tm.id}（${tm.title}・Cost ${tm.cost}）：${tm.gens.map(g=>g.n+(g.lead?'（大將）':'')).join('、')}。完整戰法與兵學見組隊分析「新賽季預告」。`)));
 }

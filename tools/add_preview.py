@@ -11,7 +11,8 @@ ART = {'佐佐成政': 'p01', '長宗我部國親': 'p02', '土居清良': 'p03'
 NOTE = '官方預告，僅供參考，實際以上線版本為準'
 
 pv = {'note': NOTE, 'src': 'Joe 2026-11-25 官方「PK賽季武將全面解析」「事件戰法總覽」截圖 30 張',
-      'unknown': ['兵學樹', 'Lv50 數值（只有 1 級基礎屬性與每級成長）', '戰法 Lv2～9 的數值（只有 Lv1→滿級）'],
+      'unknown': ['兵學樹（等開季再補）'],
+      'derived': ['Lv50 屬性＝1 級屬性＋每級成長推算', '戰法 Lv2～9＝Lv1 與滿級之間推算'],   # Joe 2026-11-25：和其他武將一樣用推算
       'gens': {}, 'events': {}, 'teams': []}
 team = {}
 for raw in open(f'{repo}/tools/pk_preview.txt', encoding='utf-8'):
