@@ -12,7 +12,9 @@ export const K={
   // 限制：資料未含兵學／標籤／評定眾／裝備（裝備為隨機打造無法還原）；戰法發動率與相剋倍率尚未校正，僅為第一版。
   base:4.2,          // 傷害基數 = √兵力 × base × 傷害率 × 屬性差係數
   statDiv:280,       // 屬性差係數 = 1 + (攻方屬性 − 守方屬性) / statDiv，夾在 0.3～3
-  counter:[1.15,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.15，被剋方 ×0.87
+  counter:[1.10,0.87],   // 兵種相剋：剋制方兵刃傷害 ×1.10，被剋方 ×0.87（2026-11-25 由 107 場戰報 821 次普攻擬合，原本 1.15）
+  // 士氣（戰報準備階段，107 場精確吻合）：士氣低於 100 時造成傷害 = 100% − (100 − 士氣) × 0.7%，100 以上一律 100%。用法：team.morale（預設 100）
+  morale:m=>m>=100?1:Math.max(0,1-(100-m)*.007),
   terrain:{},        // 地形對傷害的倍率，例如 {林:0.9}；遊戲內地形沒有攻防加成（Joe）
   // 火炬（Joe 截圖 2026-11-20）：占領後擁有火炬視野，視野內同一門玩家部隊戰鬥時造成傷害 +3%、受到傷害 −3%。
   // 用法：team.mods={dmg:K.torch.dmg,taken:K.torch.taken}（視野範圍的格數尚未收集，由呼叫端決定誰在範圍內）
@@ -25,7 +27,7 @@ export const COUNTER={槍:['騎','器械'],騎:['弓','器械'],弓:['鐵炮','�
 // 火炬視野：(x,y) 是否在以 (cx,cy) 為中心的 7×6 格內。6 的那一邊中心偏哪側還沒確認，暫時多算上側（y−3～y+2）。
 export const inTorch=(cx,cy,x,y)=>Math.abs(x-cx)<=Math.floor(K.torch.w/2)&&y>=cy-Math.floor(K.torch.h/2)&&y<=cy+Math.ceil(K.torch.h/2)-1;
 export const ST4=['武勇','智略','統率','速度'];
-const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'50% 機率無法行動',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};
+const STATUS={威壓:'無法行動',麻痺:'30% 機率無法行動',混亂:'普通攻擊隨機選目標（含友軍）',無策:'無法發動主動戰法',封擊:'無法普通攻擊'};   // 混亂：107 場戰報 137 次混亂中普攻全部照常出手、36% 打到友軍（2026-11-25）
 
 const num=s=>s==null?null:+s;
 // 「Lv1→滿級」：預設取滿級；parseSkill(name,D,lv) 指定 1～10 級時，兩端數值線性內插（推估：遊戲沒公開每級數值，只有 Lv1 與滿級）。
@@ -478,6 +480,7 @@ export function battle(A,B,R=Math.random){
     if(dtype==='兵刃'){if(COUNTER[src.arm]?.includes(dst.arm))f*=K.counter[0];else if(COUNTER[dst.arm]?.includes(src.arm))f*=K.counter[1]}
     f*=K.terrain[dst.terrain]??1;
     f*=src.mods?.dmg??1;   // 劇本效果（例如豪雨奇襲）、火炬視野
+    f*=K.morale(src.morale??100);   // 士氣
     f*=dst.mods?.taken??1;   // 火炬視野：受到傷害降低
     if(g.tc.kengo&&d.st.武勇>=g.st.武勇)f*=1.09;if(d.tc.kengo&&g.st.武勇<d.st.武勇)f*=.91;   // 劍豪
     if(d.tc.phx)f*=1.015;   // 鳳凰：受到傷害 +1.5%
@@ -761,7 +764,7 @@ export function battle(A,B,R=Math.random){
       if(t.gens.some(m=>m.tc.caide&&m.troops>0)&&(g.bs.caide||0)<2&&R()<.4){g.bs.caide=(g.bs.caide||0)+1;g.nu=28}   // 才德兼備
       for(const sk of g.skills){const o=sk.fx?.open;if(o&&IA[o.t]){IA[o.t]({t,ti,e,g,i,o});if(routed(e)){res=ti===0?'W':'L';break outer}if(routed(t)){res=ti===0?'L':'W';break outer}}}
       if(g.q==='生生不息'&&R()<.4){const h=healTo(t,i,g,.5);if(h)ev({type:'skill',side:t.side,i,skill:'生生不息',kind:BG,tg:[h]})}
-      if(fx.威壓||(fx.麻痺&&R()<.3)||(fx.混亂&&R()<.5)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':fx.麻痺?'麻痺':'混亂'});
+      if(fx.威壓||(fx.麻痺&&R()<.3)){ev({type:'stun',side:t.side,i,why:fx.威壓?'威壓':'麻痺'});
         if(g.prep&&R()<.5){g.prep=null;g.pl=0;ev({type:'skill',side:t.side,i,skill:'準備被打斷',kind:'控制',tg:[]})}   // 官方：準備期間受到控制可能被打斷（機率未知，先設 50%，Joe 2026-11-23）
         // 官方：麻痺「不影響指揮戰法與被動戰法」、指揮／被動戰法「不受控制效果影響」→ 被控制時，每回合判定的指揮／被動戰法照常發動
         for(const sk of g.skills){if(sk.each&&sk.kind!=='主動'&&sk.modeled!=='none'&&!(sk.arm&&t.arm!==sk.arm)&&R()<sk.rate)useSkill(t,ti,i,sk)}
@@ -810,6 +813,8 @@ export function battle(A,B,R=Math.random){
         const al=aliveIdx(e);if(!al.length)break;
         const tn=g.tn&&g.tn.until>=round&&e.gens[g.tn.to]?.troops>0?g.tn.to:-1;   // 挑釁：強迫對挑釁者普通攻擊
         const wt=al.map(x=>e.gens[x].tc.tw||1),wsum=wt.reduce((a,b)=>a+b,0);let wr=R()*wsum,wj=al[al.length-1];for(let q=0;q<al.length;q++){wr-=wt[q];if(wr<=0){wj=al[q];break}}   // 剛猛／隱忍：被普攻機率
+        if(fx.混亂&&tn<0){const fr=aliveIdx(t).filter(x=>x!==i);const k=Math.floor(R()*(al.length+fr.length));
+          if(k>=al.length){const fj=fr[k-al.length],hf=hit(t,ti,i,t,fj,1,'兵刃','atk');ev({type:'atk',side:t.side,i,tg:hf?[{...hf,confused:true}]:[],combo:sw>0});if(routed(t))break;continue}}   // 混亂：在敵我全部武將中隨機選普攻目標，打到友軍就結束這一擊
         const j=tn>=0?tn:wj,h=hit(t,ti,i,e,j,1,'兵刃','atk');
         const tgs=h?[h]:[];if(rwp&&h&&R()<rwp){const o3=aliveIdx(e).filter(x=>x!==j);if(o3.length){const h4=hit(t,ti,i,e,o3[Math.floor(R()*o3.length)],1,'兵刃','atk');if(h4)tgs.push(h4)}}   // 亂舞：普攻時對同隊其他武將造成傷害if(mae&&sw===0&&h)for(const k of aliveIdx(e))if(k!==j){const h2=hit(t,ti,i,e,k,1,'兵刃','atk');if(h2)tgs.push(h2)}   // 槍之又左：強化普攻擴散至敵軍全體
         ev({type:'atk',side:t.side,i,tg:tgs,combo:sw>0});
@@ -900,7 +905,7 @@ export function statsAt(D,n,lv,r=4){
 export function fullRedStats(D,n,names,arm,lv=50,red=5,fac=null){
   const rd=nm=>typeof red==='object'?(red[nm]??5):red;
   const traits=traitsAtRed(D,n,rd(n));
-  const lvArm=armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};
+  const lvArm=fac?.armLv??armLevel(D,names,arm,red,fac?fac.arm:5).lv,team={};   // fac.armLv：直接指定兵種等級（例如照戰報準備階段的「屬性調整為 110%」＝Lv5）
   for(const nm of names)for(const t of traitsAtRed(D,nm,rd(nm))){const x=traitFx(D,nm,t);if(x.team)team[x.team]=(team[x.team]||0)+x.tpct}
   const own={};let extra=0;
   for(const t of traits){const x=traitFx(D,n,t);if(x.stat)own[x.stat]=(own[x.stat]||0)+x.pct;extra+=+(D.traitText?.[n]?.[t]||'').match(/每升10級，獲得(\d+)點自由屬性點/)?.[1]||0}

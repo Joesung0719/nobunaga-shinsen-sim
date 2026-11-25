@@ -463,7 +463,7 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV} from './slg/engine.js?v=56';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=57';
 import {rollGear,gearBonus,GEAR_OPTIONS} from './slg/equipment.js';
 import {makeKit} from './slg/teamlib.js?v=9';
 import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=1';
@@ -725,7 +725,7 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
     if(e.type==='stun'){head(e.side,e.i,e.spd);push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}由於「<span class="st">${e.why}</span>」，無法行動</div>`)}
     else if(e.type==='prep'){head(e.side,e.i,e.spd);sk(e,e.skill,'準備');push(`<div class="ln ${e.side===0?'me':'en'}">${nm(e.side,e.i)}開始準備【${e.skill}】</div>`)}
     else if(e.type==='atk'||e.type==='skill'){
-      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊'):e.skill;
+      if(!(e.type==='skill'&&(e.kind==='持續'||(e.kind==='被動'&&last&&(last.side!==e.side||last.i!==e.i)))))head(e.side,e.i,e.spd);const name=e.type==='atk'?(e.combo?'連擊':'普通攻擊')+(e.tg?.some(x=>x.confused)?'（混亂，打到友軍）':''):e.skill;
       sk(e,name+(e.guess?'（推估）':''),e.type==='atk'?'普攻':e.kind);
       const ls=(e.tg||[]).map(t=>eff(t,e,name)).filter(Boolean);
       for(const l of ls)push(`<div class="ln ${e.side===0?'me':'en'}">${l}</div>`);
@@ -1286,7 +1286,9 @@ function renderTeamBar(bonus){
   $('armInfo').replaceChildren(el('span',{class:'pill',html:`${S.my.arm}兵 <b>Lv${al.lv}</b>`}),el('span',{class:'pill'},`${ARM_CAMP[S.my.arm]} ${al.camp}`),el('span',{class:'pill'},`特性 +${al.tr}`),el('span',{class:'pill',html:`上限 ${al.cap}${al.raw>al.cap?`（超出 ${al.raw-al.cap} 級無效）`:''}`}));
   const fsame=el('input',{type:'checkbox'});fsame.checked=!!S.my.fac.same;fsame.onchange=()=>{S.teams.forEach(t=>t.fac.same=fsame.checked);S.my.fac.same=fsame.checked;save();renderBuilder()};
   $('fac').replaceChildren(el('span',{class:'note',style:'grid-column:1/-1'},'設施一律假設升到滿：協力 Lv10（三人同勢力才生效，最多 +7%；三人勢力不同時沒有，只能搭「合盟之陣」）、兵種營 Lv5、家門 Lv3（+3%）、軍學修習 Lv5（依兵種給屬性與傷害／受傷％，足輕守禦已計；弓齊射的傷害係數、鐵炮破軍的持續回合截圖沒寫，未計入）。合盟之陣依隊伍自動判定：三個不同勢力才會啟動。'),
-    el('label',{style:'grid-column:1/-1'},fsame,'三人同家門（勾了才算家門 +3%）'));
+    el('label',{style:'grid-column:1/-1'},fsame,'三人同家門（勾了才算家門 +3%）'),
+    (()=>{const mi=el('input',{type:'number',min:'0',max:'150',step:'0.1',value:String(S.my.morale??100),style:'width:5em'});mi.onchange=()=>{const v=Math.max(0,Math.min(150,+mi.value||100));S.my.morale=v;save();renderBuilder()};
+      const m=S.my.morale??100;return el('label',{style:'grid-column:1/-1'},'士氣 ',mi,` → 造成傷害 ${(K.morale(m)*100).toFixed(2)}%（士氣低於 100 時，每少 1 點傷害 −0.7%；行軍會掉士氣，戰報準備階段有寫）`)})());
   const ts=teamStatPct().parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`));
   $('bonusPills').replaceChildren(...(bonus.parts.length?[el('span',{class:'pill',html:`合計 <b>+${bonus.pct}%</b>`}),...bonus.parts.map(p=>el('span',{class:'pill'},`${p[0]} +${p[1]}%`))]:[el('span',{class:'pill'},'目前沒有加成')]),...ts);
 }
@@ -1386,7 +1388,7 @@ function calcOf(my){const old=S.my;S.my=my;try{const p=teamBonus().pct;return my
 const lvlOf=(m,n)=>m.sl?.[n]??S.skLv;
 function buildMine(my){   // 用組隊頁的最終屬性（配點、設施、特性）、兵學、各招戰法等級
   const calc=calcOf(my),names=my.gens.map(m=>m.n),red=Object.fromEntries(my.gens.map(m=>[m.n,m.red||0])),tb=traitBattle(D,names,red);
-  return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',gens:my.gens.map((m,i)=>({n:m.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[m.n]?.f,
+  return{name:names[0]+'隊',side:0,arm:my.arm,study:true,terrain:'平',morale:my.morale??100,gens:my.gens.map((m,i)=>({n:m.n,tr:tb[i].tr,trTm:tb[i].tm,tcIn:tb[i].tc,f:D.stats?.[m.n]?.f,
     st:calc[i]||fullRedStats(D,m.n,names,my.arm,50,red,my.fac),gear:m.gear?gearBonus(m.gear):null,kaho:m.gear?gearBonus(m.gear.filter(x=>x.slot==='家寶')):null,gearN:m.gear?m.gear.filter(x=>x.trait?.n).length:0,troops:m.t,max:m.t,
     skills:[innateOf(m.n),...m.s].filter(Boolean).map(n=>KIT.ps(n,lvlOf(m,n))),bg:bgCompile(m.bg,ROSTER.get(m.n)?.r,m.red||0,m.n)}))};
 }
