@@ -13,7 +13,7 @@ const FAC=FAC_FULL;
 const cases=[['武田信玄','山本勘助','飯富虎昌','騎'],['宇佐美定滿','上杉謙信','直江兼續','弓']];
 const prep=cases.map(([a,b,c,arm])=>{const team=[a,b,c],st=L.teamStats(team,arm,50,5,FAC),pl=kit.pick(team.map((x,i)=>({n:x,red:5,st:st[i]})),null,{},{arm});return()=>L.myTeam(team,arm,st,pl.sel,10000)});
 const one=(slot,name,n)=>[{slot,name,attrs:{},trait:{n,v:traitRange(n)?.[1]??null}}];
-const all=Object.entries(GEAR_OPTIONS.traits).flatMap(([sl,ts])=>ts.map(n=>[sl,null,n])).concat(Object.entries(GEAR_OPTIONS.excl).map(([nm,n])=>[Object.keys(GEAR_OPTIONS.names).find(k=>GEAR_OPTIONS.names[k].includes(nm)),nm,n]));
+const all=Object.entries(GEAR_OPTIONS.traits).flatMap(([sl,ts])=>ts.map(n=>[sl,null,n])).concat(Object.entries(GEAR_OPTIONS.excl).flatMap(([nm,ns])=>ns.map(n=>[Object.keys(GEAR_OPTIONS.names).find(k=>GEAR_OPTIONS.names[k].includes(nm)),nm,n])));
 const out=[];
 for(const [sl,nm,n] of all){
   if(traitWho(n)){out.push(`${n}：綁定 ${traitWho(n)}，這裡不測（見 PR 說明的專屬測試）`);continue}

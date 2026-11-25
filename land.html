@@ -494,8 +494,8 @@ input[type=range]{accent-color:var(--gold)}
 
 <script type="module">
 import {DIRS,RULE,capOf,dirOf,hasTree,cleanSel,pointsUsed,summary as bgSummary,compile as bgCompile,BASE_TEXT} from './slg/bingaku.js?v=10';
-import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=61';
-import {rollGear,gearBonus,GEAR_OPTIONS,traitStatus} from './slg/equipment.js?v=3';
+import {battle,statsAt,fullRedStats,bestArm,traitBattle,MAX_SKILL_LV,DEFAULT_SKILL_LV,K} from './slg/engine.js?v=62';
+import {rollGear,gearBonus,GEAR_OPTIONS,traitStatus} from './slg/equipment.js?v=4';
 import {makeKit} from './slg/teamlib.js?v=9';
 import {traitFx as traitFxR,armLevel as armLevelR,facsOf as facsOfR,coopPct,FAC_FULL,bossText} from './slg/rules.js?v=2';
 import {adviseBingaku,advisePoints,armReason} from './slg/advisor.js?v=4';
@@ -1291,7 +1291,7 @@ function gearPanel(m){
     if(it){const line=el('div',{class:'row',style:'flex-wrap:wrap;gap:6px;align-items:center'});
       for(const k of Object.keys(it.attrs)){const ni=el('input',{type:'number',min:'0',max:'15',step:'0.1',value:String(it.attrs[k]),style:'width:4.5em','aria-label':sl+k});
         ni.onchange=()=>{it.attrs[k]=Math.max(0,Math.min(15,+ni.value||0));save();renderBuilder()};line.append(el('label',{},k+' +',ni))}
-      line.append(el('small',{},`${it.name}　特技「${it.trait.n}」${it.trait.v!=null?it.trait.v:''}${{battle:'',off:'（政務／魅力／經驗／行軍用，不影響戰鬥）',todo:'（還沒有說明資料，只顯示）'}[traitStatus(it.trait.n)]}${GEAR_OPTIONS.excl[it.name]===it.trait.n?'【專屬】':''}`));box.append(line)}
+      line.append(el('small',{},`${it.name}　特技「${it.trait.n}」${it.trait.v!=null?it.trait.v:''}${{battle:'',off:'（政務／魅力／經驗／行軍用，不影響戰鬥）',todo:'（還沒有說明資料，只顯示）'}[traitStatus(it.trait.n)]}${(GEAR_OPTIONS.excl[it.name]||[]).includes(it.trait.n)?'【專屬】':''}`));box.append(line)}
   }
   const b1=el('button',{type:'button',class:'sbtn',style:'width:auto'},m.gear?'重擲數值':'擲數值');b1.onclick=()=>{m.gear=rollGear(Math.random,Object.fromEntries(GEAR_SLOTS.map(sl=>[sl,{attrs:want[sl]?.attrs?.length?want[sl].attrs:null}])));save();renderBuilder()};
   const b2=el('button',{type:'button',class:'sbtn',style:'width:auto;margin-left:6px'},'卸下全部');b2.onclick=()=>{m.gear=null;save();renderBuilder()};
