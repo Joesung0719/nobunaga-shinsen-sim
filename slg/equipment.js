@@ -21,8 +21,8 @@ const TRAITS={
     {n:'萬象',fx:'tm',k:'critSDmg',r:[3,15]},
     {n:'進擊',fx:'tm',k:'dmgRush',r:[0.5,1.4]},
     {n:'專心',fx:'tm',k:'critDmg',r:[3,15]},{n:'妖氣',fx:'gc',key:'妖氣',r:[0,1]},{n:'果決',fx:'gc',key:'果決',r:[0,1]},{n:'摧堅',fx:'gc',key:'摧堅',r:[0,1]},{n:'折銳',fx:'gc',key:'折銳',r:[0,1]},{n:'壓迫',fx:'gc',key:'壓迫',r:[0,1]},{n:'激昂',fx:'gc',key:'激昂',r:[0,1]},
-    // 逆轉／無言／流轉：只看過一筆實際值（逆轉 1.0%、無言 0.7%、流轉 14%），說明的範圍還沒拍到，暫用假設範圍（待 Joe 截圖確認）
-    {n:'逆轉',fx:'tm',k:'dmgBowCav',r:[0.5,1.5]},{n:'無言',fx:'tm',k:'dmgPas',r:[0.5,1.5]},{n:'流轉',fx:'gc',key:'流轉',r:[0,1]}],
+    // 逆轉 1~2.5%、無言 0.5~3%、流轉 第 5~6 回合 5~40% 連擊（Joe 2026-11-25 鍛造畫面截圖）
+    {n:'逆轉',fx:'tm',k:'dmgBowCav',r:[1,2.5]},{n:'無言',fx:'tm',k:'dmgPas',r:[0.5,3]},{n:'流轉',fx:'gc',key:'流轉',r:[0,1]}],
   防具:[
     {n:'方圓',fx:'fangyuan'},
     {n:'脫兔',fx:'tm',k:'evade',r:[1,3]},{n:'反影',fx:'gc',key:'反影',r:[0,1]},{n:'殘心',fx:'gc',key:'殘心',r:[0,1]},{n:'默殺',fx:'tm',k:'takenAtkRush',r:[3,15]},{n:'光耀',fx:'gc',key:'光耀',r:[0,1]},{n:'戒心',fx:'gc',key:'戒心',r:[0,1]},{n:'怒濤',fx:'gc',key:'怒濤',r:[0,1]},{n:'氣骨',fx:'tm',k:'takenPas',r:[2,8]},{n:'強固',fx:'tm',k:'takenCom',r:[2,8]},{n:'奪旗',fx:'gc',key:'奪旗',r:[0,1]},{n:'勇猛',fx:'gc',key:'勇猛',r:[0,1]},{n:'耀武',fx:'gc',key:'耀武',r:[0,1]},{n:'復甦',fx:'gc',key:'復甦',r:[0,1]},{n:'絕境',fx:'gc',key:'絕境',r:[0,1]},{n:'堅韌',fx:'gc',key:'堅韌',r:[0,1]},{n:'籠絡',fx:'gc',key:'籠絡',r:[0,1]}],
@@ -43,6 +43,9 @@ const EXCL={
   蘭奢待:{n:'清香',fx:'gc',key:'清香',r:[0,1]},   // 前 1~3 回合 會心＋奇謀 5~25%
   惣黑熊毛具足:{n:'白瀨',fx:'gc',key:'白瀨',r:[0,1]},   // 受戰法傷害 5~10% 機率獲得 10~25% 會心，1~2 回合，疊 1~2 次
   宇佐美長光:{n:'回響',fx:'gc',key:'回響',r:[0,1],who:'宇佐美定滿'},   // 宇佐美定滿攜帶時：發動主動戰法 5~25% 機率獲得狀態免疫 2 回合
+  三人張弓:{n:'第一',fx:'gc',key:'第一',r:[0,1],who:'今川義元'},   // 今川義元攜帶時：獲得 4~8% 會心及奇謀狀態
+  山姥切長義:{n:'獅心',fx:'gc',key:'獅心',r:[0,1],who:'北條氏康'},   // 北條氏康攜帶時：自帶戰法相模之獅發動機率 +1~5%
+  雷切:{n:'雷刃',fx:'gc',key:'雷刃',r:[0,1],who:'立花道雪'},   // 立花道雪攜帶時：自帶戰法電光雷轟雷鳴傷害率 +2~8%
 };
 const r1=x=>Math.round(x*10)/10;
 const between=(R,[lo,hi])=>lo+R()*(hi-lo);
@@ -94,6 +97,7 @@ export function gearBonus(items,who){
 // 一行文字說明（給介面／除錯）
 export const GEAR_OPTIONS={attrs:SLOT_ATTR,names:NAMES,excl:Object.fromEntries(Object.entries(EXCL).map(([k,v])=>[k,v.n])),traits:Object.fromEntries(Object.entries(TRAITS).map(([k,v])=>[k,v.map(t=>t.n)]))};
 // 特技在戰鬥中的狀態：'battle'＝已接進引擎；'off'＝戰鬥用不到（政務／魅力／經驗／行軍）；'todo'＝還沒有說明資料
+export const traitWho=n=>ALL[n]?.who||null;
 export const traitRange=n=>ALL[n]?.r||null;
 export const traitStatus=n=>{const t=ALL[n];return !t?'todo':t.fx==='off'?'off':t.fx?'battle':'todo'};
 export function gearText(items){return items.map(it=>`${it.slot}：${it.name}（${Object.entries(it.attrs).map(([k,v])=>k+'+'+v.toFixed(2)).join(' ')}）${it.trait.n}${it.trait.v!=null?' '+it.trait.v:''}`).join('\n')}

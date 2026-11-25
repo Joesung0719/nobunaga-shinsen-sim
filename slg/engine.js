@@ -820,8 +820,9 @@ export function battle(A,B,R=Math.random){
         if((p=GP(g,'凌厲',5,15))!=null&&round===(g.gc.凌厲>.5?3:2)){g.lfv=Math.max(g.lfv||0,p);ixs(g).lfEnd=round}   // 凌厲：短暫離反
         if((p=GP(g,'石鐵',5,15))!=null&&round===(g.gc.石鐵>.5?3:2)){g.lj=Math.max(g.lj||0,p)}   // 石鐵：攻心
         if(round===1)for(const[k,to]of[['炯眼','智略'],['青嵐','速度'],['岩肌','統率'],['激突','武勇']])if((p=GP(g,k,6,18))!=null){const v=Math.round(p*10)/10;g.b[to]+=v;g.sb.push({k:to,v,until:1+Math.round(2*g.gc[k])})}   // 坐騎專屬：前 1~3 回合加屬性
+        if(round===1&&(p=GP(g,'第一',4,8))!=null)g.tm.push({k:'crit',v:p,until:99},{k:'critS',v:p,until:99});   // 第一（三人張弓專屬，今川義元攜帶）：會心、奇謀 4~8%
         if(round===1&&(p=GP(g,'清香',5,25))!=null){const u=1+Math.round(2*g.gc.清香);g.tm.push({k:'crit',v:p,until:u},{k:'critS',v:p,until:u})}   // 清香（蘭奢待專屬）：前 1~3 回合會心、奇謀
-        if((p=GP(g,'流轉',5,20))!=null&&round===6&&R()*100<p){g.cb=round;aux('流轉',t.side,i,{side:t.side,i,status:'連擊'})}   // 流轉：第 6 回合機率連擊（範圍假設 5~20%）
+        if((p=GP(g,'流轉',5,40))!=null&&round===((g.gc.流轉*997)%1<.5?5:6)&&R()*100<p){g.cb=round;aux('流轉',t.side,i,{side:t.side,i,status:'連擊'})}   // 流轉：第 5~6 回合（各件不同）5~40% 機率連擊
         if((p=GP(g,'勇猛',.1,.4))!=null&&round===(g.gc.勇猛>.5?3:2)&&g.b.統率>=Math.max(...t.gens.filter(m=>m.troops>0).map(m=>m.b.統率)))g.bs.yumo={until:round+1,a:p};   // 勇猛：統率最高 → 反擊 2 回合
         if((p=GP(g,'絕境',5,12))!=null&&!g.bs.zekkyo&&g.troops<g.max*(.5+.3*g.gc.絕境)){g.bs.zekkyo=1;g.tm.push({k:'healIn',v:p,until:99})}   // 絕境：兵力低時受治療提高
         if((p=GP(g,'庇佑',.3,.9))!=null&&round===(g.gc.庇佑>.5?5:4)&&R()<p){const k=[...CTRLK].find(x=>g.fx[x]>0);let what=null;if(k){delete g.fx[k];what=k}else if(g.dots.length){what=g.dots.shift().kd}else{const q=g.tm.findIndex(x=>['weak','weakBlade','weakStrat','statDown','expose'].includes(x.k)&&x.until>=round);if(q>=0){what=LBL[g.tm[q].k];g.tm.splice(q,1)}}if(what)aux('庇佑',t.side,i,{side:t.side,i,status:'淨化 '+what})}   // 庇佑：淨化自身 1 個減益
@@ -883,7 +884,7 @@ export function battle(A,B,R=Math.random){
         const act=sk.kind==='主動'||sk.each;
         if(!act||(sk.kind==='主動'&&fx.無策))continue;
         const gk=sk===g.skills[0]&&sk.prep?g.skills.find(x=>x.fx?.open?.t==='giki')?.fx.open:null;   // 疑心暗鬼：自帶準備主動發動率增加
-        const pr=sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)+(sk.kind==='主動'&&g.hitBy?.round!==round?((sk===g.skills[0]?g.tc.wei:g.tc.fen)||0)/100:0)+(sk.kind==='主動'&&sk!==g.skills[0]?M(g,'rateActNI')/100:0)+(gk?gk.rate/100:0)-(sk.dec?sk.dec*(round-(sk.from||1)):0);
+        const pr=sk.rate+(sk.kind==='主動'?M(g,'rateAct')/100:0)+(sk.kind==='主動'&&g.hitBy?.round!==round?((sk===g.skills[0]?g.tc.wei:g.tc.fen)||0)/100:0)+(sk.kind==='主動'&&sk!==g.skills[0]?M(g,'rateActNI')/100:0)+(gk?gk.rate/100:0)+(sk===g.skills[0]&&sk.name==='相模之獅'?(GP(g,'獅心',1,5)||0)/100:0)-(sk.dec?sk.dec*(round-(sk.from||1)):0);
         if(sk.from&&round<sk.from)continue;
         const tot=x=>x.gens.reduce((a,m)=>a+Math.max(0,m.troops),0),pr2=sk.lowHalf&&tot(t)<.5*t.gens.reduce((a,m)=>a+m.max,0)&&tot(t)<tot(e)?pr*.5:pr;   // 鈴鳴：兵力劣勢時機率減半
         if(R()<pr2){
@@ -957,10 +958,10 @@ export function battle(A,B,R=Math.random){
         if(h&&e.gens[j].troops>0)for(const sk of g.skills)if(sk.afterAtk&&R()<sk.afterAtk){const k2=hit(t,ti,i,e,j,sk.dmg,sk.dtype,'被動');if(k2)ev({type:'skill',side:t.side,i,skill:sk.name,kind:sk.kind,tg:[k2]})}   // 天神山殘照：普攻後機率追擊
         if(h&&e.gens[j].troops>0)for(const sk of g.skills)if(sk.kind==='突擊'&&sk.modeled!=='none'&&R()<sk.rate+M(g,'rushRate')/100+(g.hitBy?.round!==round?((sk===g.skills[0]?g.tc.gong:g.tc.meng)||0)/100:0)){
           // 突擊 hits the same target as the normal attack
-          const rx=sk.fx?.rush,xt=[];
+          const rx=sk.fx?.rush,xt=[],dR=sk.dmg+(sk.name==='電光雷轟'&&sk===g.skills[0]?(GP(g,'雷刃',2,8)||0)/100*(sk.cal||1):0);   // 雷刃（雷切專屬，立花道雪攜帶）：雷鳴傷害率提升
           if(rx?.t==='tanki')xt.push(...strip(e,j,2));   // 當機立斷：先解除 2 個增益
-          const k2=sk.dmg?hit(t,ti,i,e,j,sk.dmg,sk.dtype,'突擊'):{side:e.side,i:j};
-          if(sk.rushN&&sk.n[1]>1)for(const q of pickN(aliveIdx(e).filter(x=>x!==j),sk.n[1]-1,R)){const hq=hit(t,ti,i,e,q,sk.dmg,sk.dtype,'突擊');if(hq)xt.push(hq)}   // 群體突擊：普攻目標＋另選
+          const k2=sk.dmg?hit(t,ti,i,e,j,dR,sk.dtype,'突擊'):{side:e.side,i:j};
+          if(sk.rushN&&sk.n[1]>1)for(const q of pickN(aliveIdx(e).filter(x=>x!==j),sk.n[1]-1,R)){const hq=hit(t,ti,i,e,q,dR,sk.dtype,'突擊');if(hq)xt.push(hq)}   // 群體突擊：普攻目標＋另選
           if(rx?.t==='tanki'&&R()<.5){const q=pickN(aliveIdx(e),1,R)[0];if(q!=null){xt.push(...strip(e,q,2));const hq=hit(t,ti,i,e,q,sk.dmg,sk.dtype,'突擊');if(hq)xt.push(hq)}}
           else if(rx?.t==='nouka'){const n=2+Math.floor(R()*3);for(let q=0;q<n;q++){if(R()<.5){const al=aliveIdx(e);if(!al.length)break;const hq=hit(t,ti,i,e,al[Math.floor(R()*al.length)],rx.dmg,'謀略','突擊');if(hq)xt.push(hq)}else{const hq=healTo(t,lowest(t),g,rx.heal);if(hq)xt.push(hq)}}}   // 能鷹隱爪
           else if(rx?.t==='kochu')for(const q of aliveIdx(t)){if(q===i)continue;const m=t.gens[q];   // 孤注一擲：友軍（不含自己）
