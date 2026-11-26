@@ -454,6 +454,9 @@ export function battle(A,B,R=Math.random){
         log.push({type:'stat',side:s,i,k,d,res:m.b[k],cause:m.cz?.[k]||why,until:sb?sb.until:99});if(m.cz)delete m.cz[k]}
       for(const x of m.tm){if(seenTm[s][i].has(x))continue;seenTm[s][i].add(x);if(!LBL[x.k])continue;
         log.push({type:'buff',side:s,i,k:x.k,label:LBL[x.k],v:x.v,until:x.until,src:x.src?.n||null,cause:why})}}));
+    if(e.type==='turn'){   // 某位武將輪到行動（依速度排序）：之前回合開始階段（指揮／被動／持續效果）的結算先收尾，再標出行動者
+      while(pend.length){const x=pend.shift(),a=T[x.side]?.gens[x.i];if(a?.b)x.spd=Math.round(a.b.速度*100)/100;log.push(x);note(x)}
+      flush('回合開始／效果到期');const ta=T[e.side]?.gens[e.i];if(ta?.b)e.spd=Math.round(ta.b.速度*100)/100;log.push(e);return}
     if(e.type==='round'&&!started){started=true;flush('開場效果（特性、兵學、裝備、軍學、指揮戰法）');
       T.forEach((t,s)=>t.gens.forEach((m,i)=>{for(const[k,v]of Object.entries(m.bx||{}))if(typeof v==='number'&&v)log.push({type:'buff',side:s,i,k,label:LBL[k]||('兵學：'+k),v,until:99,src:null,cause:'兵學'})}));   // 兵學數值（進階、神算、協同…）整場生效
       log.push(e);return}   // 開場的增減益排在第 1 回合之前
@@ -883,12 +886,13 @@ export function battle(A,B,R=Math.random){
         else if(IR[o.t])IR[o.t]({t,ti,e,g,i,o,sk})
       }})});
     const order=[];
-    T.forEach((t,ti)=>t.gens.forEach((g,i)=>{if(g.troops>0)order.push([ti,i,g.b.速度+(round===1?M(g,'spd1'):0)+(g.first===round?1000:0)+R()*4])}));
-    order.sort((a,b)=>b[2]-a[2]);
+    T.forEach((t,ti)=>t.gens.forEach((g,i)=>{if(g.troops>0)order.push([ti,i,g.b.速度+(round===1?M(g,'spd1'):0)+(g.first===round?1000:0),R()])}));
+    order.sort((a,b)=>b[2]-a[2]||b[3]-a[3]);   // 速度快的先行動（先攻最優先）；只有速度完全相同才隨機（2026-11-26 修：原本加了 ±4 隨機，115 對 114.4 會顛倒）
     for(const[ti,i]of order){
       for(const tt of T)for(const dg of tt.gens)if(dg.troops<=0&&dg.stBuffs&&!dg.purged){dg.purged=1;for(const b of dg.stBuffs)b.m.b[b.k]-=b.v}   // 陣亡者給的屬性加成一併失效
       const t=T[ti],g=t.gens[i],e=T[1-ti];
       if(g.troops<=0)continue;
+      ev({type:'turn',side:t.side,i,first:g.first===round});   // 戰報：這位武將「開始行動」從這裡算（速度快的先）；在這之前的是回合開始階段
       const fx=g.fx;
       // 裝備特技（首次獲得狀態時）：激昂（功能性增益 → 傷害提高 1~6%，1~2 回合）、堅韌（離反）／籠絡（攻心）→ 受治療提高 20~85%，1 回合
       {let p;
