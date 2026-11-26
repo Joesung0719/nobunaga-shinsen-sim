@@ -64,7 +64,7 @@ input[type=number],select{background:var(--ink);color:var(--paper);border:1px so
 .rep .rh{margin:10px 0 2px;padding:2px 8px;background:rgba(227,183,90,.12);color:var(--gold,#e3b75a);font-weight:700;border-radius:4px}
 .rep .rs{color:var(--muted);font-size:.74rem;margin:0 0 4px 8px}
 .rep .ln{padding-left:8px;border-left:3px solid transparent}
-.rep .cb{color:#7db6ee}.rep .cr{color:#e8806f}.rep .sk{margin:4px 0 1px;font-weight:700}.rep .sk i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;margin-right:6px;padding:0 5px;border-radius:9px;background:#8a6d2a;color:#fff;font-size:.72rem}.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}
+.rep .cb{color:#7db6ee}.rep .cr{color:#e8806f}.rep .sk{margin:4px 0 1px;font-weight:700}.rep .sk i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;margin-right:6px;padding:0 5px;border-radius:9px;background:#8a6d2a;color:#fff;font-size:.72rem}.rep .ah{margin:8px 0 2px;padding:3px 8px;background:rgba(255,255,255,.05);border-radius:4px}.rep .ah span{float:right;color:var(--muted);font-size:.74rem}.rep .ah.me{border-left:3px solid #5aa0e3}.rep .ah.en{border-left:3px solid #d4574a}.rep .ah.ph{border-left:3px solid #c9a24a}
 .rep .ln.me{border-color:#5aa0e3}.rep .ln.en{border-color:#d4574a}
 .rep .ln.fx{opacity:.92;font-size:.77rem;padding-left:20px}.rep .ln small{color:var(--muted)}.rep .ln .dm{color:#e6806f}.rep .ln .hl{color:#7fcf8f}.rep .ln .st{color:#cfa85a}
 .rep .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:760px){.rep .cmp{grid-template-columns:1fr}}
@@ -745,8 +745,11 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
   const fin=()=>{if(act){act.c.lines[act.li]=act.h.replace('@K',fm(act.k)).replace('@R',fm(act.r));act=null}};
   const close=()=>{fin();if(cur){cur.sum=[0,1].map(s=>tr[s].map(fm).join(' / ')+`（${fm(tr[s].reduce((a,b)=>a+b,0))}）`);rounds.push(cur)}};
   const stv=(s,i,k)=>w.stats?.[s]?.[i]?.[k];
-  const push=h=>cur.lines.push(h);
-  const head=(side,i,spd)=>{if(!last||last.side!==side||last.i!==i){last={side,i};
+  const TURN=log.some(e=>e.type==='turn');let ph=false;   // 引擎有標出「誰輪到行動」：照速度排的行動順序開標題；輪到第一位之前的是回合開始階段（指揮／被動／持續效果），另立標題，不算在任何人的行動裡
+  const push=h=>{if(TURN&&cur.round>0&&!last&&!ph){ph=true;cur.lines.push(`<div class="ah ph"><b>回合開始</b><span>指揮・被動・持續效果（在所有武將行動前結算）</span></div>`)}cur.lines.push(h)};
+  const head0=(side,i,spd,first)=>{last={side,i};
+    fin();act={side,i,k:0,r:0,c:cur,li:cur.lines.length,h:''};act.h=(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動${first?'（先攻）':''}<span>兵力 ${fm(tr[side][i])}　殺敵 @K　救援 @R　速度 ${(spd??(w.spd?w.spd[side][i]:null))?.toFixed(2)??'?'}</span></div>`);cur.lines.push(act.h)};
+  const head=(side,i,spd)=>{if(TURN)return;if(!last||last.side!==side||last.i!==i){last={side,i};
     fin();act={side,i,k:0,r:0,c:cur,li:cur.lines.length,h:''};act.h=(`<div class="ah ${side===0?'me':'en'}"><b>${w.names[side][i]}</b> 開始行動<span>兵力 ${fm(tr[side][i])}　殺敵 @K　救援 @R　速度 ${(spd??(w.spd?w.spd[side][i]:null))?.toFixed(2)??'?'}</span></div>`);push(act.h)}};
   const sk=(e,name,kind)=>push(`<div class="sk ${e.side===0?'me':'en'}"><i>${kind==='普攻'?'普':(kind||'').slice(0,1)}</i>${name}</div>`);
   const eff=(t,e,name)=>{
@@ -772,7 +775,8 @@ function repLines(w,log){   // → [{round, lines:[html], sum}]　句型照遊�
       return out.join('<br>')}
     return''};
   for(const e of log){
-    if(e.type==='round'){close();cur={round:e.round,lines:[]};last=null;continue}
+    if(e.type==='round'){close();cur={round:e.round,lines:[]};last=null;ph=false;continue}
+    if(e.type==='turn'){if(cur)head0(e.side,e.i,e.spd,e.first);continue}
     if(!cur&&(e.type==='stat'||e.type==='buff'))cur={round:0,lines:[]};
     if(!cur)continue;
     if(e.type==='stat'){const who=nm(e.side,e.i),b0=bc[e.side][e.i][e.k];bc[e.side][e.i][e.k]=e.res;
